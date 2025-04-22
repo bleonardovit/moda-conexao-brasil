@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Instagram, 
-  ArrowLeft, 
+  ArrowLeft,
+  ArrowRight, 
   Globe, 
   MessageCircle, 
   Share2, 
@@ -25,14 +26,18 @@ import { Separator } from '@/components/ui/separator';
 import { AppLayout } from '@/components/layout/AppLayout';
 import type { Supplier, Review } from '@/types';
 
-// Dados de exemplo
+// Dados de exemplo com fotos fictícias
 const MOCK_SUPPLIERS: Supplier[] = [
   {
     id: '1',
     code: 'SP001',
     name: 'Moda Fashion SP',
     description: 'Atacado de roupas femininas com foco em tendências atuais. Trabalhamos com moda casual, festa e fitness para lojistas e revendedores. Atuando no mercado há mais de 10 anos, somos referência em qualidade e bom preço.',
-    images: ['/placeholder.svg', '/placeholder.svg', '/placeholder.svg'],
+    images: [
+      'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
+      'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
+      'https://images.unsplash.com/photo-1588099768531-a72235896992?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80'
+    ],
     instagram: '@modafashionsp',
     whatsapp: '+5511999999999',
     min_order: 'R$ 300,00',
@@ -52,8 +57,12 @@ const MOCK_SUPPLIERS: Supplier[] = [
     id: '2',
     code: 'CE001',
     name: 'Brindes Fortaleza',
-    description: 'Acessórios e bijuterias para revenda',
-    images: ['/placeholder.svg'],
+    description: 'Acessórios e bijuterias para revenda com qualidade premium. Trabalhamos com peças banhadas a ouro, prata e ródio, além de semi-joias e acessórios para cabelo.',
+    images: [
+      'https://images.unsplash.com/photo-1576664464364-17d23ce1a732?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=764&q=80',
+      'https://images.unsplash.com/photo-1535632787350-4e68ef0ac584?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80',
+      'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
+    ],
     instagram: '@brindesfortaleza',
     whatsapp: '+5585999999999',
     min_order: 'R$ 200,00',
@@ -68,6 +77,31 @@ const MOCK_SUPPLIERS: Supplier[] = [
     hidden: false,
     created_at: '2023-01-01',
     updated_at: '2023-01-01'
+  },
+  {
+    id: '3',
+    code: 'GO001',
+    name: 'Moda Plus Goiânia',
+    description: 'Especializada em moda plus size feminina com peças do tamanho 46 ao 56. Oferecemos roupas para o dia a dia, eventos e trabalho, com cortes modernos e tecidos de qualidade.',
+    images: [
+      'https://images.unsplash.com/photo-1610030469668-4c2cb4e5a54f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80',
+      'https://images.unsplash.com/photo-1605763240000-7e93b172d1d2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80',
+      'https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=734&q=80'
+    ],
+    instagram: '@modaplusgoiania',
+    whatsapp: '+5562999999999',
+    min_order: 'R$ 500,00',
+    payment_methods: ['pix', 'card'],
+    requires_cnpj: true,
+    avg_price: 'medium',
+    shipping_methods: ['correios', 'transporter'],
+    city: 'Goiânia',
+    state: 'GO',
+    categories: ['Plus Size', 'Casual'],
+    featured: true,
+    hidden: false,
+    created_at: '2023-02-15',
+    updated_at: '2023-02-15'
   }
 ];
 
@@ -101,6 +135,27 @@ export default function SupplierDetail() {
   
   // Encontrar fornecedor pelo ID
   const supplier = MOCK_SUPPLIERS.find(s => s.id === id);
+  
+  // Encontrar o índice do fornecedor atual na lista
+  const currentIndex = MOCK_SUPPLIERS.findIndex(s => s.id === id);
+  
+  // Determinar os fornecedores anterior e próximo
+  const previousSupplier = currentIndex > 0 ? MOCK_SUPPLIERS[currentIndex - 1] : null;
+  const nextSupplier = currentIndex < MOCK_SUPPLIERS.length - 1 ? MOCK_SUPPLIERS[currentIndex + 1] : null;
+  
+  // Navegação para o fornecedor anterior
+  const goToPreviousSupplier = () => {
+    if (previousSupplier) {
+      navigate(`/suppliers/${previousSupplier.id}`);
+    }
+  };
+  
+  // Navegação para o próximo fornecedor
+  const goToNextSupplier = () => {
+    if (nextSupplier) {
+      navigate(`/suppliers/${nextSupplier.id}`);
+    }
+  };
   
   // Obter avaliações para este fornecedor
   const reviews = MOCK_REVIEWS.filter(r => r.supplier_id === id);
@@ -146,15 +201,38 @@ export default function SupplierDetail() {
   return (
     <AppLayout>
       <div className="mb-6">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => navigate('/suppliers')}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Voltar
-        </Button>
+        <div className="flex items-center justify-between mb-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/suppliers')}
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Voltar
+          </Button>
+          
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToPreviousSupplier}
+              disabled={!previousSupplier}
+              className="h-8 w-8"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToNextSupplier}
+              disabled={!nextSupplier}
+              className="h-8 w-8"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
         
         <div className="flex items-start justify-between">
           <div>
@@ -173,13 +251,35 @@ export default function SupplierDetail() {
         </div>
         
         {/* Galeria de imagens */}
-        <div className="mt-4">
+        <div className="mt-4 relative">
           <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
             <img
               src={supplier.images[activeImageIndex]}
               alt={`${supplier.name} - Imagem ${activeImageIndex + 1}`}
               className="h-full w-full object-cover transition-all"
             />
+            
+            {/* Botões de navegação da galeria */}
+            {supplier.images.length > 1 && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setActiveImageIndex(prev => (prev > 0 ? prev - 1 : supplier.images.length - 1))}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/40 hover:bg-background/60 rounded-full h-8 w-8"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setActiveImageIndex(prev => (prev < supplier.images.length - 1 ? prev + 1 : 0))}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/40 hover:bg-background/60 rounded-full h-8 w-8"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
           
           {supplier.images.length > 1 && (
