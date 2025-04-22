@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +15,13 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import type { Supplier } from '@/types';
 
-// Dados de exemplo
 const MOCK_SUPPLIERS: Supplier[] = [
   {
     id: '1',
     code: 'SP001',
     name: 'Moda Fashion SP',
     description: 'Atacado de roupas femininas com foco em tendências atuais',
-    images: ['/placeholder.svg'],
+    images: ['https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'],
     instagram: '@modafashionsp',
     whatsapp: '+5511999999999',
     min_order: 'R$ 300,00',
@@ -44,7 +42,7 @@ const MOCK_SUPPLIERS: Supplier[] = [
     code: 'CE001',
     name: 'Brindes Fortaleza',
     description: 'Acessórios e bijuterias para revenda',
-    images: ['/placeholder.svg'],
+    images: ['https://images.unsplash.com/photo-1506744038136-46273834b3fb'],
     instagram: '@brindesfortaleza',
     whatsapp: '+5585999999999',
     min_order: 'R$ 200,00',
@@ -65,7 +63,7 @@ const MOCK_SUPPLIERS: Supplier[] = [
     code: 'GO001',
     name: 'Plus Size Goiânia',
     description: 'Especializada em moda plus size feminina',
-    images: ['/placeholder.svg'],
+    images: ['https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07'],
     instagram: '@plussizegoiania',
     whatsapp: '+5562999999999',
     website: 'https://plussizegoiania.com.br',
@@ -107,7 +105,6 @@ export default function SuppliersList() {
   const [stateFilter, setStateFilter] = useState('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Implementar lógica de filtro para os fornecedores
   const filteredSuppliers = MOCK_SUPPLIERS.filter(supplier => {
     const matchesSearch = searchTerm === '' || 
       supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -122,7 +119,6 @@ export default function SuppliersList() {
     return matchesSearch && matchesCategory && matchesState;
   });
 
-  // Função auxiliar para formatar preço médio
   const formatAvgPrice = (price: string) => {
     switch(price) {
       case 'low': return 'Baixo';
@@ -137,7 +133,6 @@ export default function SuppliersList() {
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">Fornecedores</h1>
         
-        {/* Barra de pesquisa */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -148,7 +143,6 @@ export default function SuppliersList() {
           />
         </div>
         
-        {/* Filtros */}
         <div className="flex items-center justify-between">
           <Button 
             variant="outline" 
@@ -206,7 +200,6 @@ export default function SuppliersList() {
           </div>
         )}
         
-        {/* Lista de fornecedores */}
         <div className="space-y-4">
           {filteredSuppliers.length > 0 ? (
             filteredSuppliers.map(supplier => (

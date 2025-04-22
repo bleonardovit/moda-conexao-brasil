@@ -6,7 +6,7 @@ export function MobileFooterNav() {
   const location = useLocation();
   
   const isActive = (path: string) => {
-    return location.pathname.startsWith(path);
+    return location.pathname === path;
   };
 
   return (
