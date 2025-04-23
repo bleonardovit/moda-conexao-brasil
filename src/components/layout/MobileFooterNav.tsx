@@ -15,7 +15,7 @@ export function MobileFooterNav() {
         to="/suppliers" 
         className={`flex flex-col items-center justify-center transition-colors ${
           isActive('/suppliers')
-            ? 'text-brand.purple'
+            ? 'text-[#9b87f5]'
             : 'text-gray-400 hover:text-white'
         }`}
       >
@@ -26,7 +26,7 @@ export function MobileFooterNav() {
         to="/search" 
         className={`flex flex-col items-center justify-center transition-colors ${
           isActive('/search')
-            ? 'text-brand.purple'
+            ? 'text-[#9b87f5]'
             : 'text-gray-400 hover:text-white'
         }`}
       >
@@ -37,7 +37,7 @@ export function MobileFooterNav() {
         to="/favorites" 
         className={`flex flex-col items-center justify-center transition-colors ${
           isActive('/favorites')
-            ? 'text-brand.purple'
+            ? 'text-[#9b87f5]'
             : 'text-gray-400 hover:text-white'
         }`}
       >
@@ -48,7 +48,7 @@ export function MobileFooterNav() {
         to="/profile" 
         className={`flex flex-col items-center justify-center transition-colors ${
           isActive('/profile')
-            ? 'text-brand.purple'
+            ? 'text-[#9b87f5]'
             : 'text-gray-400 hover:text-white'
         }`}
       >

@@ -17,7 +17,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-brand.dark text-white">
+      <div className="flex min-h-screen w-full bg-background text-white">
         {!isMobile && <DesktopSidebar />}
         <div className="flex-1 flex flex-col">
           <MobileHeader />

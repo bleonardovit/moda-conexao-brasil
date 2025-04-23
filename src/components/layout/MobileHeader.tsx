@@ -11,7 +11,7 @@ export function MobileHeader() {
   const [showSearch, setShowSearch] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-brand.dark/80 backdrop-blur-md supports-[backdrop-filter]:bg-brand.dark/60">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center justify-between">
         {showSearch ? (
           <div className="flex-1 flex items-center gap-2">
@@ -32,7 +32,7 @@ export function MobileHeader() {
         ) : (
           <>
             <Link to="/" className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-brand.purple to-brand.pink flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">CB</span>
               </div>
               <span className="ml-2 font-bold text-xl text-gradient">Conexão Brasil</span>

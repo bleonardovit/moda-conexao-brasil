@@ -27,7 +27,7 @@ export function DesktopSidebar() {
       <SidebarContent>
         <div className="flex justify-center p-4 mb-6">
           <Link to="/" className="block">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-brand.purple to-brand.pink flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] flex items-center justify-center">
               <span className="text-white font-bold">CB</span>
             </div>
           </Link>
@@ -41,7 +41,7 @@ export function DesktopSidebar() {
                   tooltip={item.label}
                   className={`transition-all duration-200 ${
                     location.pathname === item.path
-                      ? 'bg-brand.purple text-white'
+                      ? 'bg-[#9b87f5] text-white'
                       : 'hover:bg-white/5'
                   }`}
                   asChild

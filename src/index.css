@@ -52,7 +52,7 @@
   }
 
   body {
-    @apply bg-brand.dark text-foreground antialiased;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
@@ -79,7 +79,7 @@
   }
   
   .text-gradient-primary {
-    @apply bg-gradient-to-br from-brand.purple via-brand.purple/80 to-brand.purple/60 bg-clip-text text-transparent;
+    @apply bg-gradient-to-br from-[#9b87f5] via-[#9b87f5]/80 to-[#9b87f5]/60 bg-clip-text text-transparent;
   }
 
   .card-hover {
