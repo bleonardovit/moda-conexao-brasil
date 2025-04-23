@@ -10,13 +10,13 @@ export function MobileFooterNav() {
   };
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-sm border-t border-white/20 flex items-center justify-around px-2 z-50">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 neo-blur border-t border-white/10 flex items-center justify-around px-2 z-50">
       <Link 
         to="/suppliers" 
         className={`flex flex-col items-center justify-center transition-colors ${
           isActive('/suppliers')
             ? 'text-brand.purple'
-            : 'text-gray-500 hover:text-brand.pink'
+            : 'text-gray-400 hover:text-white'
         }`}
       >
         <Home size={24} />
@@ -27,7 +27,7 @@ export function MobileFooterNav() {
         className={`flex flex-col items-center justify-center transition-colors ${
           isActive('/search')
             ? 'text-brand.purple'
-            : 'text-gray-500 hover:text-brand.pink'
+            : 'text-gray-400 hover:text-white'
         }`}
       >
         <Search size={24} />
@@ -38,7 +38,7 @@ export function MobileFooterNav() {
         className={`flex flex-col items-center justify-center transition-colors ${
           isActive('/favorites')
             ? 'text-brand.purple'
-            : 'text-gray-500 hover:text-brand.pink'
+            : 'text-gray-400 hover:text-white'
         }`}
       >
         <Heart size={24} />
@@ -49,7 +49,7 @@ export function MobileFooterNav() {
         className={`flex flex-col items-center justify-center transition-colors ${
           isActive('/profile')
             ? 'text-brand.purple'
-            : 'text-gray-500 hover:text-brand.pink'
+            : 'text-gray-400 hover:text-white'
         }`}
       >
         <User size={24} />

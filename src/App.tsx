@@ -1,10 +1,12 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import NotFound from "./pages/NotFound";
+import Home from "./pages/Home";
 
 // Páginas de autenticação
 import Login from "./pages/auth/Login";
@@ -68,12 +70,12 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Redirecionamento da raiz */}
+            {/* Home page now uses the new modern layout */}
             <Route 
               path="/" 
               element={
                 auth.isAuthenticated 
-                  ? <Navigate to="/suppliers" replace /> 
+                  ? <Home /> 
                   : <Navigate to="/auth/login" replace />
               } 
             />
@@ -142,6 +144,11 @@ const App = () => {
                 </AdminRoute>
               } 
             />
+            
+            {/* Additional Routes */}
+            <Route path="/search" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/favorites" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             
             {/* Rota de 404 */}
             <Route path="*" element={<NotFound />} />
