@@ -5,13 +5,14 @@ import { Menu, X, Search, User, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function MobileHeader() {
   const [isOpen, setIsOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center justify-between">
         {showSearch ? (
           <div className="flex-1 flex items-center gap-2">
@@ -47,6 +48,8 @@ export function MobileHeader() {
               >
                 <Search className="h-5 w-5" />
               </Button>
+              
+              <ThemeToggle />
               
               <Button variant="ghost" size="icon" className="rounded-full text-gray-400">
                 <Bell className="h-5 w-5" />

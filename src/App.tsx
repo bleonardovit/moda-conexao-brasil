@@ -1,10 +1,10 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
+import { ThemeProvider } from "@/hooks/use-theme";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 
@@ -65,96 +65,98 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Home page now uses the new modern layout */}
-            <Route 
-              path="/" 
-              element={
-                auth.isAuthenticated 
-                  ? <Home /> 
-                  : <Navigate to="/auth/login" replace />
-              } 
-            />
-            
-            {/* Rotas de autenticação */}
-            <Route path="/auth/login" element={<Login />} />
-            <Route path="/auth/register" element={<Register />} />
-            <Route path="/auth/reset-password" element={<ResetPassword />} />
-            
-            {/* Rotas de aplicativo protegidas (requerem assinatura) */}
-            <Route 
-              path="/suppliers" 
-              element={
-                <SubscriptionRoute>
-                  <SuppliersList />
-                </SubscriptionRoute>
-              } 
-            />
-            <Route 
-              path="/suppliers/:id" 
-              element={
-                <SubscriptionRoute>
-                  <SupplierDetail />
-                </SubscriptionRoute>
-              } 
-            />
-            <Route 
-              path="/profile" 
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Rotas administrativas */}
-            <Route 
-              path="/admin" 
-              element={
-                <AdminRoute>
-                  <Navigate to="/admin/users" replace />
-                </AdminRoute>
-              } 
-            />
-            <Route 
-              path="/admin/users" 
-              element={
-                <AdminRoute>
-                  <UsersManagement />
-                </AdminRoute>
-              } 
-            />
-            <Route 
-              path="/admin/suppliers" 
-              element={
-                <AdminRoute>
-                  <SuppliersManagement />
-                </AdminRoute>
-              } 
-            />
-            <Route 
-              path="/admin/reports" 
-              element={
-                <AdminRoute>
-                  <Reports />
-                </AdminRoute>
-              } 
-            />
-            
-            {/* Additional Routes */}
-            <Route path="/search" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/favorites" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            
-            {/* Rota de 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Home page now uses the new modern layout */}
+              <Route 
+                path="/" 
+                element={
+                  auth.isAuthenticated 
+                    ? <Home /> 
+                    : <Navigate to="/auth/login" replace />
+                } 
+              />
+              
+              {/* Rotas de autenticação */}
+              <Route path="/auth/login" element={<Login />} />
+              <Route path="/auth/register" element={<Register />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
+              
+              {/* Rotas de aplicativo protegidas (requerem assinatura) */}
+              <Route 
+                path="/suppliers" 
+                element={
+                  <SubscriptionRoute>
+                    <SuppliersList />
+                  </SubscriptionRoute>
+                } 
+              />
+              <Route 
+                path="/suppliers/:id" 
+                element={
+                  <SubscriptionRoute>
+                    <SupplierDetail />
+                  </SubscriptionRoute>
+                } 
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Rotas administrativas */}
+              <Route 
+                path="/admin" 
+                element={
+                  <AdminRoute>
+                    <Navigate to="/admin/users" replace />
+                  </AdminRoute>
+                } 
+              />
+              <Route 
+                path="/admin/users" 
+                element={
+                  <AdminRoute>
+                    <UsersManagement />
+                  </AdminRoute>
+                } 
+              />
+              <Route 
+                path="/admin/suppliers" 
+                element={
+                  <AdminRoute>
+                    <SuppliersManagement />
+                  </AdminRoute>
+                } 
+              />
+              <Route 
+                path="/admin/reports" 
+                element={
+                  <AdminRoute>
+                    <Reports />
+                  </AdminRoute>
+                } 
+              />
+              
+              {/* Additional Routes */}
+              <Route path="/search" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              <Route path="/favorites" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              
+              {/* Rota de 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };
