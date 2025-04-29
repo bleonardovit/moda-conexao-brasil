@@ -1,6 +1,11 @@
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
 import { 
   Select, 
   SelectContent, 
@@ -15,15 +20,42 @@ import {
   TabsTrigger 
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Download, Users, Store, TrendingUp, TrendingDown } from 'lucide-react';
+import { 
+  Download, 
+  Users, 
+  Store, 
+  TrendingUp, 
+  TrendingDown, 
+  Calendar 
+} from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
+import { useToast } from '@/hooks/use-toast';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import {
+  Bar,
+  BarChart,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend
+} from 'recharts';
 
 // Mocks para dados de gráficos e estatísticas
 const MOCK_STATS = {
   totalUsers: 1250,
   newUsers7Days: 42,
   newUsers30Days: 127,
-  growthRate: 8.5, // percentual de crescimento
+  growthRate: 8.5,
   totalSuppliers: 87,
   topSuppliers: [
     { id: '1', name: 'Moda Fashion SP', views: 856 },
@@ -51,6 +83,22 @@ const MOCK_USERS_CHART_DATA = [
   { date: '07/07', count: 15 }
 ];
 
+// Dados para gráfico de usuários mensais (últimos 12 meses)
+const MOCK_MONTHLY_USERS_DATA = [
+  { month: 'Jan', users: 78 },
+  { month: 'Fev', users: 91 },
+  { month: 'Mar', users: 103 },
+  { month: 'Abr', users: 87 },
+  { month: 'Mai', users: 99 },
+  { month: 'Jun', users: 112 },
+  { month: 'Jul', users: 127 },
+  { month: 'Ago', users: 135 },
+  { month: 'Set', users: 142 },
+  { month: 'Out', users: 156 },
+  { month: 'Nov', users: 178 },
+  { month: 'Dez', users: 204 }
+];
+
 // Dados para gráfico de visualizações por categoria
 const MOCK_CATEGORY_VIEWS = [
   { category: 'Casual', views: 342 },
@@ -60,7 +108,44 @@ const MOCK_CATEGORY_VIEWS = [
   { category: 'Praia', views: 98 }
 ];
 
+// Distribuição de assinaturas
+const MOCK_SUBSCRIPTION_DATA = [
+  { name: 'Mensal', value: 65 },
+  { name: 'Anual', value: 35 }
+];
+
+// Dados para métricas de conversão
+const MOCK_CONVERSION_DATA = {
+  visitToRegister: 12.3,
+  registerToSubscription: 43.7,
+  visitToSubscription: 5.2,
+  churnRate: 2.8
+};
+
+// Dados para gráfico de usuários ativos
+const MOCK_ACTIVE_USERS_DATA = [
+  { date: '01/07', active: 452 },
+  { date: '02/07', active: 478 },
+  { date: '03/07', active: 492 },
+  { date: '04/07', active: 481 },
+  { date: '05/07', active: 503 },
+  { date: '06/07', active: 527 },
+  { date: '07/07', active: 542 }
+];
+
+// Dados para distribuição por estados
+const generatePieChartData = (data: Array<{state: string, users: number}>) => {
+  return data.map(item => ({
+    name: item.state,
+    value: item.users
+  }));
+};
+
+// Cores para os gráficos
+const COLORS = ['#8884d8', '#83a6ed', '#8dd1e1', '#82ca9d', '#a4de6c', '#d0ed57'];
+
 export default function Reports() {
+  const { toast } = useToast();
   const [dateRange, setDateRange] = useState('7days');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
@@ -71,15 +156,18 @@ export default function Reports() {
   // Função para exportar relatórios
   const exportReport = () => {
     console.log('Exportando relatório com filtros:', { dateRange, categoryFilter, locationFilter });
-    // Implementar lógica de exportação
-    alert('Relatório exportado em formato CSV!');
+    
+    toast({
+      title: "Relatório exportado",
+      description: "O relatório foi gerado e baixado com sucesso.",
+    });
   };
   
   return (
     <AdminLayout>
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Relatórios</h1>
+          <h1 className="text-2xl font-bold">Dashboard & Relatórios</h1>
           <Button onClick={exportReport}>
             <Download className="mr-2 h-4 w-4" />
             Exportar
@@ -148,7 +236,7 @@ export default function Reports() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
+              <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 +{stats.newUsers30Days} no último mês
               </p>
@@ -194,13 +282,76 @@ export default function Reports() {
               <CardTitle className="text-sm font-medium">
                 Total de Logins
               </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalLogins}</div>
+              <div className="text-2xl font-bold">{stats.totalLogins.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 Histórico completo
               </p>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Métricas de conversão */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Visita → Cadastro</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{MOCK_CONVERSION_DATA.visitToRegister}%</div>
+              <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary" 
+                  style={{ width: `${MOCK_CONVERSION_DATA.visitToRegister}%` }}
+                ></div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Cadastro → Assinatura</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{MOCK_CONVERSION_DATA.registerToSubscription}%</div>
+              <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-green-500" 
+                  style={{ width: `${MOCK_CONVERSION_DATA.registerToSubscription}%` }}
+                ></div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Conversão Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{MOCK_CONVERSION_DATA.visitToSubscription}%</div>
+              <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500" 
+                  style={{ width: `${MOCK_CONVERSION_DATA.visitToSubscription}%` }}
+                ></div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Taxa de Cancelamento</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{MOCK_CONVERSION_DATA.churnRate}%</div>
+              <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-red-500" 
+                  style={{ width: `${MOCK_CONVERSION_DATA.churnRate}%` }}
+                ></div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -209,84 +360,208 @@ export default function Reports() {
         <Tabs defaultValue="users" className="space-y-4">
           <TabsList>
             <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="subscriptions">Assinaturas</TabsTrigger>
             <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
             <TabsTrigger value="locations">Localidades</TabsTrigger>
           </TabsList>
           
           {/* Tab de usuários */}
-          <TabsContent value="users">
+          <TabsContent value="users" className="space-y-4">
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle>Novos Usuários (últimos 7 dias)</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {/* Substitua isso por um componente de gráfico real */}
-                  <div className="h-[200px] flex items-end justify-between">
-                    {MOCK_USERS_CHART_DATA.map((day, index) => (
-                      <div key={index} className="relative h-full flex flex-col items-center">
-                        <div 
-                          className="w-10 bg-primary/80 hover:bg-primary rounded-t" 
-                          style={{ height: `${(day.count / 15) * 100}%` }}
-                        ></div>
-                        <span className="text-xs mt-2">{day.date}</span>
-                      </div>
-                    ))}
-                  </div>
+                <CardContent className="px-0">
+                  <ChartContainer config={{
+                    newUsers: { label: "Novos Usuários", theme: { light: "#8884d8" } }
+                  }} className="h-80">
+                    <BarChart data={MOCK_USERS_CHART_DATA}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="count" name="newUsers" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
                 </CardContent>
               </Card>
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Crescimento de Usuários</CardTitle>
+                  <CardTitle>Usuários Ativos (últimos 7 dias)</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-8">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm">Últimos 7 dias</div>
-                      <div className={`text-sm font-medium ${stats.growthRate > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {stats.growthRate > 0 ? '+' : ''}{stats.growthRate}%
+                <CardContent className="px-0">
+                  <ChartContainer config={{
+                    activeUsers: { label: "Usuários Ativos", theme: { light: "#82ca9d" } }
+                  }} className="h-80">
+                    <LineChart data={MOCK_ACTIVE_USERS_DATA}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip content={<ChartTooltipContent />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="active" 
+                        name="activeUsers" 
+                        stroke="#82ca9d" 
+                        activeDot={{ r: 8 }} 
+                      />
+                    </LineChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Crescimento de Usuários (12 meses)</CardTitle>
+              </CardHeader>
+              <CardContent className="px-0">
+                <ChartContainer config={{
+                  monthlyUsers: { label: "Usuários", theme: { light: "#8884d8" } }
+                }} className="h-80">
+                  <BarChart data={MOCK_MONTHLY_USERS_DATA}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    <Bar dataKey="users" name="monthlyUsers" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Tab de assinaturas */}
+          <TabsContent value="subscriptions" className="space-y-4">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Distribuição de Assinaturas</CardTitle>
+                </CardHeader>
+                <CardContent className="px-0">
+                  <ChartContainer config={{
+                    subscriptions: { label: "Assinaturas", theme: { light: "#8884d8" } }
+                  }} className="h-80">
+                    <PieChart>
+                      <Pie
+                        data={MOCK_SUBSCRIPTION_DATA}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        nameKey="name"
+                        label={(entry) => `${entry.name}: ${entry.value}%`}
+                      >
+                        {MOCK_SUBSCRIPTION_DATA.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <Legend />
+                    </PieChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Métricas de Assinatura</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm">Retenção de 30 dias</div>
+                        <div className="text-sm font-medium text-green-500">95.4%</div>
+                      </div>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500" style={{ width: "95.4%" }}></div>
                       </div>
                     </div>
-                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${stats.growthRate > 0 ? 'bg-green-500' : 'bg-red-500'}`}
-                        style={{ width: `${Math.abs(stats.growthRate) * 3}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Distribuição por tipo de assinatura</div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs">Mensal</div>
-                          <div className="text-xs font-medium">65%</div>
-                        </div>
-                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-primary" style={{ width: '65%' }}></div>
-                        </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm">Retenção de 60 dias</div>
+                        <div className="text-sm font-medium text-green-500">87.2%</div>
                       </div>
-                      
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs">Anual</div>
-                          <div className="text-xs font-medium">35%</div>
-                        </div>
-                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-secondary" style={{ width: '35%' }}></div>
-                        </div>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500" style={{ width: "87.2%" }}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm">Retenção de 90 dias</div>
+                        <div className="text-sm font-medium text-green-500">78.6%</div>
+                      </div>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500" style={{ width: "78.6%" }}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm">Taxa de renovação anual</div>
+                        <div className="text-sm font-medium text-green-500">67.5%</div>
+                      </div>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500" style={{ width: "67.5%" }}></div>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Receita mensal (últimos 12 meses)</CardTitle>
+              </CardHeader>
+              <CardContent className="px-0">
+                <ChartContainer config={{
+                  revenue: { label: "Receita (R$)", theme: { light: "#82ca9d" } }
+                }} className="h-80">
+                  <LineChart data={[
+                    { month: "Jan", value: 5800 },
+                    { month: "Fev", value: 6200 },
+                    { month: "Mar", value: 6800 },
+                    { month: "Abr", value: 7100 },
+                    { month: "Mai", value: 7500 },
+                    { month: "Jun", value: 8200 },
+                    { month: "Jul", value: 8700 },
+                    { month: "Ago", value: 9300 },
+                    { month: "Set", value: 9800 },
+                    { month: "Out", value: 10500 },
+                    { month: "Nov", value: 11200 },
+                    { month: "Dez", value: 12000 }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      name="revenue" 
+                      stroke="#82ca9d" 
+                      strokeWidth={2} 
+                      dot={{ r: 4 }} 
+                      activeDot={{ r: 8 }} 
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
           </TabsContent>
           
           {/* Tab de fornecedores */}
-          <TabsContent value="suppliers">
+          <TabsContent value="suppliers" className="space-y-4">
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -321,23 +596,28 @@ export default function Reports() {
                 <CardHeader>
                   <CardTitle>Visualizações por Categoria</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {MOCK_CATEGORY_VIEWS.map((category) => (
-                      <div key={category.category} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">{category.category}</span>
-                          <span className="text-sm">{category.views}</span>
-                        </div>
-                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary" 
-                            style={{ width: `${(category.views / MOCK_CATEGORY_VIEWS[0].views) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <CardContent className="px-0">
+                  <ChartContainer config={{
+                    categoryViews: { label: "Visualizações", theme: { light: "#8884d8" } }
+                  }} className="h-80">
+                    <BarChart 
+                      data={MOCK_CATEGORY_VIEWS} 
+                      layout="vertical" 
+                      margin={{ left: 80 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="category" type="category" />
+                      <Tooltip content={<ChartTooltipContent />} />
+                      <Legend />
+                      <Bar 
+                        dataKey="views" 
+                        name="categoryViews" 
+                        fill="#8884d8" 
+                        radius={[0, 4, 4, 0]} 
+                      />
+                    </BarChart>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             </div>
@@ -350,28 +630,30 @@ export default function Reports() {
                 <CardHeader>
                   <CardTitle>Estados com Mais Usuárias</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {stats.topLocations.map((location, index) => (
-                      <div key={location.state} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center mr-2">
-                              <span className="text-xs font-bold">{index + 1}</span>
-                            </div>
-                            <span className="text-sm font-medium">{location.state}</span>
-                          </div>
-                          <span className="text-sm">{location.users} usuárias</span>
-                        </div>
-                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary" 
-                            style={{ width: `${(location.users / stats.topLocations[0].users) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <CardContent className="space-y-4">
+                  <ChartContainer config={{
+                    usersByState: { label: "Usuárias", theme: { light: "#8884d8" } }
+                  }} className="h-80">
+                    <PieChart>
+                      <Pie
+                        data={generatePieChartData(stats.topLocations)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        nameKey="name"
+                        label={(entry) => `${entry.name}: ${entry.value}`}
+                      >
+                        {stats.topLocations.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <Legend />
+                    </PieChart>
+                  </ChartContainer>
                 </CardContent>
               </Card>
               
@@ -379,58 +661,34 @@ export default function Reports() {
                 <CardHeader>
                   <CardTitle>Fornecedores por Estado</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">SP</span>
-                        <span className="text-sm">32 fornecedores</span>
-                      </div>
-                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '100%' }}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">CE</span>
-                        <span className="text-sm">18 fornecedores</span>
-                      </div>
-                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '56%' }}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">GO</span>
-                        <span className="text-sm">15 fornecedores</span>
-                      </div>
-                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '47%' }}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">MG</span>
-                        <span className="text-sm">12 fornecedores</span>
-                      </div>
-                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '37%' }}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">PE</span>
-                        <span className="text-sm">10 fornecedores</span>
-                      </div>
-                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '31%' }}></div>
-                      </div>
-                    </div>
-                  </div>
+                <CardContent className="px-0">
+                  <ChartContainer config={{
+                    suppliersByState: { label: "Fornecedores", theme: { light: "#82ca9d" } }
+                  }} className="h-80">
+                    <BarChart 
+                      data={[
+                        { state: 'SP', suppliers: 32 },
+                        { state: 'CE', suppliers: 18 },
+                        { state: 'GO', suppliers: 15 },
+                        { state: 'MG', suppliers: 12 },
+                        { state: 'PE', suppliers: 10 }
+                      ]} 
+                      layout="vertical" 
+                      margin={{ left: 40 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="state" type="category" />
+                      <Tooltip content={<ChartTooltipContent />} />
+                      <Legend />
+                      <Bar 
+                        dataKey="suppliers" 
+                        name="suppliersByState" 
+                        fill="#82ca9d" 
+                        radius={[0, 4, 4, 0]} 
+                      />
+                    </BarChart>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             </div>

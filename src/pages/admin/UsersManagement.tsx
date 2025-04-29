@@ -19,7 +19,35 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Download, Mail, Edit, Trash } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { 
+  Search, 
+  MoreHorizontal, 
+  Download, 
+  Mail, 
+  Edit, 
+  Trash, 
+  CreditCard,
+  Calendar,
+  RefreshCcw
+} from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
   Select, 
@@ -28,6 +56,21 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription,
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/types';
 
 // Dados de exemplo
@@ -66,6 +109,16 @@ const MOCK_USERS: User[] = [
     role: 'user'
   },
   {
+    id: 'user4',
+    email: 'patricia@example.com',
+    full_name: 'Patricia Lima',
+    phone: '(41) 99887-6655',
+    subscription_status: 'pending',
+    subscription_type: 'monthly',
+    last_login: '2023-08-01T10:12:45Z',
+    role: 'user'
+  },
+  {
     id: 'admin1',
     email: 'admin@example.com',
     full_name: 'Administrador',
@@ -74,15 +127,36 @@ const MOCK_USERS: User[] = [
   }
 ];
 
+// Dados de pagamentos de exemplo
+const MOCK_PAYMENTS = [
+  { id: 'pay1', user_id: 'user1', amount: 'R$ 29,90', date: '2023-07-10', status: 'success', method: 'card' },
+  { id: 'pay2', user_id: 'user1', amount: 'R$ 29,90', date: '2023-06-10', status: 'success', method: 'card' },
+  { id: 'pay3', user_id: 'user1', amount: 'R$ 29,90', date: '2023-05-10', status: 'success', method: 'card' },
+  { id: 'pay4', user_id: 'user2', amount: 'R$ 299,00', date: '2023-04-15', status: 'success', method: 'pix' },
+  { id: 'pay5', user_id: 'user3', amount: 'R$ 29,90', date: '2023-03-20', status: 'success', method: 'card' },
+  { id: 'pay6', user_id: 'user3', amount: 'R$ 29,90', date: '2023-04-20', status: 'failed', method: 'card' },
+];
+
 export default function UsersManagement() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [subscriptionFilter, setSubscriptionFilter] = useState('all');
+  const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isEditSubscriptionOpen, setIsEditSubscriptionOpen] = useState(false);
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+  
+  // Novo estado para edição de assinatura
+  const [subscriptionEditData, setSubscriptionEditData] = useState({
+    type: '',
+    status: ''
+  });
   
   // Filtrar usuários com base nos critérios de pesquisa
   const filteredUsers = MOCK_USERS.filter(user => {
     const matchesSearch = searchTerm === '' || 
-      user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.phone && user.phone.includes(searchTerm));
     
@@ -99,6 +173,72 @@ export default function UsersManagement() {
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  // Abrir detalhes do usuário
+  const openUserDetails = (user: User) => {
+    setSelectedUser(user);
+    setIsUserDetailsOpen(true);
+  };
+
+  // Abrir modal de edição de assinatura
+  const openEditSubscription = () => {
+    if (selectedUser) {
+      setSubscriptionEditData({
+        type: selectedUser.subscription_type || 'monthly',
+        status: selectedUser.subscription_status
+      });
+      setIsEditSubscriptionOpen(true);
+    }
+  };
+
+  // Salvar alterações na assinatura
+  const saveSubscriptionChanges = () => {
+    if (selectedUser) {
+      // Aqui seria implementada a lógica para atualizar no backend
+      console.log('Atualizando assinatura:', {
+        userId: selectedUser.id,
+        ...subscriptionEditData
+      });
+
+      toast({
+        title: "Assinatura atualizada",
+        description: `Detalhes da assinatura de ${selectedUser.full_name} foram atualizados com sucesso.`,
+      });
+
+      setIsEditSubscriptionOpen(false);
+    }
+  };
+
+  // Confirmar desativação de usuário
+  const confirmDeactivate = () => {
+    setIsDeactivateDialogOpen(true);
+  };
+
+  // Desativar usuário
+  const deactivateUser = () => {
+    if (selectedUser) {
+      // Aqui seria implementada a lógica para desativar no backend
+      console.log('Desativando usuário:', selectedUser.id);
+
+      toast({
+        title: "Usuário desativado",
+        description: `Conta de ${selectedUser.full_name} foi desativada com sucesso.`,
+      });
+
+      setIsDeactivateDialogOpen(false);
+      setIsUserDetailsOpen(false);
+    }
+  };
+
+  // Enviar email de pagamento
+  const sendPaymentLink = (userId: string, userName: string) => {
+    console.log('Enviando link de pagamento para:', userId);
+    
+    toast({
+      title: "Link de pagamento enviado",
+      description: `Um email com o link de pagamento foi enviado para ${userName}.`,
+    });
   };
   
   // Exportar lista de usuários em formato CSV
@@ -129,6 +269,16 @@ export default function UsersManagement() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    toast({
+      title: "Relatório exportado",
+      description: "O relatório de usuários foi exportado com sucesso.",
+    });
+  };
+
+  // Obter histórico de pagamentos para o usuário selecionado
+  const getUserPayments = (userId: string) => {
+    return MOCK_PAYMENTS.filter(payment => payment.user_id === userId);
   };
 
   return (
@@ -202,7 +352,7 @@ export default function UsersManagement() {
             <TableBody>
               {filteredUsers.length > 0 ? (
                 filteredUsers.map(user => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openUserDetails(user)}>
                     <TableCell className="font-medium">
                       {user.full_name}
                       {user.role === 'admin' && (
@@ -243,7 +393,7 @@ export default function UsersManagement() {
                         ? new Date(user.last_login).toLocaleString('pt-BR')
                         : 'N/A'}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -254,22 +404,25 @@ export default function UsersManagement() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openUserDetails(user)}>
                             <Edit className="mr-2 h-4 w-4" />
-                            <span>Editar dados</span>
+                            <span>Ver detalhes</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Mail className="mr-2 h-4 w-4" />
                             <span>Enviar email</span>
                           </DropdownMenuItem>
                           {user.subscription_status !== 'active' && (
-                            <DropdownMenuItem>
-                              <Mail className="mr-2 h-4 w-4" />
+                            <DropdownMenuItem onClick={() => sendPaymentLink(user.id, user.full_name)}>
+                              <CreditCard className="mr-2 h-4 w-4" />
                               <span>Reenviar link de pagamento</span>
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedUser(user);
+                            confirmDeactivate();
+                          }} className="text-red-600">
                             <Trash className="mr-2 h-4 w-4" />
                             <span>Desativar usuário</span>
                           </DropdownMenuItem>
@@ -289,6 +442,251 @@ export default function UsersManagement() {
           </Table>
         </div>
       </div>
+
+      {/* Modal de detalhes do usuário */}
+      {selectedUser && (
+        <Dialog open={isUserDetailsOpen} onOpenChange={setIsUserDetailsOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {selectedUser.full_name}
+                {selectedUser.role === 'admin' && (
+                  <Badge className="bg-blue-500">Admin</Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                Detalhes do usuário e gerenciamento de assinatura
+              </DialogDescription>
+            </DialogHeader>
+
+            <Tabs defaultValue="profile" className="mt-4">
+              <TabsList>
+                <TabsTrigger value="profile">Perfil</TabsTrigger>
+                <TabsTrigger value="subscription">Assinatura</TabsTrigger>
+                <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+              </TabsList>
+
+              {/* Aba de perfil */}
+              <TabsContent value="profile" className="space-y-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
+                    <p>{selectedUser.email}</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Telefone</h3>
+                    <p>{selectedUser.phone || 'Não informado'}</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Função</h3>
+                    <p>{selectedUser.role === 'admin' ? 'Administrador' : 'Usuário'}</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Último acesso</h3>
+                    <p>
+                      {selectedUser.last_login 
+                        ? new Date(selectedUser.last_login).toLocaleString('pt-BR') 
+                        : 'Não disponível'}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="outline">Editar dados</Button>
+                  <Button variant="destructive" onClick={confirmDeactivate}>
+                    Desativar usuário
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Aba de assinatura */}
+              <TabsContent value="subscription" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Detalhes da Assinatura</CardTitle>
+                    <CardDescription>Detalhes e status da assinatura atual</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                        <Badge className={`${
+                          selectedUser.subscription_status === 'active' 
+                            ? 'bg-green-500' 
+                            : selectedUser.subscription_status === 'pending'
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500'
+                        }`}>
+                          {selectedUser.subscription_status === 'active' 
+                            ? 'Ativo' 
+                            : selectedUser.subscription_status === 'pending'
+                              ? 'Pendente'
+                              : 'Inativo'}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-muted-foreground">Plano</h3>
+                        <p>
+                          {selectedUser.subscription_type 
+                            ? (selectedUser.subscription_type === 'monthly' ? 'Mensal (R$ 29,90/mês)' : 'Anual (R$ 299,00/ano)')
+                            : 'Não definido'}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-muted-foreground">Data de início</h3>
+                        <p>{selectedUser.subscription_start_date ? formatDate(selectedUser.subscription_start_date) : 'N/A'}</p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-muted-foreground">Próxima renovação</h3>
+                        <p>
+                          {selectedUser.subscription_start_date && selectedUser.subscription_status === 'active'
+                            ? (selectedUser.subscription_type === 'monthly' 
+                                ? formatDate(new Date(new Date(selectedUser.subscription_start_date).setMonth(new Date(selectedUser.subscription_start_date).getMonth() + 1)).toISOString())
+                                : formatDate(new Date(new Date(selectedUser.subscription_start_date).setFullYear(new Date(selectedUser.subscription_start_date).getFullYear() + 1)).toISOString())
+                              )
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-end">
+                    <Button onClick={openEditSubscription}>Alterar assinatura</Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
+
+              {/* Aba de pagamentos */}
+              <TabsContent value="payments" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Histórico de Pagamentos</CardTitle>
+                    <CardDescription>Registro de pagamentos e renovações</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Método</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getUserPayments(selectedUser.id).length > 0 ? (
+                          getUserPayments(selectedUser.id).map((payment) => (
+                            <TableRow key={payment.id}>
+                              <TableCell>{payment.date}</TableCell>
+                              <TableCell>{payment.amount}</TableCell>
+                              <TableCell>
+                                {payment.method === 'card' ? 'Cartão de crédito' : 'PIX'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={payment.status === 'success' ? 'bg-green-500' : 'bg-red-500'}>
+                                  {payment.status === 'success' ? 'Sucesso' : 'Falha'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="h-16 text-center">
+                              Nenhum pagamento encontrado.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                  {selectedUser.subscription_status === 'pending' && (
+                    <CardFooter className="flex justify-end">
+                      <Button onClick={() => sendPaymentLink(selectedUser.id, selectedUser.full_name)}>
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        Reenviar link de pagamento
+                      </Button>
+                    </CardFooter>
+                  )}
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Modal para editar assinatura */}
+      <Dialog open={isEditSubscriptionOpen} onOpenChange={setIsEditSubscriptionOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar assinatura</DialogTitle>
+            <DialogDescription>
+              Modificar o plano ou status da assinatura de {selectedUser?.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Plano de assinatura</h3>
+              <Select 
+                value={subscriptionEditData.type} 
+                onValueChange={(value) => setSubscriptionEditData({ ...subscriptionEditData, type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensal (R$ 29,90/mês)</SelectItem>
+                  <SelectItem value="yearly">Anual (R$ 299,00/ano)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Status</h3>
+              <Select 
+                value={subscriptionEditData.status} 
+                onValueChange={(value) => setSubscriptionEditData({ ...subscriptionEditData, status: value as 'active' | 'inactive' | 'pending' })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="inactive">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditSubscriptionOpen(false)}>Cancelar</Button>
+            <Button onClick={saveSubscriptionChanges}>Salvar alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de confirmação para desativação */}
+      <AlertDialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja desativar o usuário {selectedUser?.full_name}? 
+              O usuário não terá mais acesso à plataforma.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={deactivateUser} className="bg-red-600 hover:bg-red-700">
+              Desativar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

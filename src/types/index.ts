@@ -8,8 +8,29 @@ export interface User {
   subscription_status: 'active' | 'inactive' | 'pending';
   subscription_type?: 'monthly' | 'yearly';
   subscription_start_date?: string;
+  subscription_history?: SubscriptionEvent[];
   last_login?: string;
   role: 'user' | 'admin';
+}
+
+// Tipos para eventos de assinatura
+export interface SubscriptionEvent {
+  id: string;
+  user_id: string;
+  event_type: 'created' | 'renewed' | 'cancelled' | 'changed' | 'payment_failed';
+  date: string;
+  details?: string;
+}
+
+// Tipos para pagamentos
+export interface Payment {
+  id: string;
+  user_id: string;
+  amount: string;
+  date: string;
+  status: 'success' | 'failed' | 'pending';
+  method: 'card' | 'pix' | 'bankslip';
+  details?: string;
 }
 
 // Tipos para fornecedores

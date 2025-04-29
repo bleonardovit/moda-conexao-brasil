@@ -25,19 +25,19 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger
+  DialogTitle
 } from '@/components/ui/dialog';
 import { 
-  Search, 
-  MoreHorizontal, 
-  Plus, 
-  Edit, 
-  Trash, 
-  Eye, 
-  EyeOff,
-  Star 
-} from 'lucide-react';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
   Select, 
@@ -49,6 +49,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { SupplierImageUpload } from '@/components/admin/SupplierImageUpload';
 import type { Supplier } from '@/types';
 
 // Dados de exemplo
@@ -137,17 +139,21 @@ const STATES = [
 ];
 
 export default function SuppliersManagement() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentSupplier, setCurrentSupplier] = useState<Supplier | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
   
   // Form state para novo fornecedor
   const [formData, setFormData] = useState({
     code: '',
     name: '',
     description: '',
+    images: [] as string[],
     instagram: '',
     whatsapp: '',
     website: '',
@@ -199,6 +205,13 @@ export default function SuppliersManagement() {
     }));
   };
   
+  const handleImagesChange = (images: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      images
+    }));
+  };
+  
   const handleCategoryToggle = (category: string) => {
     setFormData(prev => {
       const categories = [...prev.categories];
@@ -239,6 +252,7 @@ export default function SuppliersManagement() {
       code: supplier.code,
       name: supplier.name,
       description: supplier.description,
+      images: supplier.images || [],
       instagram: supplier.instagram || '',
       whatsapp: supplier.whatsapp || '',
       website: supplier.website || '',
@@ -264,6 +278,7 @@ export default function SuppliersManagement() {
       code: '',
       name: '',
       description: '',
+      images: [],
       instagram: '',
       whatsapp: '',
       website: '',
@@ -282,10 +297,49 @@ export default function SuppliersManagement() {
     setIsAddSupplierOpen(true);
   };
   
+  // Confirmar exclusão de fornecedor
+  const confirmDelete = (supplier: Supplier) => {
+    setSupplierToDelete(supplier);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  // Excluir fornecedor
+  const deleteSupplier = () => {
+    if (supplierToDelete) {
+      // Aqui seria implementada a lógica para excluir no backend
+      console.log('Excluindo fornecedor:', supplierToDelete.id);
+      
+      toast({
+        title: "Fornecedor excluído",
+        description: `${supplierToDelete.name} foi removido com sucesso.`,
+        variant: "default",
+      });
+      
+      setIsDeleteDialogOpen(false);
+      setSupplierToDelete(null);
+    }
+  };
+  
   // Salvar fornecedor (novo ou editado)
   const handleSaveSupplier = () => {
+    // Validação básica
+    if (!formData.code || !formData.name || !formData.description || formData.categories.length === 0) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Aqui seria implementada a lógica para salvar no backend
     console.log('Salvando fornecedor:', formData);
+    
+    toast({
+      title: isEditMode ? "Fornecedor atualizado" : "Fornecedor adicionado",
+      description: `${formData.name} foi ${isEditMode ? "atualizado" : "adicionado"} com sucesso.`,
+      variant: "default",
+    });
     
     // Fechar modal
     setIsAddSupplierOpen(false);
@@ -295,12 +349,28 @@ export default function SuppliersManagement() {
   const toggleFeatured = (supplier: Supplier) => {
     console.log(`Alterando destaque para ${supplier.name}: ${!supplier.featured}`);
     // Implementar lógica para atualizar no backend
+    
+    toast({
+      title: !supplier.featured ? "Fornecedor destacado" : "Destaque removido",
+      description: !supplier.featured 
+        ? `${supplier.name} agora aparecerá como destaque.` 
+        : `${supplier.name} não aparecerá mais como destaque.`,
+      variant: "default",
+    });
   };
   
   // Alternar visibilidade de fornecedor
   const toggleVisibility = (supplier: Supplier) => {
     console.log(`Alterando visibilidade para ${supplier.name}: ${!supplier.hidden}`);
     // Implementar lógica para atualizar no backend
+    
+    toast({
+      title: supplier.hidden ? "Fornecedor visível" : "Fornecedor oculto",
+      description: supplier.hidden 
+        ? `${supplier.name} agora está visível para usuários.` 
+        : `${supplier.name} foi ocultado dos usuários.`,
+      variant: "default",
+    });
   };
 
   return (
@@ -427,7 +497,7 @@ export default function SuppliersManagement() {
                             )}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem onClick={() => confirmDelete(supplier)} className="text-red-600">
                             <Trash className="mr-2 h-4 w-4" />
                             <span>Excluir</span>
                           </DropdownMenuItem>
@@ -497,6 +567,15 @@ export default function SuppliersManagement() {
                 placeholder="Descreva os produtos e serviços do fornecedor"
                 rows={3}
                 required
+              />
+            </div>
+            
+            {/* Upload de imagens */}
+            <div className="space-y-2 md:col-span-2">
+              <Label>Imagens do fornecedor</Label>
+              <SupplierImageUpload 
+                initialImages={formData.images} 
+                onChange={handleImagesChange}
               />
             </div>
             
@@ -797,6 +876,25 @@ export default function SuppliersManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Diálogo de confirmação para exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o fornecedor {supplierToDelete?.name}? 
+              Esta ação não poderá ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteSupplier} className="bg-red-600 hover:bg-red-700">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
