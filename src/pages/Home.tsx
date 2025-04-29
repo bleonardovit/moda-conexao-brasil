@@ -1,170 +1,235 @@
+
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { Heart, Star, ArrowRight } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
+import { useFavorites } from '@/hooks/use-favorites';
+import { Supplier } from '@/types';
+
+// Mock data for suppliers
+const MOCK_SUPPLIERS: Supplier[] = [
+  {
+    id: "1",
+    code: "SUP001",
+    name: "Têxtil Brasil",
+    description: "Fabricante de tecidos de alta qualidade para confecção.",
+    images: ["https://images.unsplash.com/photo-1581091226825-a6a2a5aee158"],
+    instagram: "@textilbrasil",
+    whatsapp: "+5511999999999",
+    website: "https://textilbrasil.com.br",
+    min_order: "R$ 500,00",
+    payment_methods: ["pix", "card", "bankslip"],
+    requires_cnpj: true,
+    avg_price: "medium",
+    shipping_methods: ["correios", "transporter"],
+    city: "São Paulo",
+    state: "SP",
+    categories: ["Têxtil", "Tecidos"],
+    featured: true,
+    hidden: false,
+    created_at: "2025-04-01T10:30:00Z",
+    updated_at: "2025-04-15T14:22:00Z"
+  },
+  {
+    id: "2",
+    code: "SUP002",
+    name: "Moda Express",
+    description: "Atacadista de roupas prontas com entrega rápida.",
+    images: ["https://images.unsplash.com/photo-1649972904349-6e44c42644a7"],
+    instagram: "@modaexpress",
+    whatsapp: "+5511888888888",
+    website: "https://modaexpress.com.br",
+    min_order: "R$ 1.000,00",
+    payment_methods: ["pix", "card"],
+    requires_cnpj: true,
+    avg_price: "low",
+    shipping_methods: ["delivery", "transporter"],
+    city: "Rio de Janeiro",
+    state: "RJ",
+    categories: ["Moda", "Atacado"],
+    featured: false,
+    hidden: false,
+    created_at: "2025-04-10T08:15:00Z",
+    updated_at: "2025-04-20T11:45:00Z"
+  },
+  {
+    id: "3",
+    code: "SUP003",
+    name: "Joias Finas",
+    description: "Atacadista de joias e acessórios de alta qualidade.",
+    images: ["https://images.unsplash.com/photo-1488590528505-98d2b5aba04b"],
+    instagram: "@joiasfinas",
+    whatsapp: "+5511777777777",
+    website: "https://joiasfinas.com.br",
+    min_order: "R$ 2.000,00",
+    payment_methods: ["pix", "bankslip"],
+    requires_cnpj: true,
+    avg_price: "high",
+    shipping_methods: ["correios"],
+    city: "Belo Horizonte",
+    state: "MG",
+    categories: ["Acessórios", "Joias"],
+    featured: true,
+    hidden: false,
+    created_at: "2025-04-05T15:20:00Z",
+    updated_at: "2025-04-18T09:30:00Z"
+  },
+  {
+    id: "4",
+    code: "SUP004",
+    name: "Calçados Brasil",
+    description: "Fabricante de calçados para todos os estilos e ocasiões.",
+    images: ["https://images.unsplash.com/photo-1506744038136-46273834b3fb"],
+    instagram: "@calcadosbrasil",
+    whatsapp: "+5511666666666",
+    website: "https://calcadosbrasil.com.br",
+    min_order: "R$ 1.500,00",
+    payment_methods: ["card", "bankslip"],
+    requires_cnpj: false,
+    avg_price: "medium",
+    shipping_methods: ["correios", "transporter"],
+    city: "Franca",
+    state: "SP",
+    categories: ["Calçados", "Couro"],
+    featured: false,
+    hidden: false,
+    created_at: "2025-04-15T12:10:00Z",
+    updated_at: "2025-04-22T16:40:00Z"
+  },
+  {
+    id: "5",
+    code: "SUP005",
+    name: "Cosméticos Naturais",
+    description: "Produtos cosméticos naturais e orgânicos.",
+    images: ["https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5"],
+    instagram: "@cosmeticosnaturais",
+    whatsapp: "+5511555555555",
+    website: "https://cosmeticosnaturais.com.br",
+    min_order: "R$ 800,00",
+    payment_methods: ["pix", "card"],
+    requires_cnpj: false,
+    avg_price: "medium",
+    shipping_methods: ["correios"],
+    city: "Florianópolis",
+    state: "SC",
+    categories: ["Cosméticos", "Beleza"],
+    featured: true,
+    hidden: false,
+    created_at: "2025-04-20T10:00:00Z",
+    updated_at: "2025-04-25T14:15:00Z"
+  }
+];
+
+// Component for supplier card
+const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
+  const { toggleFavorite, isFavorite } = useFavorites();
+  const [isHovering, setIsHovering] = useState(false);
+  
+  return (
+    <Card 
+      className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      <div className="relative h-48 overflow-hidden">
+        <img 
+          src={supplier.images[0]} 
+          alt={supplier.name} 
+          className="w-full h-full object-cover transition-transform duration-500"
+          style={{ transform: isHovering ? 'scale(1.05)' : 'scale(1)' }}
+        />
+        <div className="absolute top-2 right-2 flex gap-2">
+          {supplier.featured && (
+            <Badge className="bg-[#F97316]/90 text-white border-0">
+              <Star className="h-3 w-3 mr-1" />
+              Destaque
+            </Badge>
+          )}
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleFavorite(supplier.id);
+            }}
+            className="bg-black/40 hover:bg-black/60 p-2 rounded-full text-white transition-colors"
+          >
+            <Heart className={`h-4 w-4 ${isFavorite(supplier.id) ? "fill-[#D946EF] text-[#D946EF]" : ""}`} />
+          </button>
+        </div>
+      </div>
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-medium truncate">{supplier.name}</h3>
+        </div>
+        <div className="flex gap-2 mb-2 flex-wrap">
+          {supplier.categories.slice(0, 2).map(category => (
+            <Badge key={category} variant="secondary" className="bg-white/10">
+              {category}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-400">{supplier.city}, {supplier.state}</span>
+          <Link 
+            to={`/suppliers/${supplier.id}`} 
+            className="text-[#9b87f5] hover:text-[#D946EF] text-sm font-medium transition-colors flex items-center gap-1"
+          >
+            Ver detalhes
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export default function Home() {
-  // Featured content carousel
-  const featuredItems = [{
-    id: 1,
-    title: "Relatório de investimentos 2025",
-    image: "https://images.unsplash.com/photo-1460574283810-2aab119d8511",
-    category: "Financeiro"
-  }, {
-    id: 2,
-    title: "Novos mercados emergentes",
-    image: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7",
-    category: "Global"
-  }, {
-    id: 3,
-    title: "Tendências de inovação",
-    image: "https://images.unsplash.com/photo-1473177104440-ffee2f376098",
-    category: "Tecnologia"
-  }];
+  // Sort suppliers by creation date (recent first) and featured status
+  const recentSuppliers = [...MOCK_SUPPLIERS].sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  ).slice(0, 4);
+  
+  const popularSuppliers = MOCK_SUPPLIERS.filter(supplier => supplier.featured);
 
-  // Latest updates
-  const latestUpdates = [{
-    id: 1,
-    title: "Novos parceiros comerciais",
-    description: "Conheça os novos fornecedores de tecnologia.",
-    time: "2h atrás",
-    badge: "Novo"
-  }, {
-    id: 2,
-    title: "Relatório financeiro do Q2",
-    description: "Os resultados do segundo trimestre já estão disponíveis.",
-    time: "5h atrás"
-  }, {
-    id: 3,
-    title: "Atualizações de produtos",
-    description: "Confira as últimas atualizações dos nossos produtos.",
-    time: "1d atrás"
-  }];
-
-  // Events
-  const events = [{
-    id: 1,
-    title: "Reunião de diretoria",
-    date: "Hoje, 15:00",
-    location: "Sala de conferência"
-  }, {
-    id: 2,
-    title: "Workshop de inovação",
-    date: "Amanhã, 10:00",
-    location: "Auditório principal"
-  }, {
-    id: 3,
-    title: "Apresentação de resultados",
-    date: "26/04, 14:00",
-    location: "Online"
-  }];
-
-  // News feed
-  const news = [{
-    id: 1,
-    title: "Expansão de mercado",
-    description: "Brasil amplia presença no mercado internacional com novos acordos comerciais.",
-    source: "Economia Brasil"
-  }, {
-    id: 2,
-    title: "Inovação tecnológica",
-    description: "Startups brasileiras atraem investimentos recordes em 2025.",
-    source: "Tech News"
-  }, {
-    id: 3,
-    title: "Sustentabilidade",
-    description: "Empresas adotam práticas ESG e aumentam competitividade global.",
-    source: "Sustainably Today"
-  }];
-  return <AppLayout>
-      {/* Featured Content Carousel */}
+  return (
+    <AppLayout>
+      {/* Recent Suppliers Section */}
       <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4 text-gradient">Tenha acesso</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gradient">Fornecedores Recentes</h2>
+          <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
+            Ver todos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {recentSuppliers.map(supplier => (
+            <div key={supplier.id} className="animate-fade-in">
+              <SupplierCard supplier={supplier} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Popular Suppliers Section */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold mb-4 text-gradient">Fornecedores Populares</h2>
         <Carousel className="w-full">
           <CarouselContent>
-            {featuredItems.map(item => <CarouselItem key={item.id} className="md:basis-1/2 lg:basis-1/3">
-                <div className="glass-morphism rounded-xl overflow-hidden card-hover h-[200px]">
-                  <div className="relative w-full h-full">
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover opacity-60" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-4">
-                      <Badge variant="outline" className="w-fit mb-2 bg-black/30 text-white border-white/10">
-                        {item.category}
-                      </Badge>
-                      <h3 className="text-lg font-bold text-white">{item.title}</h3>
-                    </div>
-                  </div>
-                </div>
-              </CarouselItem>)}
+            {popularSuppliers.map(supplier => (
+              <CarouselItem key={supplier.id} className="md:basis-1/2 lg:basis-1/3">
+                <SupplierCard supplier={supplier} />
+              </CarouselItem>
+            ))}
           </CarouselContent>
           <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white" />
           <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white" />
         </Carousel>
       </section>
-
-      {/* Main Content Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Column 1: Latest Updates */}
-        <section>
-          <h2 className="text-xl font-bold mb-4 text-gradient-primary">Últimas Atualizações</h2>
-          <div className="space-y-4">
-            {latestUpdates.map(update => <Card key={update.id} className="glass-morphism border-white/10 card-hover">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium">{update.title}</h3>
-                    {update.badge && <Badge className="bg-brand.purple text-white">
-                        {update.badge}
-                      </Badge>}
-                  </div>
-                  <p className="text-sm text-gray-300 mb-2">{update.description}</p>
-                  <p className="text-xs text-gray-400">{update.time}</p>
-                </CardContent>
-              </Card>)}
-            <Button variant="ghost" className="w-full border border-white/10 hover:bg-white/5">
-              Ver todos
-            </Button>
-          </div>
-        </section>
-
-        {/* Column 2: Upcoming Events */}
-        <section>
-          <h2 className="text-xl font-bold mb-4 text-gradient-primary">Próximos Eventos</h2>
-          <div className="space-y-4">
-            {events.map(event => <Card key={event.id} className="glass-morphism border-white/10 card-hover">
-                <CardContent className="p-4">
-                  <h3 className="font-medium mb-2">{event.title}</h3>
-                  <div className="flex items-center text-sm text-gray-300 mb-1">
-                    <div className="w-3 h-3 rounded-full bg-brand.blue mr-2"></div>
-                    {event.date}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-400">
-                    <div className="w-3 h-3 rounded-full bg-brand.purple/50 mr-2"></div>
-                    {event.location}
-                  </div>
-                </CardContent>
-              </Card>)}
-            <Button variant="ghost" className="w-full border border-white/10 hover:bg-white/5">
-              Ver todos
-            </Button>
-          </div>
-        </section>
-
-        {/* Column 3: News Feed */}
-        <section>
-          <h2 className="text-xl font-bold mb-4 text-gradient-primary">Suno Minuto</h2>
-          <div className="space-y-4">
-            {news.map(item => <Card key={item.id} className="glass-morphism border-white/10 card-hover">
-                <CardContent className="p-4">
-                  <h3 className="font-medium mb-1">{item.title}</h3>
-                  <p className="text-sm text-gray-300 mb-2">{item.description}</p>
-                  <p className="text-xs text-gray-400">Fonte: {item.source}</p>
-                </CardContent>
-              </Card>)}
-            <Button variant="ghost" className="w-full border border-white/10 hover:bg-white/5">
-              Ver mais notícias
-            </Button>
-          </div>
-        </section>
-      </div>
-    </AppLayout>;
+    </AppLayout>
+  );
 }
