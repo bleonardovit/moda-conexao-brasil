@@ -47,7 +47,8 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend
+  Legend,
+  Cell
 } from 'recharts';
 
 // Mocks para dados de gráficos e estatísticas
@@ -374,7 +375,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="px-0">
                   <ChartContainer config={{
-                    newUsers: { label: "Novos Usuários", theme: { light: "#8884d8" } }
+                    newUsers: { label: "Novos Usuários", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                   }} className="h-80">
                     <BarChart data={MOCK_USERS_CHART_DATA}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -393,7 +394,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="px-0">
                   <ChartContainer config={{
-                    activeUsers: { label: "Usuários Ativos", theme: { light: "#82ca9d" } }
+                    activeUsers: { label: "Usuários Ativos", theme: { light: "#82ca9d", dark: "#65ba83" } }
                   }} className="h-80">
                     <LineChart data={MOCK_ACTIVE_USERS_DATA}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -419,7 +420,7 @@ export default function Reports() {
               </CardHeader>
               <CardContent className="px-0">
                 <ChartContainer config={{
-                  monthlyUsers: { label: "Usuários", theme: { light: "#8884d8" } }
+                  monthlyUsers: { label: "Usuários", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                 }} className="h-80">
                   <BarChart data={MOCK_MONTHLY_USERS_DATA}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -443,7 +444,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="px-0">
                   <ChartContainer config={{
-                    subscriptions: { label: "Assinaturas", theme: { light: "#8884d8" } }
+                    subscriptions: { label: "Assinaturas", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                   }} className="h-80">
                     <PieChart>
                       <Pie
@@ -524,7 +525,7 @@ export default function Reports() {
               </CardHeader>
               <CardContent className="px-0">
                 <ChartContainer config={{
-                  revenue: { label: "Receita (R$)", theme: { light: "#82ca9d" } }
+                  revenue: { label: "Receita (R$)", theme: { light: "#82ca9d", dark: "#65ba83" } }
                 }} className="h-80">
                   <LineChart data={[
                     { month: "Jan", value: 5800 },
@@ -598,7 +599,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="px-0">
                   <ChartContainer config={{
-                    categoryViews: { label: "Visualizações", theme: { light: "#8884d8" } }
+                    categoryViews: { label: "Visualizações", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                   }} className="h-80">
                     <BarChart 
                       data={MOCK_CATEGORY_VIEWS} 
@@ -632,7 +633,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ChartContainer config={{
-                    usersByState: { label: "Usuárias", theme: { light: "#8884d8" } }
+                    usersByState: { label: "Usuárias", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                   }} className="h-80">
                     <PieChart>
                       <Pie
@@ -663,7 +664,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="px-0">
                   <ChartContainer config={{
-                    suppliersByState: { label: "Fornecedores", theme: { light: "#82ca9d" } }
+                    suppliersByState: { label: "Fornecedores", theme: { light: "#82ca9d", dark: "#65ba83" } }
                   }} className="h-80">
                     <BarChart 
                       data={[
