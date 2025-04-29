@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { 
   Table, 
@@ -993,4 +994,138 @@ export default function SuppliersManagement() {
                         <div className="flex items-center">
                           {supplier.name}
                           {supplier.featured && (
-                            <Star className="ml-1 h-4 w-4 text-yellow-500 fill-yellow
+                            <Star className="ml-1 h-4 w-4 text-yellow-500 fill-yellow-500" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                          {supplier.categories.map(categoryId => (
+                            <Badge key={categoryId} variant="outline" className="text-xs">
+                              {getCategoryName(categoryId)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {`${supplier.city}, ${supplier.state}`}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {supplier.hidden ? (
+                          <Badge variant="outline" className="text-xs bg-gray-100">Oculto</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Visível</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => openEditModal(supplier)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toggleFeatured(supplier)}>
+                              <Star className="mr-2 h-4 w-4" />
+                              {supplier.featured ? 'Remover destaque' : 'Destacar'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toggleVisibility(supplier)}>
+                              {supplier.hidden ? (
+                                <>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Tornar visível
+                                </>
+                              ) : (
+                                <>
+                                  <EyeOff className="mr-2 h-4 w-4" />
+                                  Ocultar
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => confirmDelete(supplier)}
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      Nenhum fornecedor encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="categories" className="space-y-4">
+          <CategoryManagement 
+            categories={categories}
+            setCategories={setCategories}
+          />
+        </TabsContent>
+      </Tabs>
+      
+      {/* Modal para adicionar/editar fornecedor */}
+      <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditMode ? 'Editar Fornecedor' : 'Adicionar Fornecedor'}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditMode 
+                ? 'Altere os dados do fornecedor conforme necessário.' 
+                : 'Preencha os dados para adicionar um novo fornecedor.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <SupplierForm
+            onSave={handleSaveSupplier}
+            onCancel={() => setIsAddSupplierOpen(false)}
+            initialData={currentSupplier || undefined}
+            categories={categories}
+            onAddCategory={addCategory}
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modal de confirmação de exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o fornecedor{' '}
+              <span className="font-semibold">{supplierToDelete?.name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteSupplier}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AdminLayout>
+  );
+}
