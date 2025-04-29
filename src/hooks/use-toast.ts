@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -71,7 +72,7 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout)
 }
 
-export const reducer = (state: State, action: Action): State => {
+const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
       return {
@@ -126,8 +127,8 @@ export const reducer = (state: State, action: Action): State => {
   }
 }
 
+// Create a centralized store for managing toast state
 const listeners: Array<(state: State) => void> = []
-
 let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
@@ -139,6 +140,7 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+// Separated toast function from useToast hook
 function toast({ ...props }: Toast) {
   const id = genId()
 
@@ -168,6 +170,7 @@ function toast({ ...props }: Toast) {
   }
 }
 
+// This is a proper React hook that follows hooks rules
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
