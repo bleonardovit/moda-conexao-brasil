@@ -10,9 +10,12 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Search, Filter, Instagram, Link as LinkIcon } from 'lucide-react';
+import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
+import { useFavorites } from '@/hooks/use-favorites';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from "@/hooks/use-toast";
 import type { Supplier } from '@/types';
 
 const MOCK_SUPPLIERS: Supplier[] = [
@@ -99,11 +102,29 @@ const STATES = [
   { label: 'Pernambuco', value: 'PE' }
 ];
 
+const PRICE_RANGES = [
+  { label: 'Todos', value: 'all' },
+  { label: 'Baixo', value: 'low' },
+  { label: 'Médio', value: 'medium' },
+  { label: 'Alto', value: 'high' }
+];
+
+const CNPJ_OPTIONS = [
+  { label: 'Todos', value: 'all' },
+  { label: 'Exige CNPJ', value: 'true' },
+  { label: 'Não exige CNPJ', value: 'false' }
+];
+
 export default function SuppliersList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
+  const [priceFilter, setPriceFilter] = useState('all');
+  const [cnpjFilter, setCnpjFilter] = useState('all');
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const { toast } = useToast();
 
   const filteredSuppliers = MOCK_SUPPLIERS.filter(supplier => {
     const matchesSearch = searchTerm === '' || 
@@ -116,7 +137,15 @@ export default function SuppliersList() {
     const matchesState = stateFilter === 'all' || 
       supplier.state === stateFilter;
     
-    return matchesSearch && matchesCategory && matchesState;
+    const matchesPrice = priceFilter === 'all' || 
+      supplier.avg_price === priceFilter;
+      
+    const matchesCnpj = cnpjFilter === 'all' || 
+      supplier.requires_cnpj === (cnpjFilter === 'true');
+    
+    const matchesFavorites = !showOnlyFavorites || isFavorite(supplier.id);
+    
+    return matchesSearch && matchesCategory && matchesState && matchesPrice && matchesCnpj && matchesFavorites;
   });
 
   const formatAvgPrice = (price: string) => {
@@ -128,10 +157,36 @@ export default function SuppliersList() {
     }
   };
 
+  const handleToggleFavorite = (supplier: Supplier, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    toggleFavorite(supplier.id);
+    
+    const action = isFavorite(supplier.id) ? 'removido dos' : 'adicionado aos';
+    
+    toast({
+      title: isFavorite(supplier.id) ? "Removido dos favoritos" : "Adicionado aos favoritos",
+      description: `${supplier.name} foi ${action} seus favoritos`,
+      duration: 2000,
+    });
+  };
+
   return (
     <AppLayout>
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Fornecedores</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Fornecedores</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+            className={showOnlyFavorites ? "bg-accent text-accent-foreground" : ""}
+          >
+            <Heart className={`mr-2 h-4 w-4 ${showOnlyFavorites ? "fill-current" : ""}`} />
+            Favoritos
+          </Button>
+        </div>
         
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -148,9 +203,11 @@ export default function SuppliersList() {
             variant="outline" 
             size="sm"
             onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className={isFilterOpen ? "bg-accent text-accent-foreground" : ""}
           >
             <Filter className="mr-2 h-4 w-4" />
             Filtros
+            {isFilterOpen ? " (ativos)" : ""}
           </Button>
           
           <span className="text-sm text-muted-foreground">
@@ -159,7 +216,7 @@ export default function SuppliersList() {
         </div>
         
         {isFilterOpen && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted rounded-md">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-md">
             <div className="space-y-2">
               <label className="text-sm font-medium">Categoria</label>
               <Select 
@@ -197,13 +254,51 @@ export default function SuppliersList() {
                 </SelectContent>
               </Select>
             </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Faixa de Preço</label>
+              <Select 
+                value={priceFilter} 
+                onValueChange={setPriceFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma faixa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRICE_RANGES.map(price => (
+                    <SelectItem key={price.value} value={price.value}>
+                      {price.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Requisito CNPJ</label>
+              <Select 
+                value={cnpjFilter} 
+                onValueChange={setCnpjFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Requisito CNPJ" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CNPJ_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
         
         <div className="space-y-4">
           {filteredSuppliers.length > 0 ? (
             filteredSuppliers.map(supplier => (
-              <Card key={supplier.id} className="overflow-hidden">
+              <Card key={supplier.id} className="overflow-hidden card-hover">
                 <div className="sm:flex">
                   <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
                     <img 
@@ -215,20 +310,61 @@ export default function SuppliersList() {
                   <CardContent className="sm:w-2/3 md:w-3/4 p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="text-lg font-bold">{supplier.name}</h3>
+                        <h3 className="text-lg font-bold flex items-center">
+                          {supplier.name}
+                          {supplier.featured && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Fornecedor em destaque
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </h3>
                         <p className="text-sm text-muted-foreground mb-2">{supplier.city}, {supplier.state}</p>
                       </div>
-                      {supplier.featured && (
-                        <Badge className="bg-brand-purple text-white">Destaque</Badge>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => handleToggleFavorite(supplier, e)}
+                        title={isFavorite(supplier.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                      >
+                        <Heart 
+                          className={`h-5 w-5 ${isFavorite(supplier.id) ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
+                        />
+                        <span className="sr-only">
+                          {isFavorite(supplier.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                        </span>
+                      </Button>
                     </div>
                     
                     <p className="text-sm mb-4 line-clamp-2">{supplier.description}</p>
                     
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {supplier.categories.map(category => (
-                        <Badge key={category} variant="outline">{category}</Badge>
-                      ))}
+                      {supplier.categories.map(category => {
+                        const categoryColors: Record<string, string> = {
+                          'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+                          'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                          'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+                          'Acessórios': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
+                          'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
+                        };
+                        
+                        return (
+                          <Badge 
+                            key={category} 
+                            variant="outline"
+                            className={categoryColors[category] || ''}
+                          >
+                            {category}
+                          </Badge>
+                        );
+                      })}
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2 text-sm mb-4">
@@ -278,6 +414,9 @@ export default function SuppliersList() {
                   setSearchTerm('');
                   setCategoryFilter('all');
                   setStateFilter('all');
+                  setPriceFilter('all');
+                  setCnpjFilter('all');
+                  setShowOnlyFavorites(false);
                 }}
               >
                 Limpar filtros

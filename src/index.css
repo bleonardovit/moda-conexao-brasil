@@ -25,6 +25,10 @@
     --input: 240 5.9% 90%;
     --ring: 240 5% 64.9%;
     --radius: 0.75rem;
+
+    /* Cores para a marca */
+    --brand-purple: 264 88% 75%;
+    --brand-pink: 336 100% 65%;
   }
 
   .dark {
@@ -47,6 +51,10 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
+
+    /* Cores para a marca na versão escura */
+    --brand-purple: 264 88% 75%;
+    --brand-pink: 336 100% 75%;
   }
 }
 
@@ -88,5 +96,35 @@
 
   .card-hover {
     @apply transition-all duration-300 hover:translate-y-[-4px] hover:shadow-lg;
+  }
+  
+  .fade-in {
+    @apply animate-[fadeIn_0.5s_ease-out_forwards];
+    opacity: 0;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .category-badge-casual {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300;
+  }
+  
+  .category-badge-fitness {
+    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300;
+  }
+  
+  .category-badge-plus-size {
+    @apply bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300;
+  }
+  
+  .category-badge-acessorios {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300;
+  }
+  
+  .category-badge-praia {
+    @apply bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300;
   }
 }
