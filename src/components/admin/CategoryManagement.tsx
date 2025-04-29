@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +40,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash, Search } from 'lucide-react';
 import { Category } from '@/types';
+import { Dispatch, SetStateAction } from 'react';
 
 // Dados de exemplo para categorias
 const MOCK_CATEGORIES: Category[] = [
@@ -164,8 +164,12 @@ export const CategoryDialog: React.FC<{
   );
 };
 
-export const CategoryManagement: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
+interface CategoryManagementProps {
+  categories: Category[];
+  setCategories: Dispatch<SetStateAction<Category[]>>;
+}
+
+export const CategoryManagement: React.FC<CategoryManagementProps> = ({ categories, setCategories }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
