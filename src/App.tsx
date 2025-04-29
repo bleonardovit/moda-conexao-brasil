@@ -1,9 +1,10 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ThemeProvider } from "@/hooks/use-theme";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
@@ -25,15 +26,47 @@ import Reports from "./pages/admin/Reports";
 
 const queryClient = new QueryClient();
 
-// Mock para simulação de autenticação
-const MOCK_AUTH = {
-  isAuthenticated: true,
+// Valores iniciais para autenticação
+const initialAuth = {
+  isAuthenticated: false,
   isAdmin: false,
   hasSubscription: true
 };
 
 const App = () => {
-  const [auth, setAuth] = useState(MOCK_AUTH);
+  const [auth, setAuth] = useState(initialAuth);
+  
+  // Efeito para verificar o status de autenticação no sessionStorage
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      const userRole = sessionStorage.getItem('user_role');
+      
+      if (userRole) {
+        setAuth({
+          isAuthenticated: true,
+          isAdmin: userRole === 'admin',
+          hasSubscription: true  // Mantendo a assinatura como true para esse exemplo
+        });
+      } else {
+        setAuth(initialAuth);
+      }
+    };
+    
+    // Verificar status inicial
+    checkAuthStatus();
+    
+    // Escutar mudanças no sessionStorage
+    const handleStorageChange = () => {
+      checkAuthStatus();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   // Componente para rota protegida que requer autenticação
   const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
