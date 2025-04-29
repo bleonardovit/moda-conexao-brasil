@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Table, 
@@ -81,7 +80,7 @@ const MOCK_SUPPLIERS: Supplier[] = [
     payment_methods: ['pix', 'card', 'bankslip'],
     requires_cnpj: true,
     avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
+    shipping_methods: ['correios', 'delivery', 'transporter'],
     city: 'São Paulo',
     state: 'SP',
     categories: ['1', '2'],
@@ -846,9 +845,26 @@ export default function SuppliersManagement() {
       });
     } else {
       // Adicionar novo fornecedor
+      // Ensure all required fields are present
       const newSupplier: Supplier = {
         id: `${suppliers.length + 1}`,
-        ...data,
+        code: data.code,
+        name: data.name,
+        description: data.description,
+        images: data.images || [],
+        instagram: data.instagram || '',
+        whatsapp: data.whatsapp || '',
+        website: data.website || '',
+        min_order: data.min_order || '',
+        payment_methods: data.payment_methods,
+        requires_cnpj: data.requires_cnpj,
+        avg_price: data.avg_price,
+        shipping_methods: data.shipping_methods,
+        city: data.city,
+        state: data.state,
+        categories: data.categories,
+        featured: data.featured,
+        hidden: data.hidden,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -977,135 +993,4 @@ export default function SuppliersManagement() {
                         <div className="flex items-center">
                           {supplier.name}
                           {supplier.featured && (
-                            <Star className="ml-1 h-4 w-4 text-yellow-500 fill-yellow-500" />
-                          )}
-                          {supplier.hidden && (
-                            <EyeOff className="ml-1 h-4 w-4 text-gray-400" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {supplier.categories.map(categoryId => (
-                            <Badge key={categoryId} variant="outline" className="text-xs">
-                              {getCategoryName(categoryId)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {supplier.city}, {supplier.state}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {supplier.hidden ? (
-                          <Badge variant="outline" className="text-gray-500 border-gray-300">
-                            Oculto
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-green-500">
-                            Visível
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Abrir menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => openEditModal(supplier)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              <span>Editar</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toggleFeatured(supplier)}>
-                              <Star className="mr-2 h-4 w-4" />
-                              <span>{supplier.featured ? 'Remover destaque' : 'Destacar'}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toggleVisibility(supplier)}>
-                              {supplier.hidden ? (
-                                <>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  <span>Tornar visível</span>
-                                </>
-                              ) : (
-                                <>
-                                  <EyeOff className="mr-2 h-4 w-4" />
-                                  <span>Ocultar</span>
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => confirmDelete(supplier)} className="text-red-600">
-                              <Trash className="mr-2 h-4 w-4" />
-                              <span>Excluir</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      Nenhum fornecedor encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="categories">
-          <CategoryManagement />
-        </TabsContent>
-      </Tabs>
-      
-      {/* Modal para adicionar/editar fornecedor */}
-      <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {isEditMode ? `Editar Fornecedor: ${currentSupplier?.name}` : 'Adicionar Novo Fornecedor'}
-            </DialogTitle>
-            <DialogDescription>
-              Preencha os dados do fornecedor abaixo. Campos marcados com * são obrigatórios.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <SupplierForm
-            onSave={handleSaveSupplier}
-            onCancel={() => setIsAddSupplierOpen(false)}
-            initialData={currentSupplier || undefined}
-            categories={categories}
-            onAddCategory={addCategory}
-          />
-        </DialogContent>
-      </Dialog>
-      
-      {/* Diálogo de confirmação para exclusão */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o fornecedor {supplierToDelete?.name}? 
-              Esta ação não poderá ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={deleteSupplier} className="bg-red-600 hover:bg-red-700">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </AdminLayout>
-  );
-}
+                            <Star className="ml-1 h-4 w-4 text-yellow-500 fill-yellow
