@@ -20,7 +20,7 @@ export function MobileHeader() {
               <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">CB</span>
               </div>
-              <span className="ml-2 font-bold text-xl text-gradient">Conexão Brasil</span>
+              <span className="ml-2 font-bold text-xl text-gradient"></span>
             </Link>
 
             <div className="flex items-center gap-2">
