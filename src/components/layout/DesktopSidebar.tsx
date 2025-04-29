@@ -42,7 +42,7 @@ export function DesktopSidebar() {
             {menuItems.map(item => <SidebarMenuItem key={item.path}>
                 <SidebarMenuButton isActive={location.pathname === item.path} tooltip={item.label} className={`transition-all duration-200 ${location.pathname === item.path ? 'bg-[#9b87f5] text-white' : 'hover:bg-white/5'}`} asChild>
                   <Link to={item.path} className="flex items-center gap-3 px-4 py-2">
-                    <item.icon className="h-5 w-5" />
+                    <item.icon className="h-5 w-5 bg-gray-400" />
                     <span className="font-medium text-gray-400">{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
