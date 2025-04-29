@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { Heart, Star, ArrowRight } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { useFavorites } from '@/hooks/use-favorites';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Supplier } from '@/types';
 
 // Mock data for suppliers
@@ -124,10 +125,11 @@ const MOCK_SUPPLIERS: Supplier[] = [
   }
 ];
 
-// Component for supplier card
+// Component for supplier card - optimized for mobile
 const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
   const { toggleFavorite, isFavorite } = useFavorites();
   const [isHovering, setIsHovering] = useState(false);
+  const isMobile = useIsMobile();
   
   return (
     <Card 
@@ -135,7 +137,7 @@ const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative overflow-hidden" style={{ height: isMobile ? '130px' : '180px' }}>
         <img 
           src={supplier.images[0]} 
           alt={supplier.name} 
@@ -161,7 +163,7 @@ const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
           </button>
         </div>
       </div>
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-medium truncate">{supplier.name}</h3>
         </div>
@@ -188,6 +190,8 @@ const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
 };
 
 export default function Home() {
+  const isMobile = useIsMobile();
+  
   // Sort suppliers by creation date (recent first) and featured status
   const recentSuppliers = [...MOCK_SUPPLIERS].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -198,17 +202,17 @@ export default function Home() {
   return (
     <AppLayout>
       {/* Recent Suppliers Section */}
-      <section className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gradient">Fornecedores Recentes</h2>
+      <section className="mb-6">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-gradient">Fornecedores Recentes</h2>
           <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
             Ver todos
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {recentSuppliers.map(supplier => (
-            <div key={supplier.id} className="animate-fade-in">
+            <div key={supplier.id} className="animate-fade-in w-full">
               <SupplierCard supplier={supplier} />
             </div>
           ))}
@@ -216,18 +220,18 @@ export default function Home() {
       </section>
 
       {/* Popular Suppliers Section */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4 text-gradient">Fornecedores Populares</h2>
+      <section className="mb-6">
+        <h2 className="text-xl md:text-2xl font-bold mb-3 text-gradient">Fornecedores Populares</h2>
         <Carousel className="w-full">
-          <CarouselContent>
+          <CarouselContent className="-ml-2 md:-ml-4">
             {popularSuppliers.map(supplier => (
-              <CarouselItem key={supplier.id} className="md:basis-1/2 lg:basis-1/3">
+              <CarouselItem key={supplier.id} className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3">
                 <SupplierCard supplier={supplier} />
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white" />
-          <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white" />
+          <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
+          <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
         </Carousel>
       </section>
     </AppLayout>
