@@ -18,6 +18,7 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import SuppliersList from "./pages/suppliers/SuppliersList";
 import SupplierDetail from "./pages/suppliers/SupplierDetail";
 import Profile from "./pages/profile/Profile";
+import Favorites from "./pages/favorites/Favorites";
 
 // Páginas administrativas
 import UsersManagement from "./pages/admin/UsersManagement";
@@ -145,6 +146,16 @@ const App = () => {
                 } 
               />
               
+              {/* Página de favoritos */}
+              <Route 
+                path="/favorites" 
+                element={
+                  <ProtectedRoute>
+                    <Favorites />
+                  </ProtectedRoute>
+                } 
+              />
+              
               {/* Rotas administrativas */}
               <Route 
                 path="/admin" 
@@ -181,7 +192,6 @@ const App = () => {
               
               {/* Additional Routes */}
               <Route path="/search" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-              <Route path="/favorites" element={<ProtectedRoute><Home /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Home /></ProtectedRoute>} />
               
               {/* Rota de 404 */}
