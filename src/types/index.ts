@@ -67,3 +67,13 @@ export interface Review {
   comment: string;
   created_at: string;
 }
+
+// Novo tipo para categorias de fornecedores
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+

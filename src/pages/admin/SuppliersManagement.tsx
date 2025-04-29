@@ -11,6 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -37,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star } from 'lucide-react';
+import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
   Select, 
@@ -51,7 +53,19 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { SupplierImageUpload } from '@/components/admin/SupplierImageUpload';
-import type { Supplier } from '@/types';
+import { CategorySelector } from '@/components/admin/CategorySelector';
+import { CategoryManagement } from '@/components/admin/CategoryManagement';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { supplierFormSchema, type SupplierFormValues } from '@/lib/validators/supplier-form';
+import type { Supplier, Category } from '@/types';
 
 // Dados de exemplo
 const MOCK_SUPPLIERS: Supplier[] = [
@@ -70,7 +84,7 @@ const MOCK_SUPPLIERS: Supplier[] = [
     shipping_methods: ['correios', 'transporter'],
     city: 'São Paulo',
     state: 'SP',
-    categories: ['Casual', 'Fitness'],
+    categories: ['1', '2'],
     featured: true,
     hidden: false,
     created_at: '2023-01-01',
@@ -91,7 +105,7 @@ const MOCK_SUPPLIERS: Supplier[] = [
     shipping_methods: ['correios'],
     city: 'Fortaleza',
     state: 'CE',
-    categories: ['Acessórios'],
+    categories: ['4'],
     featured: false,
     hidden: false,
     created_at: '2023-01-01',
@@ -113,7 +127,7 @@ const MOCK_SUPPLIERS: Supplier[] = [
     shipping_methods: ['correios', 'transporter'],
     city: 'Goiânia',
     state: 'GO',
-    categories: ['Plus Size'],
+    categories: ['3'],
     featured: true,
     hidden: false,
     created_at: '2023-01-01',
@@ -121,15 +135,43 @@ const MOCK_SUPPLIERS: Supplier[] = [
   }
 ];
 
-const CATEGORIES = [
-  'Casual',
-  'Fitness',
-  'Plus Size',
-  'Praia',
-  'Acessórios',
-  'Calçados',
-  'Íntima',
-  'Festa'
+// Dados de exemplo para categorias
+const MOCK_CATEGORIES: Category[] = [
+  {
+    id: '1',
+    name: 'Casual',
+    description: 'Roupas para uso diário',
+    created_at: '2025-04-01T10:30:00Z',
+    updated_at: '2025-04-01T10:30:00Z'
+  },
+  {
+    id: '2',
+    name: 'Fitness',
+    description: 'Roupas esportivas e fitness',
+    created_at: '2025-04-01T10:30:00Z',
+    updated_at: '2025-04-01T10:30:00Z'
+  },
+  {
+    id: '3',
+    name: 'Plus Size',
+    description: 'Moda em tamanhos maiores',
+    created_at: '2025-04-01T10:30:00Z',
+    updated_at: '2025-04-01T10:30:00Z'
+  },
+  {
+    id: '4',
+    name: 'Acessórios',
+    description: 'Bolsas, cintos, bijuterias etc',
+    created_at: '2025-04-01T10:30:00Z',
+    updated_at: '2025-04-01T10:30:00Z'
+  },
+  {
+    id: '5',
+    name: 'Praia',
+    description: 'Roupas de praia e verão',
+    created_at: '2025-04-01T10:30:00Z',
+    updated_at: '2025-04-01T10:30:00Z'
+  }
 ];
 
 const STATES = [
@@ -138,143 +180,19 @@ const STATES = [
   'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
-export default function SuppliersManagement() {
-  const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [currentSupplier, setCurrentSupplier] = useState<Supplier | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
-  
-  // Form state para novo fornecedor
-  const [formData, setFormData] = useState({
-    code: '',
-    name: '',
-    description: '',
-    images: [] as string[],
-    instagram: '',
-    whatsapp: '',
-    website: '',
-    min_order: '',
-    payment_methods: ['pix'],
-    requires_cnpj: false,
-    avg_price: 'medium',
-    shipping_methods: ['correios'],
-    city: '',
-    state: 'SP',
-    categories: [] as string[],
-    featured: false,
-    hidden: false
-  });
-  
-  // Filtragem de fornecedores
-  const filteredSuppliers = MOCK_SUPPLIERS.filter(supplier => {
-    const matchesSearch = searchTerm === '' || 
-      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = categoryFilter === 'all' || 
-      supplier.categories.includes(categoryFilter);
-    
-    return matchesSearch && matchesCategory;
-  });
-  
-  // Manipulação de formulário
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
-  };
-  
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleImagesChange = (images: string[]) => {
-    setFormData(prev => ({
-      ...prev,
-      images
-    }));
-  };
-  
-  const handleCategoryToggle = (category: string) => {
-    setFormData(prev => {
-      const categories = [...prev.categories];
-      if (categories.includes(category)) {
-        return { ...prev, categories: categories.filter(c => c !== category) };
-      } else {
-        return { ...prev, categories: [...categories, category] };
-      }
-    });
-  };
-  
-  const handlePaymentMethodToggle = (method: string) => {
-    setFormData(prev => {
-      const methods = [...prev.payment_methods];
-      if (methods.includes(method)) {
-        return { ...prev, payment_methods: methods.filter(m => m !== method) };
-      } else {
-        return { ...prev, payment_methods: [...methods, method] };
-      }
-    });
-  };
-  
-  const handleShippingMethodToggle = (method: string) => {
-    setFormData(prev => {
-      const methods = [...prev.shipping_methods];
-      if (methods.includes(method)) {
-        return { ...prev, shipping_methods: methods.filter(m => m !== method) };
-      } else {
-        return { ...prev, shipping_methods: [...methods, method] };
-      }
-    });
-  };
-  
-  // Abrir modal para editar fornecedor
-  const openEditModal = (supplier: Supplier) => {
-    setCurrentSupplier(supplier);
-    setFormData({
-      code: supplier.code,
-      name: supplier.name,
-      description: supplier.description,
-      images: supplier.images || [],
-      instagram: supplier.instagram || '',
-      whatsapp: supplier.whatsapp || '',
-      website: supplier.website || '',
-      min_order: supplier.min_order || '',
-      payment_methods: supplier.payment_methods,
-      requires_cnpj: supplier.requires_cnpj,
-      avg_price: supplier.avg_price,
-      shipping_methods: supplier.shipping_methods,
-      city: supplier.city,
-      state: supplier.state,
-      categories: supplier.categories,
-      featured: supplier.featured,
-      hidden: supplier.hidden
-    });
-    setIsEditMode(true);
-    setIsAddSupplierOpen(true);
-  };
-  
-  // Abrir modal para adicionar fornecedor
-  const openAddModal = () => {
-    setCurrentSupplier(null);
-    setFormData({
+// Componente para o formulário de fornecedor
+const SupplierForm: React.FC<{
+  onSave: (data: SupplierFormValues) => void;
+  onCancel: () => void;
+  initialData?: Supplier;
+  categories: Category[];
+  onAddCategory: (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => void;
+}> = ({ onSave, onCancel, initialData, categories, onAddCategory }) => {
+  const form = useForm<SupplierFormValues>({
+    resolver: zodResolver(supplierFormSchema),
+    defaultValues: initialData ? {
+      ...initialData
+    } : {
       code: '',
       name: '',
       description: '',
@@ -291,8 +209,595 @@ export default function SuppliersManagement() {
       state: 'SP',
       categories: [],
       featured: false,
-      hidden: false
+      hidden: false,
+    }
+  });
+  
+  // Estado para controlar etapas do formulário
+  const [step, setStep] = useState<'basic' | 'details' | 'commercial'>('basic');
+  
+  function onSubmit(values: SupplierFormValues) {
+    onSave(values);
+  }
+
+  // Manipulação de imagens
+  const handleImagesChange = (images: string[]) => {
+    form.setValue('images', images);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Tabs value={step} onValueChange={(value) => setStep(value as any)}>
+          <TabsList className="mb-6 mx-auto w-full max-w-md grid grid-cols-3">
+            <TabsTrigger value="basic" className="rounded-l-md">
+              Dados Básicos
+            </TabsTrigger>
+            <TabsTrigger value="commercial">
+              Condições Comerciais
+            </TabsTrigger>
+            <TabsTrigger value="details" className="rounded-r-md">
+              Detalhes e Categorias
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="basic" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código interno *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ex: SP001" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do fornecedor *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome completo do fornecedor" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrição *</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Descreva os produtos e serviços do fornecedor" 
+                      rows={3} 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="images"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Imagens do fornecedor</FormLabel>
+                  <FormControl>
+                    <SupplierImageUpload 
+                      initialImages={form.getValues('images')} 
+                      onChange={handleImagesChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="instagram"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Instagram</FormLabel>
+                    <FormControl>
+                      <Input placeholder="@perfil" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="whatsapp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>WhatsApp</FormLabel>
+                    <FormControl>
+                      <Input placeholder="(99) 99999-9999" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Website</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://exemplo.com.br" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="flex justify-end">
+              <Button type="button" onClick={() => setStep('commercial')}>
+                Próximo
+              </Button>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="commercial" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="min_order"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pedido mínimo</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ex: R$ 300,00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="avg_price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preço médio</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o preço médio" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="low">Baixo</SelectItem>
+                        <SelectItem value="medium">Médio</SelectItem>
+                        <SelectItem value="high">Alto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="requires_cnpj"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Requer CNPJ para compra
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="payment_methods"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Formas de pagamento *</FormLabel>
+                  <div className="flex flex-wrap gap-4 pt-2">
+                    <FormField
+                      control={form.control}
+                      name="payment_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="pix"
+                            checked={field.value?.includes('pix')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'pix']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'pix'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="pix"
+                            className="text-sm font-medium leading-none"
+                          >
+                            PIX
+                          </label>
+                        </div>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="payment_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="card"
+                            checked={field.value?.includes('card')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'card']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'card'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="card"
+                            className="text-sm font-medium leading-none"
+                          >
+                            Cartão
+                          </label>
+                        </div>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="payment_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="bankslip"
+                            checked={field.value?.includes('bankslip')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'bankslip']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'bankslip'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="bankslip"
+                            className="text-sm font-medium leading-none"
+                          >
+                            Boleto
+                          </label>
+                        </div>
+                      )}
+                    />
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="shipping_methods"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Formas de envio *</FormLabel>
+                  <div className="flex flex-wrap gap-4 pt-2">
+                    <FormField
+                      control={form.control}
+                      name="shipping_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="correios"
+                            checked={field.value?.includes('correios')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'correios']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'correios'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="correios"
+                            className="text-sm font-medium leading-none"
+                          >
+                            Correios
+                          </label>
+                        </div>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="shipping_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="transporter"
+                            checked={field.value?.includes('transporter')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'transporter']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'transporter'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="transporter"
+                            className="text-sm font-medium leading-none"
+                          >
+                            Transportadora
+                          </label>
+                        </div>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="shipping_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="delivery"
+                            checked={field.value?.includes('delivery')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'delivery']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'delivery'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="delivery"
+                            className="text-sm font-medium leading-none"
+                          >
+                            Entrega local
+                          </label>
+                        </div>
+                      )}
+                    />
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="flex justify-between">
+              <Button type="button" variant="outline" onClick={() => setStep('basic')}>
+                Voltar
+              </Button>
+              <Button type="button" onClick={() => setStep('details')}>
+                Próximo
+              </Button>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="details" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cidade *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome da cidade" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado *</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {STATES.map(state => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="categories"
+              render={({ field }) => (
+                <FormItem>
+                  <CategorySelector
+                    categories={categories}
+                    selectedCategories={field.value || []}
+                    onChange={field.onChange}
+                    onAddCategory={onAddCategory}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="featured"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Destacar este fornecedor
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="hidden"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Ocultar este fornecedor (não será visível para os usuários)
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            
+            <div className="flex justify-between">
+              <Button type="button" variant="outline" onClick={() => setStep('commercial')}>
+                Voltar
+              </Button>
+              <div className="space-x-2">
+                <Button type="button" variant="outline" onClick={onCancel}>
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Fornecedor
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </form>
+    </Form>
+  );
+};
+
+export default function SuppliersManagement() {
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [currentSupplier, setCurrentSupplier] = useState<Supplier | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
+  
+  // Dados para fornecedores e categorias
+  const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
+  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
+  
+  // Tab atual
+  const [currentTab, setCurrentTab] = useState<'suppliers' | 'categories'>('suppliers');
+  
+  // Filtragem de fornecedores
+  const filteredSuppliers = suppliers.filter(supplier => {
+    const matchesSearch = searchTerm === '' || 
+      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = categoryFilter === 'all' || 
+      supplier.categories.includes(categoryFilter);
+    
+    return matchesSearch && matchesCategory;
+  });
+  
+  // Função para adicionar uma categoria
+  const addCategory = (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
+    const newCategory: Category = {
+      id: `${categories.length + 1}`,
+      name: categoryData.name,
+      description: categoryData.description,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    
+    setCategories([...categories, newCategory]);
+    
+    toast({
+      title: "Categoria adicionada",
+      description: `A categoria "${categoryData.name}" foi criada com sucesso.`,
+      variant: "default",
     });
+    
+    return newCategory.id;
+  };
+  
+  // Abrir modal para editar fornecedor
+  const openEditModal = (supplier: Supplier) => {
+    setCurrentSupplier(supplier);
+    setIsEditMode(true);
+    setIsAddSupplierOpen(true);
+  };
+  
+  // Abrir modal para adicionar fornecedor
+  const openAddModal = () => {
+    setCurrentSupplier(null);
     setIsEditMode(false);
     setIsAddSupplierOpen(true);
   };
@@ -306,8 +811,8 @@ export default function SuppliersManagement() {
   // Excluir fornecedor
   const deleteSupplier = () => {
     if (supplierToDelete) {
-      // Aqui seria implementada a lógica para excluir no backend
-      console.log('Excluindo fornecedor:', supplierToDelete.id);
+      const updatedSuppliers = suppliers.filter(s => s.id !== supplierToDelete.id);
+      setSuppliers(updatedSuppliers);
       
       toast({
         title: "Fornecedor excluído",
@@ -321,25 +826,41 @@ export default function SuppliersManagement() {
   };
   
   // Salvar fornecedor (novo ou editado)
-  const handleSaveSupplier = () => {
-    // Validação básica
-    if (!formData.code || !formData.name || !formData.description || formData.categories.length === 0) {
+  const handleSaveSupplier = (data: SupplierFormValues) => {
+    if (isEditMode && currentSupplier) {
+      // Editar fornecedor existente
+      const updatedSuppliers = suppliers.map(s => 
+        s.id === currentSupplier.id ? { 
+          ...s, 
+          ...data, 
+          updated_at: new Date().toISOString()
+        } : s
+      );
+      
+      setSuppliers(updatedSuppliers);
+      
       toast({
-        title: "Erro ao salvar",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive",
+        title: "Fornecedor atualizado",
+        description: `${data.name} foi atualizado com sucesso.`,
+        variant: "default",
       });
-      return;
+    } else {
+      // Adicionar novo fornecedor
+      const newSupplier: Supplier = {
+        id: `${suppliers.length + 1}`,
+        ...data,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      setSuppliers([...suppliers, newSupplier]);
+      
+      toast({
+        title: "Fornecedor adicionado",
+        description: `${data.name} foi adicionado com sucesso.`,
+        variant: "default",
+      });
     }
-    
-    // Aqui seria implementada a lógica para salvar no backend
-    console.log('Salvando fornecedor:', formData);
-    
-    toast({
-      title: isEditMode ? "Fornecedor atualizado" : "Fornecedor adicionado",
-      description: `${formData.name} foi ${isEditMode ? "atualizado" : "adicionado"} com sucesso.`,
-      variant: "default",
-    });
     
     // Fechar modal
     setIsAddSupplierOpen(false);
@@ -347,8 +868,11 @@ export default function SuppliersManagement() {
   
   // Alternar destaque de fornecedor
   const toggleFeatured = (supplier: Supplier) => {
-    console.log(`Alterando destaque para ${supplier.name}: ${!supplier.featured}`);
-    // Implementar lógica para atualizar no backend
+    const updatedSuppliers = suppliers.map(s => 
+      s.id === supplier.id ? { ...s, featured: !s.featured } : s
+    );
+    
+    setSuppliers(updatedSuppliers);
     
     toast({
       title: !supplier.featured ? "Fornecedor destacado" : "Destaque removido",
@@ -361,8 +885,11 @@ export default function SuppliersManagement() {
   
   // Alternar visibilidade de fornecedor
   const toggleVisibility = (supplier: Supplier) => {
-    console.log(`Alterando visibilidade para ${supplier.name}: ${!supplier.hidden}`);
-    // Implementar lógica para atualizar no backend
+    const updatedSuppliers = suppliers.map(s => 
+      s.id === supplier.id ? { ...s, hidden: !s.hidden } : s
+    );
+    
+    setSuppliers(updatedSuppliers);
     
     toast({
       title: supplier.hidden ? "Fornecedor visível" : "Fornecedor oculto",
@@ -372,151 +899,172 @@ export default function SuppliersManagement() {
       variant: "default",
     });
   };
+  
+  // Obter nome da categoria a partir do ID
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : categoryId;
+  };
 
   return (
     <AdminLayout>
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Gerenciamento de Fornecedores</h1>
-          <Button onClick={openAddModal}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Fornecedor
-          </Button>
-        </div>
+      <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as any)}>
+        <TabsList className="mb-6 w-full max-w-md grid grid-cols-2">
+          <TabsTrigger value="suppliers" className="rounded-l-md">
+            Fornecedores
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="rounded-r-md">
+            Categorias
+          </TabsTrigger>
+        </TabsList>
         
-        {/* Filtros */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, código..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        <TabsContent value="suppliers" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold">Gerenciamento de Fornecedores</h1>
+            <Button onClick={openAddModal}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Fornecedor
+            </Button>
           </div>
           
-          <Select 
-            value={categoryFilter} 
-            onValueChange={setCategoryFilter}
-          >
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {CATEGORIES.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Tabela de fornecedores */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead className="hidden md:table-cell">Categorias</TableHead>
-                <TableHead className="hidden sm:table-cell">Localização</TableHead>
-                <TableHead className="hidden lg:table-cell">Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSuppliers.length > 0 ? (
-                filteredSuppliers.map(supplier => (
-                  <TableRow key={supplier.id}>
-                    <TableCell>{supplier.code}</TableCell>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center">
-                        {supplier.name}
-                        {supplier.featured && (
-                          <Star className="ml-1 h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        )}
-                        {supplier.hidden && (
-                          <EyeOff className="ml-1 h-4 w-4 text-gray-400" />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex flex-wrap gap-1">
-                        {supplier.categories.map(category => (
-                          <Badge key={category} variant="outline" className="text-xs">
-                            {category}
+          {/* Filtros */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, código..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <Select 
+              value={categoryFilter} 
+              onValueChange={setCategoryFilter}
+            >
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Tabela de fornecedores */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead className="hidden md:table-cell">Categorias</TableHead>
+                  <TableHead className="hidden sm:table-cell">Localização</TableHead>
+                  <TableHead className="hidden lg:table-cell">Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredSuppliers.length > 0 ? (
+                  filteredSuppliers.map(supplier => (
+                    <TableRow key={supplier.id}>
+                      <TableCell>{supplier.code}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          {supplier.name}
+                          {supplier.featured && (
+                            <Star className="ml-1 h-4 w-4 text-yellow-500 fill-yellow-500" />
+                          )}
+                          {supplier.hidden && (
+                            <EyeOff className="ml-1 h-4 w-4 text-gray-400" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                          {supplier.categories.map(categoryId => (
+                            <Badge key={categoryId} variant="outline" className="text-xs">
+                              {getCategoryName(categoryId)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {supplier.city}, {supplier.state}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {supplier.hidden ? (
+                          <Badge variant="outline" className="text-gray-500 border-gray-300">
+                            Oculto
                           </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {supplier.city}, {supplier.state}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {supplier.hidden ? (
-                        <Badge variant="outline" className="text-gray-500 border-gray-300">
-                          Oculto
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-green-500">
-                          Visível
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Abrir menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => openEditModal(supplier)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Editar</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toggleFeatured(supplier)}>
-                            <Star className="mr-2 h-4 w-4" />
-                            <span>{supplier.featured ? 'Remover destaque' : 'Destacar'}</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toggleVisibility(supplier)}>
-                            {supplier.hidden ? (
-                              <>
-                                <Eye className="mr-2 h-4 w-4" />
-                                <span>Tornar visível</span>
-                              </>
-                            ) : (
-                              <>
-                                <EyeOff className="mr-2 h-4 w-4" />
-                                <span>Ocultar</span>
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => confirmDelete(supplier)} className="text-red-600">
-                            <Trash className="mr-2 h-4 w-4" />
-                            <span>Excluir</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        ) : (
+                          <Badge className="bg-green-500">
+                            Visível
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Abrir menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => openEditModal(supplier)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              <span>Editar</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toggleFeatured(supplier)}>
+                              <Star className="mr-2 h-4 w-4" />
+                              <span>{supplier.featured ? 'Remover destaque' : 'Destacar'}</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toggleVisibility(supplier)}>
+                              {supplier.hidden ? (
+                                <>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  <span>Tornar visível</span>
+                                </>
+                              ) : (
+                                <>
+                                  <EyeOff className="mr-2 h-4 w-4" />
+                                  <span>Ocultar</span>
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => confirmDelete(supplier)} className="text-red-600">
+                              <Trash className="mr-2 h-4 w-4" />
+                              <span>Excluir</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      Nenhum fornecedor encontrado.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    Nenhum fornecedor encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="categories">
+          <CategoryManagement />
+        </TabsContent>
+      </Tabs>
       
       {/* Modal para adicionar/editar fornecedor */}
       <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
@@ -530,350 +1078,13 @@ export default function SuppliersManagement() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-            {/* Código e Nome */}
-            <div className="space-y-2">
-              <Label htmlFor="code">Código interno *</Label>
-              <Input
-                id="code"
-                name="code"
-                value={formData.code}
-                onChange={handleInputChange}
-                placeholder="ex: SP001"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome do fornecedor *</Label>
-              <Input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="Nome completo do fornecedor"
-                required
-              />
-            </div>
-            
-            {/* Descrição */}
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="description">Descrição *</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Descreva os produtos e serviços do fornecedor"
-                rows={3}
-                required
-              />
-            </div>
-            
-            {/* Upload de imagens */}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Imagens do fornecedor</Label>
-              <SupplierImageUpload 
-                initialImages={formData.images} 
-                onChange={handleImagesChange}
-              />
-            </div>
-            
-            {/* Contatos */}
-            <div className="space-y-2">
-              <Label htmlFor="instagram">Instagram</Label>
-              <Input
-                id="instagram"
-                name="instagram"
-                value={formData.instagram}
-                onChange={handleInputChange}
-                placeholder="@perfil"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">WhatsApp</Label>
-              <Input
-                id="whatsapp"
-                name="whatsapp"
-                value={formData.whatsapp}
-                onChange={handleInputChange}
-                placeholder="(99) 99999-9999"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                name="website"
-                value={formData.website}
-                onChange={handleInputChange}
-                placeholder="https://exemplo.com.br"
-              />
-            </div>
-            
-            {/* Condições de compra */}
-            <div className="space-y-2">
-              <Label htmlFor="min_order">Pedido mínimo</Label>
-              <Input
-                id="min_order"
-                name="min_order"
-                value={formData.min_order}
-                onChange={handleInputChange}
-                placeholder="ex: R$ 300,00"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Preço médio</Label>
-              <Select 
-                value={formData.avg_price} 
-                onValueChange={(value) => handleSelectChange('avg_price', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Baixo</SelectItem>
-                  <SelectItem value="medium">Médio</SelectItem>
-                  <SelectItem value="high">Alto</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Requer CNPJ?</Label>
-              <div className="flex items-center pt-2">
-                <Checkbox 
-                  id="requires_cnpj" 
-                  checked={formData.requires_cnpj}
-                  onCheckedChange={(checked) => 
-                    handleCheckboxChange('requires_cnpj', checked as boolean)
-                  }
-                />
-                <label
-                  htmlFor="requires_cnpj"
-                  className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Sim, exige CNPJ para compra
-                </label>
-              </div>
-            </div>
-            
-            {/* Métodos de pagamento */}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Formas de pagamento</Label>
-              <div className="flex flex-wrap gap-4 pt-2">
-                <div className="flex items-center">
-                  <Checkbox 
-                    id="payment_pix" 
-                    checked={formData.payment_methods.includes('pix')}
-                    onCheckedChange={(checked) => {
-                      if (checked) handlePaymentMethodToggle('pix');
-                      else handlePaymentMethodToggle('pix');
-                    }}
-                  />
-                  <label
-                    htmlFor="payment_pix"
-                    className="ml-2 text-sm font-medium leading-none"
-                  >
-                    PIX
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <Checkbox 
-                    id="payment_card" 
-                    checked={formData.payment_methods.includes('card')}
-                    onCheckedChange={(checked) => {
-                      if (checked) handlePaymentMethodToggle('card');
-                      else handlePaymentMethodToggle('card');
-                    }}
-                  />
-                  <label
-                    htmlFor="payment_card"
-                    className="ml-2 text-sm font-medium leading-none"
-                  >
-                    Cartão
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <Checkbox 
-                    id="payment_bankslip" 
-                    checked={formData.payment_methods.includes('bankslip')}
-                    onCheckedChange={(checked) => {
-                      if (checked) handlePaymentMethodToggle('bankslip');
-                      else handlePaymentMethodToggle('bankslip');
-                    }}
-                  />
-                  <label
-                    htmlFor="payment_bankslip"
-                    className="ml-2 text-sm font-medium leading-none"
-                  >
-                    Boleto
-                  </label>
-                </div>
-              </div>
-            </div>
-            
-            {/* Métodos de envio */}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Formas de envio</Label>
-              <div className="flex flex-wrap gap-4 pt-2">
-                <div className="flex items-center">
-                  <Checkbox 
-                    id="shipping_correios" 
-                    checked={formData.shipping_methods.includes('correios')}
-                    onCheckedChange={(checked) => {
-                      if (checked) handleShippingMethodToggle('correios');
-                      else handleShippingMethodToggle('correios');
-                    }}
-                  />
-                  <label
-                    htmlFor="shipping_correios"
-                    className="ml-2 text-sm font-medium leading-none"
-                  >
-                    Correios
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <Checkbox 
-                    id="shipping_transporter" 
-                    checked={formData.shipping_methods.includes('transporter')}
-                    onCheckedChange={(checked) => {
-                      if (checked) handleShippingMethodToggle('transporter');
-                      else handleShippingMethodToggle('transporter');
-                    }}
-                  />
-                  <label
-                    htmlFor="shipping_transporter"
-                    className="ml-2 text-sm font-medium leading-none"
-                  >
-                    Transportadora
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <Checkbox 
-                    id="shipping_delivery" 
-                    checked={formData.shipping_methods.includes('delivery')}
-                    onCheckedChange={(checked) => {
-                      if (checked) handleShippingMethodToggle('delivery');
-                      else handleShippingMethodToggle('delivery');
-                    }}
-                  />
-                  <label
-                    htmlFor="shipping_delivery"
-                    className="ml-2 text-sm font-medium leading-none"
-                  >
-                    Entrega local
-                  </label>
-                </div>
-              </div>
-            </div>
-            
-            {/* Localização */}
-            <div className="space-y-2">
-              <Label htmlFor="city">Cidade *</Label>
-              <Input
-                id="city"
-                name="city"
-                value={formData.city}
-                onChange={handleInputChange}
-                placeholder="Nome da cidade"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Estado *</Label>
-              <Select 
-                value={formData.state} 
-                onValueChange={(value) => handleSelectChange('state', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATES.map(state => (
-                    <SelectItem key={state} value={state}>{state}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Categorias */}
-            <div className="space-y-2 md:col-span-2">
-              <Label>Categorias de produtos *</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-2">
-                {CATEGORIES.map(category => (
-                  <div key={category} className="flex items-center">
-                    <Checkbox 
-                      id={`category_${category}`} 
-                      checked={formData.categories.includes(category)}
-                      onCheckedChange={(checked) => {
-                        if (checked) handleCategoryToggle(category);
-                        else handleCategoryToggle(category);
-                      }}
-                    />
-                    <label
-                      htmlFor={`category_${category}`}
-                      className="ml-2 text-sm font-medium leading-none"
-                    >
-                      {category}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Opções adicionais */}
-            <div className="md:col-span-2 space-y-4 pt-2">
-              <div className="flex items-center">
-                <Checkbox 
-                  id="featured" 
-                  checked={formData.featured}
-                  onCheckedChange={(checked) => 
-                    handleCheckboxChange('featured', checked as boolean)
-                  }
-                />
-                <label
-                  htmlFor="featured"
-                  className="ml-2 text-sm font-medium leading-none"
-                >
-                  Destacar este fornecedor
-                </label>
-              </div>
-              
-              <div className="flex items-center">
-                <Checkbox 
-                  id="hidden" 
-                  checked={formData.hidden}
-                  onCheckedChange={(checked) => 
-                    handleCheckboxChange('hidden', checked as boolean)
-                  }
-                />
-                <label
-                  htmlFor="hidden"
-                  className="ml-2 text-sm font-medium leading-none"
-                >
-                  Ocultar este fornecedor (não será visível para os usuários)
-                </label>
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddSupplierOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveSupplier}>
-              {isEditMode ? 'Salvar alterações' : 'Adicionar fornecedor'}
-            </Button>
-          </DialogFooter>
+          <SupplierForm
+            onSave={handleSaveSupplier}
+            onCancel={() => setIsAddSupplierOpen(false)}
+            initialData={currentSupplier || undefined}
+            categories={categories}
+            onAddCategory={addCategory}
+          />
         </DialogContent>
       </Dialog>
       
