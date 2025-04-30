@@ -6,134 +6,97 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 265.8 83.3% 56.9%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5% 64.9%;
-    --radius: 0.75rem;
-
-    /* Cores para a marca */
-    --brand-purple: 264 88% 75%;
-    --brand-pink: 336 100% 65%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 265.8 83.3% 56.9%; 
+    --radius: 0.5rem;
   }
-
+ 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 265.8 83.3% 66.9%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-
-    /* Cores para a marca na versão escura */
-    --brand-purple: 264 88% 75%;
-    --brand-pink: 336 100% 75%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 265.8 83.3% 66.9%;
   }
 }
-
+ 
 @layer base {
   * {
-    @apply border-border selection:bg-foreground/10 selection:text-foreground;
+    @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-@layer utilities {
-  .scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
+/* Glass effect for nicer UI */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.1); 
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
 
-  .glass-morphism {
-    @apply backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.3)] dark:bg-white/5 dark:border-white/10;
-    background-color: rgba(255, 255, 255, 0.7);
-  }
-  
-  .dark .glass-morphism {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .neo-blur {
-    @apply backdrop-blur-2xl border bg-background/40 border-border;
-  }
-  
-  .dark .neo-blur {
-    @apply bg-black/40 border-white/10;
-  }
-  
-  .text-gradient {
-    @apply bg-gradient-to-br from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent;
-  }
-  
-  .text-gradient-primary {
-    @apply bg-gradient-to-br from-[#9b87f5] via-[#9b87f5]/80 to-[#9b87f5]/60 bg-clip-text text-transparent;
-  }
+.dark .glass-morphism {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-  .card-hover {
-    @apply transition-all duration-300 hover:translate-y-[-4px] hover:shadow-lg;
-  }
-  
-  .fade-in {
-    @apply animate-[fadeIn_0.5s_ease-out_forwards];
+/* Animation for fade in */
+@keyframes fade-in {
+  from {
     opacity: 0;
+    transform: translateY(10px);
   }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  .category-badge-casual {
-    @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300;
-  }
-  
-  .category-badge-fitness {
-    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300;
-  }
-  
-  .category-badge-plus-size {
-    @apply bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300;
-  }
-  
-  .category-badge-acessorios {
-    @apply bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300;
-  }
-  
-  .category-badge-praia {
-    @apply bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+/* Supporting responsive sidebar */
+.transition-width {
+  transition-property: width;
+}
+
+@media (max-width: 767px) {
+  .md\:pb-4 {
+    padding-bottom: 1rem;
   }
 }
