@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -102,6 +103,15 @@ const STATES = [
   { label: 'Pernambuco', value: 'PE' }
 ];
 
+// Add cities filter
+const CITIES = [
+  { label: 'Todas', value: 'all' },
+  { label: 'São Paulo', value: 'São Paulo' },
+  { label: 'Fortaleza', value: 'Fortaleza' },
+  { label: 'Goiânia', value: 'Goiânia' },
+  { label: 'Recife', value: 'Recife' }
+];
+
 const PRICE_RANGES = [
   { label: 'Todos', value: 'all' },
   { label: 'Baixo', value: 'low' },
@@ -119,6 +129,7 @@ export default function SuppliersList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
+  const [cityFilter, setCityFilter] = useState('all'); // New city filter
   const [priceFilter, setPriceFilter] = useState('all');
   const [cnpjFilter, setCnpjFilter] = useState('all');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
@@ -137,6 +148,9 @@ export default function SuppliersList() {
     const matchesState = stateFilter === 'all' || 
       supplier.state === stateFilter;
     
+    const matchesCity = cityFilter === 'all' || 
+      supplier.city === cityFilter;
+    
     const matchesPrice = priceFilter === 'all' || 
       supplier.avg_price === priceFilter;
       
@@ -145,7 +159,7 @@ export default function SuppliersList() {
     
     const matchesFavorites = !showOnlyFavorites || isFavorite(supplier.id);
     
-    return matchesSearch && matchesCategory && matchesState && matchesPrice && matchesCnpj && matchesFavorites;
+    return matchesSearch && matchesCategory && matchesState && matchesCity && matchesPrice && matchesCnpj && matchesFavorites;
   });
 
   const formatAvgPrice = (price: string) => {
@@ -216,7 +230,7 @@ export default function SuppliersList() {
         </div>
         
         {isFilterOpen && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-md">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-muted rounded-md">
             <div className="space-y-2">
               <label className="text-sm font-medium">Categoria</label>
               <Select 
@@ -249,6 +263,26 @@ export default function SuppliersList() {
                   {STATES.map(state => (
                     <SelectItem key={state.value} value={state.value}>
                       {state.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* New city filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Cidade</label>
+              <Select 
+                value={cityFilter} 
+                onValueChange={setCityFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma cidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CITIES.map(city => (
+                    <SelectItem key={city.value} value={city.value}>
+                      {city.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -414,6 +448,7 @@ export default function SuppliersList() {
                   setSearchTerm('');
                   setCategoryFilter('all');
                   setStateFilter('all');
+                  setCityFilter('all');
                   setPriceFilter('all');
                   setCnpjFilter('all');
                   setShowOnlyFavorites(false);
