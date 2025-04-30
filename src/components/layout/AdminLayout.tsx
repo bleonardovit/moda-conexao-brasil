@@ -1,7 +1,7 @@
 
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Store, BarChart, List, Settings } from 'lucide-react';
+import { User, Store, BarChart, List, Settings, ChevronRight } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -15,6 +15,19 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: 'Fornecedores', path: '/admin/suppliers', icon: <Store className="h-5 w-5" /> },
     { name: 'Relatórios', path: '/admin/reports', icon: <BarChart className="h-5 w-5" /> },
   ];
+  
+  // Get current page title for breadcrumbs
+  const getCurrentPageTitle = () => {
+    const currentPath = location.pathname;
+    
+    if (currentPath === '/admin' || currentPath === '/admin/') return 'Dashboard';
+    
+    const currentMenuItem = menuItems.find(item => 
+      currentPath === item.path || currentPath.startsWith(`${item.path}/`)
+    );
+    
+    return currentMenuItem?.name || 'Admin';
+  };
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -45,7 +58,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
         <div className="p-4 border-t">
           <Link 
-            to="/" 
+            to="/suppliers" 
             className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-secondary/50"
           >
             <Settings className="h-5 w-5" />
@@ -63,7 +76,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               Admin
             </Link>
             <div className="flex items-center">
-              <Link to="/" className="px-3 py-2 text-sm">Voltar ao app</Link>
+              <Link to="/suppliers" className="px-3 py-2 text-sm">Voltar ao app</Link>
             </div>
           </div>
         </header>
@@ -87,6 +100,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             ))}
           </div>
         </div>
+
+        {/* Breadcrumbs */}
+        <nav className="flex px-4 py-2 bg-background/90">
+          <ol className="flex items-center gap-1 text-sm text-muted-foreground">
+            <li>
+              <Link to="/admin" className="hover:text-foreground">
+                Admin
+              </Link>
+            </li>
+            <li className="flex items-center">
+              <ChevronRight className="h-4 w-4" />
+            </li>
+            <li className="font-medium text-foreground">
+              {getCurrentPageTitle()}
+            </li>
+          </ol>
+        </nav>
 
         {/* Conteúdo */}
         <main className="flex-1 p-4">{children}</main>

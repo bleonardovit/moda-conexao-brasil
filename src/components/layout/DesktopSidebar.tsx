@@ -1,34 +1,79 @@
+
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Heart, User, LayoutDashboard, Settings } from 'lucide-react';
+import { Home, Search, Heart, User, LayoutDashboard, Settings, Users, FileText } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-const menuItems = [{
-  icon: Home,
-  label: 'Início',
-  path: '/suppliers'
-}, {
-  icon: Search,
-  label: 'Buscar',
-  path: '/search'
-}, {
-  icon: Heart,
-  label: 'Favoritos',
-  path: '/favorites'
-}, {
-  icon: LayoutDashboard,
-  label: 'Dashboard',
-  path: '/admin'
-}, {
-  icon: Settings,
-  label: 'Configurações',
-  path: '/settings'
-}, {
-  icon: User,
-  label: 'Perfil',
-  path: '/profile'
-}];
+import { useEffect, useState } from 'react';
+
 export function DesktopSidebar() {
   const location = useLocation();
-  return <Sidebar collapsible="icon" variant="sidebar" className="w-16 hover:w-64 transition-width duration-300">
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    // Check user role from session storage
+    const userRole = sessionStorage.getItem('user_role');
+    setIsAdmin(userRole === 'admin');
+  }, []);
+
+  // Define menu items for regular users
+  const regularMenuItems = [
+    {
+      icon: Home,
+      label: 'Início',
+      path: '/suppliers'
+    }, 
+    {
+      icon: Search,
+      label: 'Buscar',
+      path: '/search'
+    }, 
+    {
+      icon: Heart,
+      label: 'Favoritos',
+      path: '/favorites'
+    }, 
+    {
+      icon: User,
+      label: 'Perfil',
+      path: '/profile'
+    },
+    {
+      icon: Settings,
+      label: 'Configurações',
+      path: '/settings'
+    }
+  ];
+  
+  // Define additional menu items for admin users
+  const adminMenuItems = [
+    {
+      icon: LayoutDashboard,
+      label: 'Dashboard Admin',
+      path: '/admin'
+    },
+    {
+      icon: Users,
+      label: 'Usuários',
+      path: '/admin/users'
+    },
+    {
+      icon: FileText,
+      label: 'Relatórios',
+      path: '/admin/reports'
+    }
+  ];
+
+  // Combine menu items based on user role
+  const menuItems = isAdmin 
+    ? [...regularMenuItems, ...adminMenuItems] 
+    : regularMenuItems;
+
+  // Check if a route is active
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+
+  return (
+    <Sidebar collapsible="icon" variant="sidebar" className="w-16 hover:w-64 transition-width duration-300">
       <SidebarContent>
         <div className="flex justify-center p-4 mb-6">
           <Link to="/" className="block">
@@ -39,16 +84,28 @@ export function DesktopSidebar() {
         </div>
         <SidebarGroup>
           <SidebarMenu className="gap-2">
-            {menuItems.map(item => <SidebarMenuItem key={item.path}>
-                <SidebarMenuButton isActive={location.pathname === item.path} tooltip={item.label} className={`transition-all duration-200 ${location.pathname === item.path ? 'bg-[#9b87f5] text-white' : 'hover:bg-white/5'}`} asChild>
+            {menuItems.map(item => (
+              <SidebarMenuItem key={item.path}>
+                <SidebarMenuButton 
+                  isActive={isActive(item.path)} 
+                  tooltip={item.label} 
+                  className={`transition-all duration-200 ${
+                    isActive(item.path) 
+                      ? 'bg-[#9b87f5] text-white' 
+                      : 'hover:bg-white/5'
+                  }`} 
+                  asChild
+                >
                   <Link to={item.path} className="flex items-center gap-3 px-4 py-2">
                     <item.icon className="h-5 w-5" />
                     <span className="font-medium text-gray-400">{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
-              </SidebarMenuItem>)}
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-    </Sidebar>;
+    </Sidebar>
+  );
 }

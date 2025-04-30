@@ -19,6 +19,7 @@ import SuppliersList from "./pages/suppliers/SuppliersList";
 import SupplierDetail from "./pages/suppliers/SupplierDetail";
 import Profile from "./pages/profile/Profile";
 import Favorites from "./pages/favorites/Favorites";
+import SearchPage from "./pages/search/SearchPage";
 
 // Páginas administrativas
 import UsersManagement from "./pages/admin/UsersManagement";
@@ -105,12 +106,12 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Home page now uses the new modern layout */}
+              {/* Home page redirects to suppliers */}
               <Route 
                 path="/" 
                 element={
                   auth.isAuthenticated 
-                    ? <Home /> 
+                    ? <Navigate to="/suppliers" replace /> 
                     : <Navigate to="/auth/login" replace />
                 } 
               />
@@ -156,6 +157,26 @@ const App = () => {
                 } 
               />
               
+              {/* Página de busca */}
+              <Route 
+                path="/search" 
+                element={
+                  <ProtectedRoute>
+                    <SearchPage />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Configurações */}
+              <Route 
+                path="/settings" 
+                element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                } 
+              />
+              
               {/* Rotas administrativas */}
               <Route 
                 path="/admin" 
@@ -189,10 +210,6 @@ const App = () => {
                   </AdminRoute>
                 } 
               />
-              
-              {/* Additional Routes */}
-              <Route path="/search" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><Home /></ProtectedRoute>} />
               
               {/* Rota de 404 */}
               <Route path="*" element={<NotFound />} />
