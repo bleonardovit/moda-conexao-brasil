@@ -92,13 +92,13 @@ export function DesktopSidebar() {
                   className={`transition-all duration-200 ${
                     isActive(item.path) 
                       ? 'bg-[#9b87f5] text-white' 
-                      : 'hover:bg-white/5'
+                      : 'hover:bg-accent text-muted-foreground hover:text-foreground'
                   }`} 
                   asChild
                 >
                   <Link to={item.path} className="flex items-center gap-3 px-4 py-2">
                     <item.icon className="h-5 w-5" />
-                    <span className="font-medium text-gray-400">{item.label}</span>
+                    <span className="font-medium">{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

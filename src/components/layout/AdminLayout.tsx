@@ -32,8 +32,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       {/* Sidebar para desktop */}
-      <aside className="hidden md:flex w-64 flex-col border-r bg-muted">
-        <div className="p-4 border-b">
+      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-muted/50">
+        <div className="p-4 border-b border-border">
           <Link to="/admin" className="font-bold text-lg text-primary">
             Admin Conexão Brasil
           </Link>
@@ -47,7 +47,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
                   location.pathname === item.path
                     ? 'bg-secondary text-secondary-foreground'
-                    : 'hover:bg-secondary/50'
+                    : 'hover:bg-secondary/50 text-foreground'
                 }`}
               >
                 {item.icon}
@@ -56,10 +56,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             ))}
           </nav>
         </div>
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-border">
           <Link 
             to="/suppliers" 
-            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-secondary/50"
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-secondary/50 text-foreground"
           >
             <Settings className="h-5 w-5" />
             Voltar ao app
@@ -70,19 +70,19 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Conteúdo principal */}
       <div className="flex-1 flex flex-col">
         {/* Header para mobile */}
-        <header className="md:hidden sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="md:hidden sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-14 items-center justify-between">
             <Link to="/admin" className="font-bold text-lg text-primary">
               Admin
             </Link>
             <div className="flex items-center">
-              <Link to="/suppliers" className="px-3 py-2 text-sm">Voltar ao app</Link>
+              <Link to="/suppliers" className="px-3 py-2 text-sm text-foreground">Voltar ao app</Link>
             </div>
           </div>
         </header>
 
         {/* Menu para mobile */}
-        <div className="md:hidden border-b sticky top-14 z-40 bg-background">
+        <div className="md:hidden border-b border-border sticky top-14 z-40 bg-background">
           <div className="container overflow-auto flex">
             {menuItems.map((item) => (
               <Link
@@ -90,8 +90,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 to={item.path}
                 className={`flex items-center gap-1 px-3 py-2 text-sm whitespace-nowrap ${
                   location.pathname === item.path
-                    ? 'border-b-2 border-primary font-medium'
-                    : ''
+                    ? 'border-b-2 border-primary font-medium text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 {item.icon}

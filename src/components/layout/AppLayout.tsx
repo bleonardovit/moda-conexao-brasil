@@ -15,7 +15,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background text-white">
+      <div className="flex min-h-screen w-full bg-background text-foreground">
         {!isMobile && <DesktopSidebar />}
         <div className="flex-1 flex flex-col">
           <MobileHeader />
@@ -27,7 +27,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
           </main>
           
-          <footer className="py-4 border-t border-white/10 text-center text-sm text-gray-400 hidden md:block">
+          <footer className="py-4 border-t border-border text-center text-sm text-muted-foreground hidden md:block">
             <div className="container">
               © {new Date().getFullYear()} Conexão Brasil
             </div>

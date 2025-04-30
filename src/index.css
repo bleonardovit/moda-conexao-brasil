@@ -60,7 +60,7 @@
 
 @layer base {
   * {
-    @apply border-border selection:bg-white/10 selection:text-white;
+    @apply border-border selection:bg-foreground/10 selection:text-foreground;
   }
 
   body {
@@ -79,11 +79,20 @@
   }
 
   .glass-morphism {
-    @apply backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.3)];
+    @apply backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.3)] dark:bg-white/5 dark:border-white/10;
+    background-color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .dark .glass-morphism {
+    background-color: rgba(255, 255, 255, 0.05);
   }
   
   .neo-blur {
-    @apply backdrop-blur-2xl bg-black/40 border border-white/10;
+    @apply backdrop-blur-2xl border bg-background/40 border-border;
+  }
+  
+  .dark .neo-blur {
+    @apply bg-black/40 border-white/10;
   }
   
   .text-gradient {
