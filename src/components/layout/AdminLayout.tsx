@@ -29,10 +29,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return currentMenuItem?.name || 'Admin';
   };
 
+  // Check if a route is active
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       {/* Sidebar para desktop */}
-      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-muted/50">
+      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-background/50">
         <div className="p-4 border-b border-border">
           <Link to="/admin" className="font-bold text-lg text-primary">
             Admin Conexão Brasil
@@ -44,10 +49,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
-                  location.pathname === item.path
-                    ? 'bg-secondary text-secondary-foreground'
-                    : 'hover:bg-secondary/50 text-foreground'
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive(item.path)
+                    ? 'bg-brand-purple text-white'
+                    : 'hover:bg-accent/50 text-foreground hover:text-primary'
                 }`}
               >
                 {item.icon}
@@ -59,7 +64,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div className="p-4 border-t border-border">
           <Link 
             to="/suppliers" 
-            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-secondary/50 text-foreground"
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent/50 hover:text-primary text-foreground"
           >
             <Settings className="h-5 w-5" />
             Voltar ao app
@@ -89,7 +94,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 key={item.path}
                 to={item.path}
                 className={`flex items-center gap-1 px-3 py-2 text-sm whitespace-nowrap ${
-                  location.pathname === item.path
+                  isActive(item.path)
                     ? 'border-b-2 border-primary font-medium text-foreground'
                     : 'text-muted-foreground'
                 }`}
@@ -119,7 +124,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
 
         {/* Conteúdo */}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-4 glass-morphism m-4 rounded-lg">
+          {children}
+        </main>
       </div>
     </div>
   );
