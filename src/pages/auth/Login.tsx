@@ -1,10 +1,11 @@
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { 
   Card, 
   CardContent, 
@@ -17,43 +18,16 @@ import {
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+  const { login, isLoading } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    try {
-      // Mock admin authentication
-      if (email === 'admin@conexaobrasil.com' && password === 'admin123') {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo(a) à área administrativa.",
-        });
-        // Set session storage to mock admin login
-        sessionStorage.setItem('user_role', 'admin');
-        navigate('/admin/suppliers');
-        return;
-      }
-      
-      // Mock user authentication logic here
-      console.log('Login com:', email, password);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      sessionStorage.setItem('user_role', 'user');
-      navigate('/');
-      
-    } catch (error) {
-      console.error('Erro no login:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao fazer login",
-        description: "Verifique suas credenciais e tente novamente.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    await login(email, password);
+  };
+
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -91,15 +65,24 @@ export default function Login() {
                   Esqueceu a senha?
                 </Link>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50 pr-12"
+                  required
+                />
+                <button 
+                  type="button"
+                  onClick={toggleShowPassword}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <div className="text-xs text-gray-400">
@@ -115,7 +98,17 @@ export default function Login() {
               className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" 
               disabled={isLoading}
             >
-              {isLoading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                  Entrando...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <LogIn size={18} />
+                  Entrar
+                </span>
+              )}
             </Button>
             <div className="text-center text-sm text-gray-300">
               Não tem uma conta?{' '}

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { AuthProvider } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 
@@ -13,6 +14,7 @@ import Home from "./pages/Home";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ResetPassword from "./pages/auth/ResetPassword";
+import Payment from "./pages/auth/Payment";
 
 // Páginas do app
 import SuppliersList from "./pages/suppliers/SuppliersList";
@@ -28,15 +30,31 @@ import Reports from "./pages/admin/Reports";
 
 const queryClient = new QueryClient();
 
-// Valores iniciais para autenticação
-const initialAuth = {
-  isAuthenticated: false,
-  isAdmin: false,
-  hasSubscription: true
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <AppRoutes />
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
 };
 
-const App = () => {
-  const [auth, setAuth] = useState(initialAuth);
+// Componente separado para rotas para usar o AuthProvider
+const AppRoutes = () => {
+  const [auth, setAuth] = useState({
+    isAuthenticated: false,
+    isAdmin: false,
+    hasSubscription: true
+  });
   
   // Efeito para verificar o status de autenticação no sessionStorage
   useEffect(() => {
@@ -50,7 +68,11 @@ const App = () => {
           hasSubscription: true  // Mantendo a assinatura como true para esse exemplo
         });
       } else {
-        setAuth(initialAuth);
+        setAuth({
+          isAuthenticated: false,
+          isAdmin: false,
+          hasSubscription: true
+        });
       }
     };
     
@@ -99,125 +121,116 @@ const App = () => {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Home page redirects to suppliers */}
-              <Route 
-                path="/" 
-                element={
-                  auth.isAuthenticated 
-                    ? <Navigate to="/suppliers" replace /> 
-                    : <Navigate to="/auth/login" replace />
-                } 
-              />
-              
-              {/* Rotas de autenticação */}
-              <Route path="/auth/login" element={<Login />} />
-              <Route path="/auth/register" element={<Register />} />
-              <Route path="/auth/reset-password" element={<ResetPassword />} />
-              
-              {/* Rotas de aplicativo protegidas (requerem assinatura) */}
-              <Route 
-                path="/suppliers" 
-                element={
-                  <SubscriptionRoute>
-                    <SuppliersList />
-                  </SubscriptionRoute>
-                } 
-              />
-              <Route 
-                path="/suppliers/:id" 
-                element={
-                  <SubscriptionRoute>
-                    <SupplierDetail />
-                  </SubscriptionRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Página de favoritos */}
-              <Route 
-                path="/favorites" 
-                element={
-                  <ProtectedRoute>
-                    <Favorites />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Página de busca */}
-              <Route 
-                path="/search" 
-                element={
-                  <ProtectedRoute>
-                    <SearchPage />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Configurações */}
-              <Route 
-                path="/settings" 
-                element={
-                  <ProtectedRoute>
-                    <Home />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Rotas administrativas */}
-              <Route 
-                path="/admin" 
-                element={
-                  <AdminRoute>
-                    <Navigate to="/admin/users" replace />
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin/users" 
-                element={
-                  <AdminRoute>
-                    <UsersManagement />
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin/suppliers" 
-                element={
-                  <AdminRoute>
-                    <SuppliersManagement />
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin/reports" 
-                element={
-                  <AdminRoute>
-                    <Reports />
-                  </AdminRoute>
-                } 
-              />
-              
-              {/* Rota de 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <Routes>
+      {/* Home page redirects to suppliers */}
+      <Route 
+        path="/" 
+        element={
+          auth.isAuthenticated 
+            ? <Navigate to="/suppliers" replace /> 
+            : <Navigate to="/auth/login" replace />
+        } 
+      />
+      
+      {/* Rotas de autenticação */}
+      <Route path="/auth/login" element={<Login />} />
+      <Route path="/auth/register" element={<Register />} />
+      <Route path="/auth/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/payment" element={<Payment />} />
+      
+      {/* Rotas de aplicativo protegidas (requerem assinatura) */}
+      <Route 
+        path="/suppliers" 
+        element={
+          <SubscriptionRoute>
+            <SuppliersList />
+          </SubscriptionRoute>
+        } 
+      />
+      <Route 
+        path="/suppliers/:id" 
+        element={
+          <SubscriptionRoute>
+            <SupplierDetail />
+          </SubscriptionRoute>
+        } 
+      />
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Página de favoritos */}
+      <Route 
+        path="/favorites" 
+        element={
+          <ProtectedRoute>
+            <Favorites />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Página de busca */}
+      <Route 
+        path="/search" 
+        element={
+          <ProtectedRoute>
+            <SearchPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Configurações */}
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Rotas administrativas */}
+      <Route 
+        path="/admin" 
+        element={
+          <AdminRoute>
+            <Navigate to="/admin/users" replace />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/users" 
+        element={
+          <AdminRoute>
+            <UsersManagement />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/suppliers" 
+        element={
+          <AdminRoute>
+            <SuppliersManagement />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/reports" 
+        element={
+          <AdminRoute>
+            <Reports />
+          </AdminRoute>
+        } 
+      />
+      
+      {/* Rota de 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
 
