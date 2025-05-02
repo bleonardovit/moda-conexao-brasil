@@ -75,12 +75,12 @@ export default function NotificationsPage() {
                 to={`/notifications/${notification.id}`}
                 className="block transition-shadow hover:shadow-md"
               >
-                <Card className={`${!notification.read ? 'border-l-4 border-l-primary' : ''}`}>
+                <Card className={`${notification.read === false ? 'border-l-4 border-l-primary' : ''}`}>
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-lg">{notification.title}</CardTitle>
                       <div className="flex space-x-2">
-                        {!notification.read && (
+                        {notification.read === false && (
                           <Badge variant="outline" className="bg-primary/20 text-primary">
                             Nova
                           </Badge>

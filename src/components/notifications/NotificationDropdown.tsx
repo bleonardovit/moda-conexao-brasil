@@ -71,7 +71,7 @@ export function NotificationDropdown() {
       >
         <div className="flex justify-between items-start w-full">
           <span className="font-medium">{notification.title}</span>
-          {!notification.read && (
+          {notification.read === false && (
             <Badge variant="outline" className="bg-primary/20 text-primary text-xs ml-2">
               Nova
             </Badge>

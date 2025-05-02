@@ -4,6 +4,7 @@ export interface Notification {
   title: string;
   message: string;
   created_at: string;
+  read?: boolean;
   read_at?: string;
   target_roles?: ('user' | 'admin')[];
   target_subscription_types?: ('monthly' | 'yearly')[];

@@ -79,7 +79,7 @@ export const getUserNotifications = async (userId: string): Promise<{notificatio
     }))
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => n.read === false).length;
   
   return {notifications, unreadCount};
 };

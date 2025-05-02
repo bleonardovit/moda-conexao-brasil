@@ -111,7 +111,12 @@ export default function NotificationsManagement() {
   
   // Criar nova notificação
   const createMutation = useMutation({
-    mutationFn: createNotification,
+    mutationFn: (values: NotificationFormValues) => createNotification({
+      title: values.title,
+      message: values.message,
+      target_roles: values.target_roles,
+      target_subscription_types: values.target_subscription_types,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
       setIsNewDialogOpen(false);
