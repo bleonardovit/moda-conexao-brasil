@@ -576,7 +576,7 @@ export default function SuppliersBulkUpload() {
                                 </div>
                               </div>
                             ) : (
-                              <Badge variant="success" className="bg-green-100 text-green-800 flex gap-1">
+                              <Badge variant="secondary" className="bg-green-100 text-green-800 flex gap-1">
                                 <Check className="h-3 w-3" />
                                 Válido
                               </Badge>
@@ -634,7 +634,7 @@ export default function SuppliersBulkUpload() {
                         </TableCell>
                         <TableCell>
                           {item.status === 'success' ? (
-                            <Badge variant="success" className="bg-green-100 text-green-800">
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">
                               Sucesso
                             </Badge>
                           ) : item.status === 'error' ? (
