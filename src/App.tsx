@@ -143,7 +143,7 @@ const AppRoutes = () => {
       
       {/* Rotas de aplicativo protegidas (requerem assinatura) */}
       <Route 
-        path="/suppliers" 
+        path="/home" 
         element={
           <SubscriptionRoute>
             <SuppliersList />
@@ -169,7 +169,7 @@ const AppRoutes = () => {
       
        {/* Fornecedores */}
       <Route 
-        path="/settings" 
+        path="/suppliers" 
         element={
           <ProtectedRoute>
             <Home />
