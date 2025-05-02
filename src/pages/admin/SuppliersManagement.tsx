@@ -1,5 +1,5 @@
-
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Table, 
   TableBody, 
@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save } from 'lucide-react';
+import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save, Upload } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
   Select, 
@@ -938,10 +938,18 @@ export default function SuppliersManagement() {
         <TabsContent value="suppliers" className="space-y-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">Gerenciamento de Fornecedores</h1>
-            <Button onClick={openAddModal}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Fornecedor
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/admin/suppliers/bulk-upload">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Importação em Massa
+                </Link>
+              </Button>
+              <Button onClick={openAddModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Fornecedor
+              </Button>
+            </div>
           </div>
           
           {/* Filtros */}

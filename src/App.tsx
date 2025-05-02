@@ -28,6 +28,7 @@ import ArticleDetailPage from "./pages/articles/ArticleDetailPage";
 // Páginas administrativas
 import UsersManagement from "./pages/admin/UsersManagement";
 import SuppliersManagement from "./pages/admin/SuppliersManagement";
+import SuppliersBulkUpload from "./pages/admin/SuppliersBulkUpload";
 import Reports from "./pages/admin/Reports";
 import ArticlesManagement from "./pages/admin/ArticlesManagement";
 
@@ -247,6 +248,14 @@ const AppRoutes = () => {
         element={
           <AdminRoute>
             <SuppliersManagement />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/suppliers/bulk-upload" 
+        element={
+          <AdminRoute>
+            <SuppliersBulkUpload />
           </AdminRoute>
         } 
       />
