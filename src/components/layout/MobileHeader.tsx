@@ -1,11 +1,12 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Search, User, Bell } from 'lucide-react';
+import { Menu, X, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 
 export function MobileHeader() {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,9 +38,7 @@ export function MobileHeader() {
               
               <ThemeToggle />
               
-              <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground">
-                <Bell className="h-5 w-5" />
-              </Button>
+              <NotificationDropdown />
               
               <Link to="/profile">
                 <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground">
@@ -60,6 +59,9 @@ export function MobileHeader() {
                     </Link>
                     <Link to="/favorites" className="text-lg font-medium py-2 text-foreground hover:text-[#9b87f5]" onClick={() => setIsOpen(false)}>
                       Favoritos
+                    </Link>
+                    <Link to="/notifications" className="text-lg font-medium py-2 text-foreground hover:text-[#9b87f5]" onClick={() => setIsOpen(false)}>
+                      Notificações
                     </Link>
                     <Link to="/profile" className="text-lg font-medium py-2 text-foreground hover:text-[#9b87f5]" onClick={() => setIsOpen(false)}>
                       Meu Perfil

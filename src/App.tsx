@@ -24,11 +24,14 @@ import Favorites from "./pages/favorites/Favorites";
 import SearchPage from "./pages/search/SearchPage";
 import ArticlesPage from "./pages/articles/ArticlesPage";
 import ArticleDetailPage from "./pages/articles/ArticleDetailPage";
+import NotificationsPage from "./pages/notifications/NotificationsPage";
+import NotificationDetailPage from "./pages/notifications/NotificationDetailPage";
 
 // Páginas administrativas
 import UsersManagement from "./pages/admin/UsersManagement";
 import SuppliersManagement from "./pages/admin/SuppliersManagement";
 import SuppliersBulkUpload from "./pages/admin/SuppliersBulkUpload";
+import NotificationsManagement from "./pages/admin/NotificationsManagement";
 import Reports from "./pages/admin/Reports";
 import ArticlesManagement from "./pages/admin/ArticlesManagement";
 
@@ -198,6 +201,24 @@ const AppRoutes = () => {
         } 
       />
       
+      {/* Notificações */}
+      <Route 
+        path="/notifications" 
+        element={
+          <ProtectedRoute>
+            <NotificationsPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/notifications/:id" 
+        element={
+          <ProtectedRoute>
+            <NotificationDetailPage />
+          </ProtectedRoute>
+        } 
+      />
+      
       {/* Novas rotas para artigos (requerem assinatura) */}
       <Route 
         path="/articles" 
@@ -256,6 +277,14 @@ const AppRoutes = () => {
         element={
           <AdminRoute>
             <SuppliersBulkUpload />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/notifications" 
+        element={
+          <AdminRoute>
+            <NotificationsManagement />
           </AdminRoute>
         } 
       />
