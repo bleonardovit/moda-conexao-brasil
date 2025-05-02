@@ -130,7 +130,7 @@ const AppRoutes = () => {
         path="/" 
         element={
           auth.isAuthenticated 
-            ? <Navigate to="/suppliers" replace /> 
+            ? <Navigate to="/home" replace /> 
             : <Navigate to="/auth/login" replace />
         } 
       />
@@ -163,6 +163,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        } 
+      />
+      
+       {/* Fornecedores */}
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <Home />
           </ProtectedRoute>
         } 
       />
