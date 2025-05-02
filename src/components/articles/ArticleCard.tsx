@@ -1,5 +1,5 @@
 
-import { Article, CATEGORY_LABELS, CATEGORY_COLORS } from '@/types/article';
+import { Article, CategoryDefinition, getCategoryLabel, getCategoryColors } from '@/types/article';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from 'lucide-react';
@@ -7,16 +7,18 @@ import { Link } from 'react-router-dom';
 
 interface ArticleCardProps {
   article: Article;
+  categories: CategoryDefinition[];
 }
 
-export function ArticleCard({ article }: ArticleCardProps) {
+export function ArticleCard({ article, categories }: ArticleCardProps) {
   const formattedDate = new Date(article.created_at).toLocaleDateString('pt-BR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
   });
 
-  const categoryColor = CATEGORY_COLORS[article.category];
+  const categoryColor = getCategoryColors(article.category, categories);
+  const categoryLabel = getCategoryLabel(article.category, categories);
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-300 h-full flex flex-col glass-morphism border-white/10">
@@ -33,7 +35,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         <div className="flex justify-between items-start">
           <div>
             <div className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${categoryColor} mb-2`}>
-              {CATEGORY_LABELS[article.category]}
+              {categoryLabel}
             </div>
             <CardTitle className="text-xl mb-2 line-clamp-2">{article.title}</CardTitle>
           </div>

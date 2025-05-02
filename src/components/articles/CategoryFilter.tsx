@@ -1,13 +1,14 @@
 
-import { CATEGORY_LABELS, CATEGORY_COLORS, ArticleCategory } from '@/types/article';
+import { CategoryDefinition, ArticleCategory, getCategoryLabel } from '@/types/article';
 import { Button } from '@/components/ui/button';
 
 interface CategoryFilterProps {
+  categories: CategoryDefinition[];
   selectedCategory: ArticleCategory | undefined;
   onSelectCategory: (category: ArticleCategory | undefined) => void;
 }
 
-export function CategoryFilter({ selectedCategory, onSelectCategory }: CategoryFilterProps) {
+export function CategoryFilter({ categories, selectedCategory, onSelectCategory }: CategoryFilterProps) {
   return (
     <div className="flex flex-wrap gap-2 mb-6">
       <Button 
@@ -19,18 +20,18 @@ export function CategoryFilter({ selectedCategory, onSelectCategory }: CategoryF
         Todos
       </Button>
       
-      {(Object.entries(CATEGORY_LABELS) as [ArticleCategory, string][]).map(([category, label]) => (
+      {categories.map((category) => (
         <Button
-          key={category}
-          variant={selectedCategory === category ? "default" : "outline"}
+          key={category.id}
+          variant={selectedCategory === category.id ? "default" : "outline"}
           size="sm"
-          onClick={() => onSelectCategory(category as ArticleCategory)}
-          className={selectedCategory === category 
+          onClick={() => onSelectCategory(category.id)}
+          className={selectedCategory === category.id 
             ? "bg-brand-purple text-white" 
-            : `hover:${CATEGORY_COLORS[category as ArticleCategory]}`
+            : `hover:${category.color}`
           }
         >
-          {label}
+          {category.label}
         </Button>
       ))}
     </div>
