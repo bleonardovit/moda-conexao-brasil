@@ -1,5 +1,5 @@
 
-import { CATEGORY_LABELS, ArticleCategory } from '@/types/article';
+import { CATEGORY_LABELS, CATEGORY_COLORS, ArticleCategory } from '@/types/article';
 import { Button } from '@/components/ui/button';
 
 interface CategoryFilterProps {
@@ -25,7 +25,10 @@ export function CategoryFilter({ selectedCategory, onSelectCategory }: CategoryF
           variant={selectedCategory === category ? "default" : "outline"}
           size="sm"
           onClick={() => onSelectCategory(category as ArticleCategory)}
-          className={selectedCategory === category ? "bg-brand-purple text-white" : ""}
+          className={selectedCategory === category 
+            ? "bg-brand-purple text-white" 
+            : `hover:${CATEGORY_COLORS[category as ArticleCategory]}`
+          }
         >
           {label}
         </Button>

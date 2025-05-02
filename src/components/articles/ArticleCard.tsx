@@ -1,10 +1,9 @@
 
-import { Article } from '@/types/article';
+import { Article, CATEGORY_LABELS, CATEGORY_COLORS } from '@/types/article';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { CATEGORY_LABELS } from '@/types/article';
 
 interface ArticleCardProps {
   article: Article;
@@ -17,12 +16,23 @@ export function ArticleCard({ article }: ArticleCardProps) {
     year: 'numeric'
   });
 
+  const categoryColor = CATEGORY_COLORS[article.category];
+
   return (
     <Card className="hover:shadow-lg transition-shadow duration-300 h-full flex flex-col glass-morphism border-white/10">
+      {article.image_url && (
+        <div className="relative w-full h-40 overflow-hidden rounded-t-lg">
+          <img 
+            src={article.image_url} 
+            alt={article.title} 
+            className="object-cover w-full h-full"
+          />
+        </div>
+      )}
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div>
-            <div className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-brand-purple/20 text-brand-purple mb-2">
+            <div className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${categoryColor} mb-2`}>
               {CATEGORY_LABELS[article.category]}
             </div>
             <CardTitle className="text-xl mb-2 line-clamp-2">{article.title}</CardTitle>

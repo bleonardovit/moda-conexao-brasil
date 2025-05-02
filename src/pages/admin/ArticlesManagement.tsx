@@ -6,32 +6,65 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getArticles, createArticle, deleteArticle } from '@/services/articleService';
-import { Article, ArticleCategory, CATEGORY_LABELS } from '@/types/article';
+import { getArticles, createArticle, deleteArticle, updateArticle } from '@/services/articleService';
+import { Article, ArticleCategory, CATEGORY_LABELS, CATEGORY_COLORS } from '@/types/article';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Plus, Trash } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { AlertCircle, Edit, Eye, ImagePlus, Loader2, Plus, Trash } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
+// URLs de imagens simuladas para seleção
+const SAMPLE_IMAGES = [
+  'https://images.unsplash.com/photo-1649972904349-6e44c42644a7',
+  'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b',
+  'https://images.unsplash.com/photo-1518770660439-4636190af475',
+  'https://images.unsplash.com/photo-1461749280684-dccba630e2f6',
+  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'
+];
 
 export default function ArticlesManagement() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const { toast } = useToast();
   
   // Form state
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<ArticleCategory>('entrepreneurship');
   const [author, setAuthor] = useState('');
+  const [imageUrl, setImageUrl] = useState<string>('');
   
   useEffect(() => {
-    // Load articles
-    const loadedArticles = getArticles();
-    setArticles(loadedArticles);
+    loadArticles();
   }, []);
+  
+  const loadArticles = () => {
+    setIsLoading(true);
+    try {
+      const loadedArticles = getArticles(selectedCategory);
+      setArticles(loadedArticles);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar artigos",
+        description: "Não foi possível carregar a lista de artigos",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    loadArticles();
+  }, [selectedCategory]);
   
   const resetForm = () => {
     setTitle('');
@@ -39,9 +72,23 @@ export default function ArticlesManagement() {
     setContent('');
     setCategory('entrepreneurship');
     setAuthor('');
+    setImageUrl('');
+    setEditingArticle(null);
+    setShowPreview(false);
   };
   
-  const handleCreateArticle = () => {
+  const handleOpenEditDialog = (article: Article) => {
+    setEditingArticle(article);
+    setTitle(article.title);
+    setSummary(article.summary);
+    setContent(article.content);
+    setCategory(article.category);
+    setAuthor(article.author);
+    setImageUrl(article.image_url || '');
+    setOpenDialog(true);
+  };
+  
+  const handleSaveArticle = () => {
     if (!title || !summary || !content || !category || !author) {
       toast({
         title: "Campos obrigatórios",
@@ -51,34 +98,62 @@ export default function ArticlesManagement() {
       return;
     }
     
+    setIsLoading(true);
+    
     try {
-      const newArticle = createArticle({
-        title,
-        summary,
-        content,
-        category,
-        author
-      });
-      
-      setArticles([...articles, newArticle]);
-      
-      toast({
-        title: "Artigo criado",
-        description: "O artigo foi criado com sucesso!"
-      });
+      if (editingArticle) {
+        // Atualizar artigo existente
+        const updatedArticle = updateArticle(editingArticle.id, {
+          title,
+          summary,
+          content,
+          category,
+          author,
+          image_url: imageUrl
+        });
+        
+        if (updatedArticle) {
+          setArticles(articles.map(a => a.id === updatedArticle.id ? updatedArticle : a));
+          
+          toast({
+            title: "Artigo atualizado",
+            description: "O artigo foi atualizado com sucesso!"
+          });
+        }
+      } else {
+        // Criar novo artigo
+        const newArticle = createArticle({
+          title,
+          summary,
+          content,
+          category,
+          author,
+          image_url: imageUrl
+        });
+        
+        setArticles([...articles, newArticle]);
+        
+        toast({
+          title: "Artigo criado",
+          description: "O artigo foi criado com sucesso!"
+        });
+      }
       
       setOpenDialog(false);
       resetForm();
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao criar o artigo",
+        description: `Ocorreu um erro ao ${editingArticle ? 'atualizar' : 'criar'} o artigo`,
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
   
   const handleDeleteArticle = (id: string) => {
+    setIsLoading(true);
     try {
       const success = deleteArticle(id);
       
@@ -102,7 +177,19 @@ export default function ArticlesManagement() {
         description: "Ocorreu um erro ao excluir o artigo",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
+  };
+  
+  const handleSelectImage = (url: string) => {
+    setImageUrl(url);
+    setImageDialogOpen(false);
+  };
+  
+  const getFilteredArticles = () => {
+    if (!selectedCategory) return articles;
+    return articles.filter(article => article.category === selectedCategory);
   };
   
   return (
@@ -119,74 +206,180 @@ export default function ArticlesManagement() {
                 <Plus className="mr-2 h-4 w-4" /> Novo Artigo
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Criar Artigo</DialogTitle>
+                <DialogTitle>{editingArticle ? 'Editar' : 'Criar'} Artigo</DialogTitle>
                 <DialogDescription>
-                  Preencha os campos abaixo para criar um novo artigo.
+                  Preencha os campos abaixo para {editingArticle ? 'editar o' : 'criar um novo'} artigo.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="title">Título</Label>
-                  <Input 
-                    id="title" 
-                    value={title} 
-                    onChange={(e) => setTitle(e.target.value)} 
-                    placeholder="Título do artigo" 
-                  />
+              
+              <Tabs defaultValue="editor">
+                <div className="flex justify-between items-center mb-4">
+                  <TabsList>
+                    <TabsTrigger value="editor" onClick={() => setShowPreview(false)}>
+                      <Edit className="h-4 w-4 mr-2" /> Editor
+                    </TabsTrigger>
+                    <TabsTrigger value="preview" onClick={() => setShowPreview(true)}>
+                      <Eye className="h-4 w-4 mr-2" /> Preview
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Categoria</Label>
-                  <Select 
-                    value={category} 
-                    onValueChange={(value) => setCategory(value as ArticleCategory)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="author">Autor</Label>
-                  <Input 
-                    id="author" 
-                    value={author} 
-                    onChange={(e) => setAuthor(e.target.value)} 
-                    placeholder="Nome do autor" 
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="summary">Resumo</Label>
-                  <Textarea 
-                    id="summary" 
-                    value={summary} 
-                    onChange={(e) => setSummary(e.target.value)} 
-                    placeholder="Breve resumo do artigo"
-                    className="resize-none"
-                    rows={2}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="content">Conteúdo (HTML)</Label>
-                  <Textarea 
-                    id="content" 
-                    value={content} 
-                    onChange={(e) => setContent(e.target.value)} 
-                    placeholder="Conteúdo em HTML do artigo"
-                    className="resize-none font-mono text-sm"
-                    rows={10}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button>
-                <Button onClick={handleCreateArticle}>Criar Artigo</Button>
+                
+                <TabsContent value="editor" className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="title">Título*</Label>
+                      <Input 
+                        id="title" 
+                        value={title} 
+                        onChange={(e) => setTitle(e.target.value)} 
+                        placeholder="Título do artigo" 
+                      />
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="category">Categoria*</Label>
+                      <Select 
+                        value={category} 
+                        onValueChange={(value) => setCategory(value as ArticleCategory)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="author">Autor*</Label>
+                    <Input 
+                      id="author" 
+                      value={author} 
+                      onChange={(e) => setAuthor(e.target.value)} 
+                      placeholder="Nome do autor" 
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="image">Imagem de capa</Label>
+                      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <ImagePlus className="h-4 w-4 mr-2" /> Selecionar imagem
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Selecionar imagem</DialogTitle>
+                            <DialogDescription>
+                              Escolha uma imagem para o artigo ou informe a URL.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 my-4">
+                            {SAMPLE_IMAGES.map((url) => (
+                              <div 
+                                key={url} 
+                                className="aspect-video rounded-md overflow-hidden cursor-pointer hover:ring-2 hover:ring-brand-purple transition-all"
+                                onClick={() => handleSelectImage(url)}
+                              >
+                                <img src={url} alt="Sample" className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex gap-2 items-center">
+                            <Input 
+                              placeholder="Ou informe a URL da imagem" 
+                              value={imageUrl} 
+                              onChange={(e) => setImageUrl(e.target.value)}
+                            />
+                            <Button onClick={() => setImageDialogOpen(false)}>Confirmar</Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    {imageUrl && (
+                      <div className="relative aspect-video rounded-md overflow-hidden border border-border">
+                        <img 
+                          src={imageUrl} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover"
+                          onError={() => {
+                            toast({
+                              title: "Erro ao carregar imagem",
+                              description: "Verifique se a URL da imagem está correta",
+                              variant: "destructive"
+                            });
+                          }}
+                        />
+                        <Button 
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 opacity-70 hover:opacity-100"
+                          onClick={() => setImageUrl('')}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="summary">Resumo*</Label>
+                    <Textarea 
+                      id="summary" 
+                      value={summary} 
+                      onChange={(e) => setSummary(e.target.value)} 
+                      placeholder="Breve resumo do artigo"
+                      className="resize-none"
+                      rows={2}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="content">Conteúdo (HTML)*</Label>
+                    <Textarea 
+                      id="content" 
+                      value={content} 
+                      onChange={(e) => setContent(e.target.value)} 
+                      placeholder="Conteúdo em HTML do artigo"
+                      className="resize-none font-mono text-sm"
+                      rows={10}
+                    />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="preview">
+                  {content ? (
+                    <div className="border rounded-lg p-6 prose prose-sm max-w-none">
+                      <h1 className="text-2xl font-bold mb-4">{title || 'Título do Artigo'}</h1>
+                      {imageUrl && (
+                        <img src={imageUrl} alt={title} className="w-full rounded-lg mb-4 max-h-80 object-cover" />
+                      )}
+                      <div dangerouslySetInnerHTML={{ __html: content }} />
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <AlertCircle className="mx-auto h-12 w-12 mb-4" />
+                      <p>Sem conteúdo para visualizar.</p>
+                      <p>Adicione algum conteúdo HTML para ver o preview.</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+              
+              <DialogFooter className="mt-4">
+                <Button variant="outline" onClick={() => setOpenDialog(false)} disabled={isLoading}>Cancelar</Button>
+                <Button onClick={handleSaveArticle} disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingArticle ? 'Atualizar' : 'Criar'} Artigo
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -197,83 +390,181 @@ export default function ArticlesManagement() {
             <TabsTrigger value="list">Lista de Artigos</TabsTrigger>
             <TabsTrigger value="categories">Categorias</TabsTrigger>
           </TabsList>
+          
           <TabsContent value="list" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {articles.map(article => (
-                <Card key={article.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between">
-                      <div>
-                        <div className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-secondary mb-2">
-                          {CATEGORY_LABELS[article.category]}
-                        </div>
-                        <CardTitle className="text-xl line-clamp-1">{article.title}</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription>{article.author}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm line-clamp-2 mb-4">{article.summary}</p>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline" className="flex-1">
-                        <Edit className="mr-2 h-4 w-4" /> Editar
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="destructive" className="flex-1">
-                            <Trash className="mr-2 h-4 w-4" /> Excluir
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja excluir este artigo? Esta ação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteArticle(article.id)}>
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="mb-6">
+              <h3 className="text-lg font-medium mb-2">Filtrar por categoria</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={!selectedCategory ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(undefined)}
+                  className={!selectedCategory ? "bg-brand-purple text-white" : ""}
+                >
+                  Todos ({articles.length})
+                </Button>
+                
+                {(Object.entries(CATEGORY_LABELS) as [ArticleCategory, string][]).map(([category, label]) => {
+                  const count = articles.filter(a => a.category === category).length;
+                  return (
+                    <Button
+                      key={category}
+                      variant={selectedCategory === category ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedCategory(category as ArticleCategory)}
+                      className={selectedCategory === category ? "bg-brand-purple text-white" : ""}
+                    >
+                      {label} ({count})
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
             
-            {articles.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-lg text-muted-foreground">Nenhum artigo cadastrado.</p>
-                <Button 
-                  className="mt-4" 
-                  onClick={() => setOpenDialog(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Criar primeiro artigo
-                </Button>
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
               </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {getFilteredArticles().map(article => (
+                    <Card key={article.id} className="group hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between">
+                          <div>
+                            <div className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${CATEGORY_COLORS[article.category]} mb-2`}>
+                              {CATEGORY_LABELS[article.category]}
+                            </div>
+                            <CardTitle className="text-xl line-clamp-1">{article.title}</CardTitle>
+                          </div>
+                        </div>
+                        <CardDescription className="flex justify-between">
+                          <span>{article.author}</span>
+                          <span className="text-xs opacity-70">
+                            {new Date(article.created_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {article.image_url && (
+                          <div className="w-full h-32 mb-3 rounded-md overflow-hidden">
+                            <img 
+                              src={article.image_url} 
+                              alt={article.title} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <p className="text-sm line-clamp-2 mb-4">{article.summary}</p>
+                      </CardContent>
+                      <CardFooter className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1" 
+                          onClick={() => handleOpenEditDialog(article)}
+                        >
+                          <Edit className="mr-2 h-4 w-4" /> Editar
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive" className="flex-1">
+                              <Trash className="mr-2 h-4 w-4" /> Excluir
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir o artigo "{article.title}"? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteArticle(article.id)}>
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+                
+                {getFilteredArticles().length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-lg text-muted-foreground mb-2">
+                      {selectedCategory 
+                        ? `Nenhum artigo encontrado na categoria ${CATEGORY_LABELS[selectedCategory]}.` 
+                        : 'Nenhum artigo cadastrado.'}
+                    </p>
+                    <Button 
+                      className="mt-4" 
+                      onClick={() => setOpenDialog(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Criar novo artigo
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
+          
           <TabsContent value="categories" className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(CATEGORY_LABELS).map(([key, value]) => (
-                <Card key={key}>
-                  <CardHeader>
-                    <CardTitle>{value}</CardTitle>
-                    <CardDescription>
-                      {articles.filter(a => a.category === key).length} artigos
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button variant="outline" className="w-full">
-                      Ver artigos
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+              {Object.entries(CATEGORY_LABELS).map(([key, value]) => {
+                const categoryArticles = articles.filter(a => a.category === key);
+                const categoryColor = CATEGORY_COLORS[key as ArticleCategory];
+                return (
+                  <Card key={key}>
+                    <CardHeader>
+                      <div className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${categoryColor} mb-2`}>
+                        {value}
+                      </div>
+                      <CardTitle className="flex justify-between items-center">
+                        <span>{value}</span>
+                        <span className="text-lg font-normal bg-secondary rounded-full w-8 h-8 flex items-center justify-center">
+                          {categoryArticles.length}
+                        </span>
+                      </CardTitle>
+                      <CardDescription>
+                        {categoryArticles.length === 1
+                          ? '1 artigo nesta categoria'
+                          : `${categoryArticles.length} artigos nesta categoria`}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {categoryArticles.length > 0 ? (
+                        <ul className="space-y-1 text-sm">
+                          {categoryArticles.slice(0, 3).map(article => (
+                            <li key={article.id} className="truncate">
+                              • {article.title}
+                            </li>
+                          ))}
+                          {categoryArticles.length > 3 && (
+                            <li className="text-muted-foreground text-xs">
+                              + {categoryArticles.length - 3} outros artigos...
+                            </li>
+                          )}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Nenhum artigo nesta categoria.</p>
+                      )}
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setSelectedCategory(key as ArticleCategory)}
+                      >
+                        Ver artigos
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
         </Tabs>
