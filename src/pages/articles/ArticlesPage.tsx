@@ -4,7 +4,7 @@ import { getArticles } from '@/services/articleService';
 import { ArticleCard } from '@/components/articles/ArticleCard';
 import { CategoryFilter } from '@/components/articles/CategoryFilter';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { ArticleCategory } from '@/types/article';
+import { ArticleCategory, DEFAULT_CATEGORIES } from '@/types/article';
 
 export default function ArticlesPage() {
   const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | undefined>(undefined);
@@ -27,6 +27,7 @@ export default function ArticlesPage() {
         {/* Filter section */}
         <div className="mb-6">
           <CategoryFilter 
+            categories={DEFAULT_CATEGORIES}
             selectedCategory={selectedCategory} 
             onSelectCategory={setSelectedCategory} 
           />
@@ -35,7 +36,7 @@ export default function ArticlesPage() {
         {/* Articles grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {articles.map(article => (
-            <ArticleCard key={article.id} article={article} />
+            <ArticleCard key={article.id} article={article} categories={DEFAULT_CATEGORIES} />
           ))}
         </div>
 

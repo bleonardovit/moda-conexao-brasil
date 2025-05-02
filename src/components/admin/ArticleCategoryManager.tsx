@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
-import { Edit, Plus, Trash } from 'lucide-react';
+import { Check, Edit, Plus, Trash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export interface CategoryColorOption {

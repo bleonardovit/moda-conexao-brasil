@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getArticleById } from '@/services/articleService';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Article, CATEGORY_LABELS } from '@/types/article';
+import { Article, getCategoryLabel, DEFAULT_CATEGORIES } from '@/types/article';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 
 export default function ArticleDetailPage() {
@@ -71,7 +71,7 @@ export default function ArticleDetailPage() {
 
         <div className="glass-morphism rounded-lg border-white/10 p-6 mb-6">
           <div className="inline-block px-3 py-1 text-sm font-medium rounded-full bg-brand-purple/20 text-brand-purple mb-4">
-            {CATEGORY_LABELS[article.category]}
+            {getCategoryLabel(article.category, DEFAULT_CATEGORIES)}
           </div>
           
           <h1 className="text-3xl font-bold mb-4">{article.title}</h1>
