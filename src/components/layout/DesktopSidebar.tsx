@@ -1,6 +1,6 @@
 
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Heart, User, LayoutDashboard, Settings, Users, FileText } from 'lucide-react';
+import { Home, Search, Heart, User, LayoutDashboard, Settings, Users, FileText, Book } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useEffect, useState } from 'react';
 
@@ -32,6 +32,11 @@ export function DesktopSidebar() {
       path: '/favorites'
     }, 
     {
+      icon: Book,
+      label: 'Dicas & Conteúdo',
+      path: '/articles'
+    }, 
+    {
       icon: User,
       label: 'Perfil',
       path: '/profile'
@@ -59,6 +64,11 @@ export function DesktopSidebar() {
       icon: FileText,
       label: 'Relatórios',
       path: '/admin/reports'
+    },
+    {
+      icon: Book,
+      label: 'Gerenciar Artigos',
+      path: '/admin/articles'
     }
   ];
 

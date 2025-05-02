@@ -22,11 +22,14 @@ import SupplierDetail from "./pages/suppliers/SupplierDetail";
 import Profile from "./pages/profile/Profile";
 import Favorites from "./pages/favorites/Favorites";
 import SearchPage from "./pages/search/SearchPage";
+import ArticlesPage from "./pages/articles/ArticlesPage";
+import ArticleDetailPage from "./pages/articles/ArticleDetailPage";
 
 // Páginas administrativas
 import UsersManagement from "./pages/admin/UsersManagement";
 import SuppliersManagement from "./pages/admin/SuppliersManagement";
 import Reports from "./pages/admin/Reports";
+import ArticlesManagement from "./pages/admin/ArticlesManagement";
 
 const queryClient = new QueryClient();
 
@@ -184,6 +187,24 @@ const AppRoutes = () => {
         } 
       />
       
+      {/* Novas rotas para artigos (requerem assinatura) */}
+      <Route 
+        path="/articles" 
+        element={
+          <SubscriptionRoute>
+            <ArticlesPage />
+          </SubscriptionRoute>
+        } 
+      />
+      <Route 
+        path="/articles/:id" 
+        element={
+          <SubscriptionRoute>
+            <ArticleDetailPage />
+          </SubscriptionRoute>
+        } 
+      />
+      
       {/* Configurações */}
       <Route 
         path="/settings" 
@@ -224,6 +245,14 @@ const AppRoutes = () => {
         element={
           <AdminRoute>
             <Reports />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/articles" 
+        element={
+          <AdminRoute>
+            <ArticlesManagement />
           </AdminRoute>
         } 
       />

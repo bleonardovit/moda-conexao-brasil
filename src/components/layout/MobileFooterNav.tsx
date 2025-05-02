@@ -1,6 +1,6 @@
 
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Heart, User, LayoutDashboard } from 'lucide-react';
+import { Home, Search, Heart, User, LayoutDashboard, Book } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function MobileFooterNav() {
@@ -37,6 +37,16 @@ export function MobileFooterNav() {
       >
         <Search size={24} />
         <span className="text-xs mt-0.5">Buscar</span>
+      </Link>
+      
+      <Link 
+        to="/articles" 
+        className={`flex flex-col items-center justify-center transition-colors ${
+          isActive('/articles') ? 'text-[#9b87f5]' : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <Book size={24} />
+        <span className="text-xs mt-0.5">Conteúdo</span>
       </Link>
       
       <Link 
