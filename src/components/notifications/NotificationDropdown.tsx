@@ -11,7 +11,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuGroup,
-  DropdownMenuItem
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -164,7 +165,7 @@ export function NotificationDropdown() {
   // Versão desktop usando DropdownMenu
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenu.Trigger asChild>
+      <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="rounded-full relative">
           {unreadCount > 0 ? (
             <>
@@ -177,7 +178,7 @@ export function NotificationDropdown() {
             <Bell className="h-5 w-5" />
           )}
         </Button>
-      </DropdownMenu.Trigger>
+      </DropdownMenuTrigger>
       <DropdownMenuContent className="w-80" align="end">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notificações</span>
@@ -217,3 +218,4 @@ export function NotificationDropdown() {
     </DropdownMenu>
   );
 }
+
