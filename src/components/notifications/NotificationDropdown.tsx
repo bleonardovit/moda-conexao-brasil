@@ -61,8 +61,8 @@ export function NotificationDropdown() {
     });
   };
 
-  // Renderização de notificação
-  const renderNotification = (notification: Notification) => (
+  // Renderização de notificação para versão desktop
+  const renderNotificationItem = (notification: Notification) => (
     <DropdownMenuItem key={notification.id} asChild>
       <Link 
         to={`/notifications/${notification.id}`}
@@ -117,7 +117,26 @@ export function NotificationDropdown() {
               <div className="p-4 text-center text-muted-foreground">Carregando...</div>
             ) : notifications.length > 0 ? (
               <div className="py-2">
-                {notifications.map(renderNotification)}
+                {notifications.map(notification => (
+                  <Link 
+                    key={notification.id}
+                    to={`/notifications/${notification.id}`}
+                    className="flex flex-col gap-1 py-3 cursor-pointer hover:bg-accent px-4"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <div className="flex justify-between items-start w-full">
+                      <span className="font-medium">{notification.title}</span>
+                      {notification.read === false && (
+                        <Badge variant="outline" className="bg-primary/20 text-primary text-xs ml-2">
+                          Nova
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-muted-foreground text-xs">
+                      {formatRelativeDate(notification.created_at)}
+                    </span>
+                  </Link>
+                ))}
               </div>
             ) : (
               <div className="p-4 text-center text-muted-foreground">
@@ -145,6 +164,20 @@ export function NotificationDropdown() {
   // Versão desktop usando DropdownMenu
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu.Trigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full relative">
+          {unreadCount > 0 ? (
+            <>
+              <BellDot className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                {unreadCount}
+              </span>
+            </>
+          ) : (
+            <Bell className="h-5 w-5" />
+          )}
+        </Button>
+      </DropdownMenu.Trigger>
       <DropdownMenuContent className="w-80" align="end">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notificações</span>
@@ -160,7 +193,7 @@ export function NotificationDropdown() {
             {loading ? (
               <div className="p-4 text-center text-muted-foreground">Carregando...</div>
             ) : notifications.length > 0 ? (
-              notifications.map(renderNotification)
+              notifications.map(notification => renderNotificationItem(notification))
             ) : (
               <div className="p-4 text-center text-muted-foreground">
                 Nenhuma notificação
