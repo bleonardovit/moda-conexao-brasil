@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Table, 
@@ -46,7 +45,10 @@ import {
   Trash, 
   CreditCard,
   Calendar,
-  RefreshCcw
+  RefreshCcw,
+  Save,
+  User,
+  Phone
 } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
@@ -70,10 +72,20 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
+import { useForm } from 'react-hook-form';
 import type { User } from '@/types';
 
-// Dados de exemplo
+// Exemplo de dados mockados
 const MOCK_USERS: User[] = [
   {
     id: 'user1',
@@ -137,6 +149,18 @@ const MOCK_PAYMENTS = [
   { id: 'pay6', user_id: 'user3', amount: 'R$ 29,90', date: '2023-04-20', status: 'failed', method: 'card' },
 ];
 
+// Interfaces para os formulários
+interface EmailFormValues {
+  subject: string;
+  message: string;
+}
+
+interface UserFormValues {
+  full_name: string;
+  email: string;
+  phone: string;
+}
+
 export default function UsersManagement() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -146,11 +170,31 @@ export default function UsersManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditSubscriptionOpen, setIsEditSubscriptionOpen] = useState(false);
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Novo estado para edição de assinatura
   const [subscriptionEditData, setSubscriptionEditData] = useState({
     type: '',
     status: ''
+  });
+  
+  // Formulário para email
+  const emailForm = useForm<EmailFormValues>({
+    defaultValues: {
+      subject: '',
+      message: ''
+    }
+  });
+
+  // Formulário para edição de usuário
+  const userForm = useForm<UserFormValues>({
+    defaultValues: {
+      full_name: '',
+      email: '',
+      phone: ''
+    }
   });
   
   // Filtrar usuários com base nos critérios de pesquisa
@@ -192,21 +236,89 @@ export default function UsersManagement() {
     }
   };
 
+  // Abrir modal de envio de email
+  const openEmailDialog = (user: User) => {
+    setSelectedUser(user);
+    emailForm.reset({
+      subject: '',
+      message: `Olá ${user.full_name},\n\n`
+    });
+    setIsEmailDialogOpen(true);
+  };
+
+  // Abrir modal de edição de usuário
+  const openEditUserDialog = () => {
+    if (selectedUser) {
+      userForm.reset({
+        full_name: selectedUser.full_name,
+        email: selectedUser.email,
+        phone: selectedUser.phone || ''
+      });
+      setIsEditUserDialogOpen(true);
+    }
+  };
+
   // Salvar alterações na assinatura
   const saveSubscriptionChanges = () => {
     if (selectedUser) {
-      // Aqui seria implementada a lógica para atualizar no backend
-      console.log('Atualizando assinatura:', {
-        userId: selectedUser.id,
-        ...subscriptionEditData
-      });
+      // Simular uma atualização no backend
+      const updatedUser = {
+        ...selectedUser,
+        subscription_status: subscriptionEditData.status,
+        subscription_type: subscriptionEditData.type
+      };
 
+      // Atualizar o usuário selecionado com os novos dados
+      setSelectedUser(updatedUser);
+      
       toast({
         title: "Assinatura atualizada",
         description: `Detalhes da assinatura de ${selectedUser.full_name} foram atualizados com sucesso.`,
       });
 
       setIsEditSubscriptionOpen(false);
+    }
+  };
+
+  // Salvar alterações no usuário
+  const saveUserChanges = (data: UserFormValues) => {
+    if (selectedUser) {
+      // Simular uma atualização no backend
+      const updatedUser = {
+        ...selectedUser,
+        full_name: data.full_name,
+        email: data.email,
+        phone: data.phone
+      };
+
+      // Atualizar o usuário selecionado com os novos dados
+      setSelectedUser(updatedUser);
+      
+      toast({
+        title: "Usuário atualizado",
+        description: `Dados do usuário ${data.full_name} foram atualizados com sucesso.`,
+      });
+
+      setIsEditUserDialogOpen(false);
+    }
+  };
+
+  // Enviar email
+  const sendEmail = (data: EmailFormValues) => {
+    if (selectedUser) {
+      // Simular envio de email
+      console.log('Enviando email:', {
+        to: selectedUser.email,
+        ...data
+      });
+      
+      toast({
+        title: "Email enviado",
+        description: `Email enviado com sucesso para ${selectedUser.full_name}.`,
+      });
+
+      setIsEmailDialogOpen(false);
+      emailForm.reset();
     }
   };
 
@@ -243,37 +355,48 @@ export default function UsersManagement() {
   
   // Exportar lista de usuários em formato CSV
   const exportCSV = () => {
-    const headers = ['Nome', 'Email', 'Telefone', 'Status', 'Plano', 'Data de Cadastro'];
-    const rows = filteredUsers.map(user => [
-      user.full_name,
-      user.email,
-      user.phone || '',
-      user.subscription_status,
-      user.subscription_type || '',
-      user.subscription_start_date ? formatDate(user.subscription_start_date) : ''
-    ]);
+    setIsExporting(true);
     
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'usuarios_conexao_brasil.csv');
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: "Relatório exportado",
-      description: "O relatório de usuários foi exportado com sucesso.",
-    });
+    try {
+      const headers = ['Nome', 'Email', 'Telefone', 'Status', 'Plano', 'Data de Cadastro'];
+      const rows = filteredUsers.map(user => [
+        user.full_name,
+        user.email,
+        user.phone || '',
+        user.subscription_status,
+        user.subscription_type || '',
+        user.subscription_start_date ? formatDate(user.subscription_start_date) : ''
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `usuarios_conexao_brasil_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Relatório exportado",
+        description: "O relatório de usuários foi exportado com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao exportar CSV:', error);
+      toast({
+        title: "Erro ao exportar",
+        description: "Ocorreu um erro ao exportar o relatório de usuários.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Obter histórico de pagamentos para o usuário selecionado
@@ -286,9 +409,18 @@ export default function UsersManagement() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
-          <Button onClick={exportCSV}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar CSV
+          <Button onClick={exportCSV} disabled={isExporting}>
+            {isExporting ? (
+              <>
+                <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                Exportando...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Exportar CSV
+              </>
+            )}
           </Button>
         </div>
         
@@ -408,7 +540,7 @@ export default function UsersManagement() {
                             <Edit className="mr-2 h-4 w-4" />
                             <span>Ver detalhes</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEmailDialog(user)}>
                             <Mail className="mr-2 h-4 w-4" />
                             <span>Enviar email</span>
                           </DropdownMenuItem>
@@ -495,8 +627,12 @@ export default function UsersManagement() {
                 </div>
                 
                 <div className="flex justify-end gap-2 mt-4">
-                  <Button variant="outline">Editar dados</Button>
+                  <Button variant="outline" onClick={openEditUserDialog}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar dados
+                  </Button>
                   <Button variant="destructive" onClick={confirmDeactivate}>
+                    <Trash className="mr-2 h-4 w-4" />
                     Desativar usuário
                   </Button>
                 </div>
@@ -664,29 +800,90 @@ export default function UsersManagement() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditSubscriptionOpen(false)}>Cancelar</Button>
-            <Button onClick={saveSubscriptionChanges}>Salvar alterações</Button>
+            <Button onClick={saveSubscriptionChanges}>
+              <Save className="mr-2 h-4 w-4" />
+              Salvar alterações
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de confirmação para desativação */}
-      <AlertDialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Desativar usuário</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja desativar o usuário {selectedUser?.full_name}? 
-              O usuário não terá mais acesso à plataforma.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={deactivateUser} className="bg-red-600 hover:bg-red-700">
-              Desativar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </AdminLayout>
-  );
-}
+      {/* Modal para editar dados do usuário */}
+      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar dados do usuário</DialogTitle>
+            <DialogDescription>
+              Atualizar informações pessoais de {selectedUser?.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...userForm}>
+            <form onSubmit={userForm.handleSubmit(saveUserChanges)} className="space-y-4">
+              <FormField
+                control={userForm.control}
+                name="full_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome completo</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center border rounded-md pr-3">
+                        <Input className="border-0 focus-visible:ring-0" {...field} />
+                        <User className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={userForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center border rounded-md pr-3">
+                        <Input className="border-0 focus-visible:ring-0" {...field} />
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={userForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center border rounded-md pr-3">
+                        <Input className="border-0 focus-visible:ring-0" {...field} />
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setIsEditUserDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar alterações
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para enviar email */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent className="sm:max
