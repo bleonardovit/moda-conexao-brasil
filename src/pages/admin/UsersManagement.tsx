@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Table, 
@@ -48,7 +47,7 @@ import {
   Calendar,
   RefreshCcw,
   Save,
-  User,
+  User as UserIcon,
   Phone
 } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
@@ -84,8 +83,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
-// Removed duplicate import of User type
-import type { User } from '@/types';
+import type { User, Payment } from '@/types';
 
 // Exemplo de dados mockados
 const MOCK_USERS: User[] = [
@@ -266,8 +264,8 @@ export default function UsersManagement() {
       // Simular uma atualização no backend
       const updatedUser = {
         ...selectedUser,
-        subscription_status: subscriptionEditData.status,
-        subscription_type: subscriptionEditData.type
+        subscription_status: subscriptionEditData.status as 'active' | 'inactive' | 'pending',
+        subscription_type: subscriptionEditData.type as 'monthly' | 'yearly' | undefined
       };
 
       // Atualizar o usuário selecionado com os novos dados
@@ -830,7 +828,7 @@ export default function UsersManagement() {
                     <FormControl>
                       <div className="flex items-center border rounded-md pr-3">
                         <Input className="border-0 focus-visible:ring-0" {...field} />
-                        <User className="h-4 w-4 text-muted-foreground" />
+                        <UserIcon className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -887,79 +885,3 @@ export default function UsersManagement() {
       </Dialog>
 
       {/* Modal para enviar email */}
-      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Enviar Email</DialogTitle>
-            <DialogDescription>
-              Envie um email para {selectedUser?.full_name}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...emailForm}>
-            <form onSubmit={emailForm.handleSubmit(sendEmail)} className="space-y-4">
-              <FormField
-                control={emailForm.control}
-                name="subject"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assunto</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Digite o assunto do email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={emailForm.control}
-                name="message"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mensagem</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Escreva a mensagem..." 
-                        rows={5} 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setIsEmailDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  <Mail className="mr-2 h-4 w-4" />
-                  Enviar Email
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Modal de confirmação de desativação */}
-      <AlertDialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Desativar usuário</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja desativar a conta de {selectedUser?.full_name}? Esta ação pode ser revertida posteriormente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={deactivateUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sim, desativar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </AdminLayout>
-  );
-}
