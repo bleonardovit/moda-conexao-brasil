@@ -1,15 +1,17 @@
-
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Heart, Star, ArrowRight } from 'lucide-react';
+import { Heart, Star, ArrowRight, Book } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { useFavorites } from '@/hooks/use-favorites';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Supplier } from '@/types';
+import { getArticles } from '@/services/articleService';
+import { ArticleCard } from '@/components/articles/ArticleCard';
+import { DEFAULT_CATEGORIES } from '@/types/article';
 
 // Mock data for suppliers
 const MOCK_SUPPLIERS: Supplier[] = [
@@ -199,6 +201,13 @@ export default function Home() {
   
   const popularSuppliers = MOCK_SUPPLIERS.filter(supplier => supplier.featured);
 
+  // Get recent published articles
+  const allArticles = getArticles();
+  const recentArticles = allArticles
+    .filter(article => article.published)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, isMobile ? 2 : 3);
+
   return (
     <AppLayout>
       {/* Recent Suppliers Section */}
@@ -221,7 +230,13 @@ export default function Home() {
 
       {/* Popular Suppliers Section */}
       <section className="mb-6">
-        <h2 className="text-xl md:text-2xl font-bold mb-3 text-gradient">Fornecedores Populares</h2>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-gradient">Fornecedores Populares</h2>
+          <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
+            Ver todos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
         <Carousel className="w-full">
           <CarouselContent className="-ml-2 md:-ml-4">
             {popularSuppliers.map(supplier => (
@@ -233,6 +248,32 @@ export default function Home() {
           <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
           <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
         </Carousel>
+      </section>
+
+      {/* Recent Articles Section */}
+      <section className="mb-6">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-gradient">Artigos Recentes</h2>
+          <Link to="/articles" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
+            Ver todos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {recentArticles.map(article => (
+            <div key={article.id} className="animate-fade-in">
+              <ArticleCard article={article} categories={DEFAULT_CATEGORIES} />
+            </div>
+          ))}
+        </div>
+        {recentArticles.length === 0 && (
+          <div className="text-center py-12">
+            <div className="flex flex-col items-center justify-center gap-2">
+              <Book className="h-10 w-10 text-muted-foreground" />
+              <p className="text-muted-foreground">Nenhum artigo publicado encontrado.</p>
+            </div>
+          </div>
+        )}
       </section>
     </AppLayout>
   );
