@@ -2,15 +2,16 @@
 import { Article, CategoryDefinition, getCategoryLabel, getCategoryColors } from '@/types/article';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar } from 'lucide-react';
+import { Calendar, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface ArticleCardProps {
   article: Article;
   categories: CategoryDefinition[];
+  showPublishStatus?: boolean;
 }
 
-export function ArticleCard({ article, categories }: ArticleCardProps) {
+export function ArticleCard({ article, categories, showPublishStatus = false }: ArticleCardProps) {
   const formattedDate = new Date(article.created_at).toLocaleDateString('pt-BR', {
     day: 'numeric',
     month: 'long',
@@ -34,8 +35,22 @@ export function ArticleCard({ article, categories }: ArticleCardProps) {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div>
-            <div className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${categoryColor} mb-2`}>
-              {categoryLabel}
+            <div className="flex gap-2 items-center mb-2">
+              <div className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${categoryColor}`}>
+                {categoryLabel}
+              </div>
+              {showPublishStatus && (
+                <div className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                  article.published 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {article.published 
+                    ? <><Eye className="mr-1 h-3 w-3" />Publicado</>
+                    : <><EyeOff className="mr-1 h-3 w-3" />Rascunho</>
+                  }
+                </div>
+              )}
             </div>
             <CardTitle className="text-xl mb-2 line-clamp-2">{article.title}</CardTitle>
           </div>

@@ -22,7 +22,8 @@ const mockArticles: Article[] = [
     `,
     category: 'traffic',
     author: 'Ana Silva',
-    created_at: '2025-04-15T14:30:00Z'
+    created_at: '2025-04-15T14:30:00Z',
+    published: true
   },
   {
     id: '2',
@@ -43,7 +44,8 @@ const mockArticles: Article[] = [
     `,
     category: 'instagram',
     author: 'Carlos Mendes',
-    created_at: '2025-04-10T09:15:00Z'
+    created_at: '2025-04-10T09:15:00Z',
+    published: true
   },
   {
     id: '3',
@@ -64,7 +66,8 @@ const mockArticles: Article[] = [
     `,
     category: 'finance',
     author: 'Mariana Costa',
-    created_at: '2025-04-05T16:45:00Z'
+    created_at: '2025-04-05T16:45:00Z',
+    published: true
   },
   {
     id: '4',
@@ -85,7 +88,8 @@ const mockArticles: Article[] = [
     `,
     category: 'management',
     author: 'Rafael Oliveira',
-    created_at: '2025-03-28T10:20:00Z'
+    created_at: '2025-03-28T10:20:00Z',
+    published: true
   },
   {
     id: '5',
@@ -106,7 +110,8 @@ const mockArticles: Article[] = [
     `,
     category: 'marketing',
     author: 'Juliana Mendes',
-    created_at: '2025-03-20T13:40:00Z'
+    created_at: '2025-03-20T13:40:00Z',
+    published: true
   },
   {
     id: '6',
@@ -127,7 +132,8 @@ const mockArticles: Article[] = [
     `,
     category: 'entrepreneurship',
     author: 'Pedro Almeida',
-    created_at: '2025-03-15T08:30:00Z'
+    created_at: '2025-03-15T08:30:00Z',
+    published: true
   }
 ];
 
@@ -144,7 +150,8 @@ export const createArticle = (article: Omit<Article, 'id' | 'created_at'>): Arti
   const newArticle: Article = {
     ...article,
     id: `${mockArticles.length + 1}`,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    published: article.published ?? false // Default to false if not provided
   };
   
   mockArticles.push(newArticle);
@@ -168,4 +175,13 @@ export const deleteArticle = (id: string): boolean => {
   mockArticles.length = 0;
   mockArticles.push(...filteredArticles);
   return true;
+};
+
+// Add functions to handle publishing/unpublishing
+export const publishArticle = (id: string): Article | undefined => {
+  return updateArticle(id, { published: true });
+};
+
+export const unpublishArticle = (id: string): Article | undefined => {
+  return updateArticle(id, { published: false });
 };

@@ -6,16 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getArticles, createArticle, deleteArticle, updateArticle } from '@/services/articleService';
+import { getArticles, createArticle, deleteArticle, updateArticle, publishArticle, unpublishArticle } from '@/services/articleService';
 import { Article, ArticleCategory, DEFAULT_CATEGORIES, CategoryDefinition, getCategoryLabel, getCategoryColors } from '@/types/article';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { AlertCircle, Edit, Eye, Loader2, Plus, Trash, Settings } from 'lucide-react';
+import { AlertCircle, Edit, Eye, EyeOff, Loader2, Plus, Trash, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ArticleCategoryManager } from '@/components/admin/ArticleCategoryManager';
 import { ImageUploader } from '@/components/admin/ImageUploader';
+import { Switch } from '@/components/ui/switch';
 
 export default function ArticlesManagement() {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -38,6 +39,7 @@ export default function ArticlesManagement() {
   const [category, setCategory] = useState<ArticleCategory>('entrepreneurship');
   const [author, setAuthor] = useState('');
   const [imageUrl, setImageUrl] = useState<string>('');
+  const [publishImmediately, setPublishImmediately] = useState(true);
   
   useEffect(() => {
     loadArticles();
@@ -70,6 +72,7 @@ export default function ArticlesManagement() {
     setCategory(categories[0]?.id || 'entrepreneurship');
     setAuthor('');
     setImageUrl('');
+    setPublishImmediately(true);
     setEditingArticle(null);
     setShowPreview(false);
   };
@@ -82,6 +85,7 @@ export default function ArticlesManagement() {
     setCategory(article.category);
     setAuthor(article.author);
     setImageUrl(article.image_url || '');
+    setPublishImmediately(article.published);
     setOpenDialog(true);
   };
   
@@ -106,15 +110,18 @@ export default function ArticlesManagement() {
           content,
           category,
           author,
-          image_url: imageUrl
+          image_url: imageUrl,
+          published: publishImmediately
         });
         
         if (updatedArticle) {
           setArticles(articles.map(a => a.id === updatedArticle.id ? updatedArticle : a));
           
           toast({
-            title: "Artigo atualizado",
-            description: "O artigo foi atualizado com sucesso!"
+            title: updatedArticle.published ? "Artigo atualizado e publicado" : "Rascunho atualizado",
+            description: updatedArticle.published 
+              ? "O artigo foi atualizado e está visível para os usuários" 
+              : "O rascunho foi atualizado mas não está visível para os usuários"
           });
         }
       } else {
@@ -125,14 +132,17 @@ export default function ArticlesManagement() {
           content,
           category,
           author,
-          image_url: imageUrl
+          image_url: imageUrl,
+          published: publishImmediately
         });
         
         setArticles([...articles, newArticle]);
         
         toast({
-          title: "Artigo criado",
-          description: "O artigo foi criado com sucesso!"
+          title: newArticle.published ? "Artigo publicado" : "Rascunho salvo",
+          description: newArticle.published 
+            ? "O artigo foi criado e está visível para os usuários" 
+            : "O rascunho foi salvo mas não está visível para os usuários"
         });
       }
       
@@ -172,6 +182,43 @@ export default function ArticlesManagement() {
       toast({
         title: "Erro",
         description: "Ocorreu um erro ao excluir o artigo",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleTogglePublish = (article: Article) => {
+    setIsLoading(true);
+    try {
+      let updatedArticle;
+      
+      if (article.published) {
+        updatedArticle = unpublishArticle(article.id);
+        if (updatedArticle) {
+          toast({
+            title: "Artigo despublicado",
+            description: "O artigo foi movido para rascunhos e não está mais visível para os usuários."
+          });
+        }
+      } else {
+        updatedArticle = publishArticle(article.id);
+        if (updatedArticle) {
+          toast({
+            title: "Artigo publicado",
+            description: "O artigo foi publicado e agora está visível para os usuários."
+          });
+        }
+      }
+      
+      if (updatedArticle) {
+        setArticles(articles.map(a => a.id === updatedArticle!.id ? updatedArticle! : a));
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao alterar o status de publicação do artigo",
         variant: "destructive"
       });
     } finally {
@@ -339,6 +386,17 @@ export default function ArticlesManagement() {
                         rows={10}
                       />
                     </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="publish" 
+                        checked={publishImmediately} 
+                        onCheckedChange={setPublishImmediately} 
+                      />
+                      <Label htmlFor="publish" className="cursor-pointer">
+                        {publishImmediately ? 'Publicar imediatamente' : 'Salvar como rascunho'}
+                      </Label>
+                    </div>
                   </TabsContent>
                   
                   <TabsContent value="preview">
@@ -364,7 +422,10 @@ export default function ArticlesManagement() {
                   <Button variant="outline" onClick={() => setOpenDialog(false)} disabled={isLoading}>Cancelar</Button>
                   <Button onClick={handleSaveArticle} disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {editingArticle ? 'Atualizar' : 'Criar'} Artigo
+                    {publishImmediately 
+                      ? (editingArticle ? 'Atualizar e publicar' : 'Criar e publicar') 
+                      : (editingArticle ? 'Salvar rascunho' : 'Salvar como rascunho')
+                    }
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -420,8 +481,20 @@ export default function ArticlesManagement() {
                       <CardHeader className="pb-2">
                         <div className="flex justify-between">
                           <div>
-                            <div className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getCategoryColors(article.category, categories)} mb-2`}>
-                              {getCategoryLabel(article.category, categories)}
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getCategoryColors(article.category, categories)}`}>
+                                {getCategoryLabel(article.category, categories)}
+                              </div>
+                              <div className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                                article.published 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {article.published 
+                                  ? <><Eye className="mr-1 h-3 w-3" />Publicado</>
+                                  : <><EyeOff className="mr-1 h-3 w-3" />Rascunho</>
+                                }
+                              </div>
                             </div>
                             <CardTitle className="text-xl line-clamp-1">{article.title}</CardTitle>
                           </div>
@@ -445,7 +518,7 @@ export default function ArticlesManagement() {
                         )}
                         <p className="text-sm line-clamp-2 mb-4">{article.summary}</p>
                       </CardContent>
-                      <CardFooter className="flex space-x-2">
+                      <CardFooter className="flex flex-wrap gap-2">
                         <Button 
                           size="sm" 
                           variant="outline" 
@@ -454,6 +527,20 @@ export default function ArticlesManagement() {
                         >
                           <Edit className="mr-2 h-4 w-4" /> Editar
                         </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant={article.published ? "outline" : "default"}
+                          className={`flex-1 ${article.published ? "" : "bg-green-600 hover:bg-green-700"}`}
+                          onClick={() => handleTogglePublish(article)}
+                        >
+                          {article.published ? (
+                            <><EyeOff className="mr-2 h-4 w-4" />Despublicar</>
+                          ) : (
+                            <><Eye className="mr-2 h-4 w-4" />Publicar</>
+                          )}
+                        </Button>
+                        
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="sm" variant="destructive" className="flex-1">
@@ -503,6 +590,9 @@ export default function ArticlesManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {categories.map((cat) => {
                 const categoryArticles = articles.filter(a => a.category === cat.id);
+                const publishedCount = categoryArticles.filter(a => a.published).length;
+                const draftCount = categoryArticles.length - publishedCount;
+                
                 return (
                   <Card key={cat.id}>
                     <CardHeader>
@@ -519,14 +609,25 @@ export default function ArticlesManagement() {
                         {categoryArticles.length === 1
                           ? '1 artigo nesta categoria'
                           : `${categoryArticles.length} artigos nesta categoria`}
+                        {categoryArticles.length > 0 && (
+                          <div className="mt-1 text-xs">
+                            <span className="text-green-600 flex items-center">
+                              <Eye className="h-3 w-3 mr-1" /> {publishedCount} publicados
+                            </span>
+                            <span className="text-amber-600 flex items-center">
+                              <EyeOff className="h-3 w-3 mr-1" /> {draftCount} rascunhos
+                            </span>
+                          </div>
+                        )}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       {categoryArticles.length > 0 ? (
                         <ul className="space-y-1 text-sm">
                           {categoryArticles.slice(0, 3).map(article => (
-                            <li key={article.id} className="truncate">
-                              • {article.title}
+                            <li key={article.id} className="truncate flex items-center">
+                              <span className={`w-2 h-2 rounded-full mr-2 ${article.published ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+                              {article.title}
                             </li>
                           ))}
                           {categoryArticles.length > 3 && (

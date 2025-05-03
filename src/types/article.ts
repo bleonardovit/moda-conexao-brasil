@@ -10,6 +10,7 @@ export interface Article {
   author: string;
   created_at: string;
   image_url?: string;
+  published: boolean; // Added published status
 }
 
 export interface CategoryDefinition {
