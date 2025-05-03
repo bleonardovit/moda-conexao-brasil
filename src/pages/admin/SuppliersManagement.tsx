@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save, Upload, Plane, Bus } from 'lucide-react';
+import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save, Upload, Plane, Bus, Download } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
   Select, 
