@@ -47,7 +47,8 @@ export interface Supplier {
   payment_methods: ('pix' | 'card' | 'bankslip')[];
   requires_cnpj: boolean;
   avg_price: 'low' | 'medium' | 'high';
-  shipping_methods: ('correios' | 'delivery' | 'transporter')[];
+  shipping_methods: ('correios' | 'delivery' | 'transporter' | 'excursion' | 'air' | 'custom')[];
+  custom_shipping_method?: string;
   city: string;
   state: string;
   categories: string[];

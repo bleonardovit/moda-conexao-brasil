@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -39,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save, Upload } from 'lucide-react';
+import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save, Upload, Plane, Bus } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
   Select, 
@@ -63,9 +64,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { supplierFormSchema, type SupplierFormValues } from '@/lib/validators/supplier-form';
 import type { Supplier, Category } from '@/types';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Dados de exemplo
 const MOCK_SUPPLIERS: Supplier[] = [
@@ -98,7 +101,7 @@ const MOCK_SUPPLIERS: Supplier[] = [
     images: ['/placeholder.svg'],
     instagram: '@brindesfortaleza',
     whatsapp: '+5585999999999',
-    min_order: 'R$ 200,00',
+    min_order: '15 peças',
     payment_methods: ['pix', 'bankslip'],
     requires_cnpj: false,
     avg_price: 'low',
@@ -180,6 +183,12 @@ const STATES = [
   'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
+// Interface para erros de importação
+interface ImportError {
+  row: number;
+  errors: string[];
+}
+
 // Componente para o formulário de fornecedor
 const SupplierForm: React.FC<{
   onSave: (data: SupplierFormValues) => void;
@@ -191,7 +200,8 @@ const SupplierForm: React.FC<{
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierFormSchema),
     defaultValues: initialData ? {
-      ...initialData
+      ...initialData,
+      custom_shipping_method: initialData.custom_shipping_method || ''
     } : {
       code: '',
       name: '',
@@ -205,6 +215,7 @@ const SupplierForm: React.FC<{
       requires_cnpj: false,
       avg_price: 'medium',
       shipping_methods: ['correios'],
+      custom_shipping_method: '',
       city: '',
       state: 'SP',
       categories: [],
@@ -224,6 +235,9 @@ const SupplierForm: React.FC<{
   const handleImagesChange = (images: string[]) => {
     form.setValue('images', images);
   };
+
+  // Verificar se um método de transporte personalizado está selecionado
+  const hasCustomShipping = form.watch('shipping_methods').includes('custom');
 
   return (
     <Form {...form}>
@@ -366,8 +380,11 @@ const SupplierForm: React.FC<{
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Pedido mínimo</FormLabel>
+                    <FormDescription>
+                      Valor em reais ou quantidade de peças
+                    </FormDescription>
                     <FormControl>
-                      <Input placeholder="ex: R$ 300,00" {...field} />
+                      <Input placeholder="ex: R$ 300,00 ou 10 peças" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -390,9 +407,9 @@ const SupplierForm: React.FC<{
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="low">Baixo</SelectItem>
-                        <SelectItem value="medium">Médio</SelectItem>
-                        <SelectItem value="high">Alto</SelectItem>
+                        <SelectItem value="low">Baixo (0 a R$ 60,00)</SelectItem>
+                        <SelectItem value="medium">Médio (R$ 70,00 a R$ 140,00)</SelectItem>
+                        <SelectItem value="high">Alto (acima de R$ 150,00)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -601,11 +618,110 @@ const SupplierForm: React.FC<{
                         </div>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="shipping_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="excursion"
+                            checked={field.value?.includes('excursion')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'excursion']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'excursion'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="excursion"
+                            className="text-sm font-medium leading-none flex items-center"
+                          >
+                            <Bus className="h-3 w-3 mr-1" />
+                            Excursão
+                          </label>
+                        </div>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="shipping_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="air"
+                            checked={field.value?.includes('air')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'air']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'air'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="air"
+                            className="text-sm font-medium leading-none flex items-center"
+                          >
+                            <Plane className="h-3 w-3 mr-1" />
+                            Aéreo
+                          </label>
+                        </div>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="shipping_methods"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="custom"
+                            checked={field.value?.includes('custom')}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, 'custom']);
+                              } else {
+                                field.onChange(current.filter(v => v !== 'custom'));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="custom"
+                            className="text-sm font-medium leading-none"
+                          >
+                            Outro
+                          </label>
+                        </div>
+                      )}
+                    />
                   </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {hasCustomShipping && (
+              <FormField
+                control={form.control}
+                name="custom_shipping_method"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Especifique o método de envio</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Digite o método de envio personalizado" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             
             <div className="flex justify-between">
               <Button type="button" variant="outline" onClick={() => setStep('basic')}>
@@ -642,6 +758,7 @@ const SupplierForm: React.FC<{
                     <Select 
                       onValueChange={field.onChange} 
                       defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -668,7 +785,10 @@ const SupplierForm: React.FC<{
                   <CategorySelector
                     categories={categories}
                     selectedCategories={field.value || []}
-                    onChange={field.onChange}
+                    onChange={(value) => {
+                      field.onChange(value);
+                      form.setValue('categories', value, { shouldValidate: true });
+                    }}
                     onAddCategory={onAddCategory}
                   />
                   <FormMessage />
@@ -734,6 +854,32 @@ const SupplierForm: React.FC<{
         </Tabs>
       </form>
     </Form>
+  );
+};
+
+// Componente para exibir erros de importação
+const ImportErrorsDisplay: React.FC<{ errors: ImportError[] }> = ({ errors }) => {
+  return (
+    <div className="space-y-2 mt-4">
+      <h3 className="text-sm font-medium">Erros encontrados ({errors.length})</h3>
+      <Accordion type="single" collapsible className="w-full">
+        {errors.map((error, index) => (
+          <AccordionItem key={index} value={`item-${index}`}>
+            <AccordionTrigger className="text-red-600 hover:no-underline">
+              Linha {error.row}: {error.errors[0]}
+              {error.errors.length > 1 && ` (+ ${error.errors.length - 1} erros)`}
+            </AccordionTrigger>
+            <AccordionContent>
+              <ul className="list-disc pl-6 space-y-1">
+                {error.errors.map((err, idx) => (
+                  <li key={idx} className="text-sm text-red-600">{err}</li>
+                ))}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </div>
   );
 };
 
@@ -861,6 +1007,7 @@ export default function SuppliersManagement() {
         requires_cnpj: data.requires_cnpj,
         avg_price: data.avg_price,
         shipping_methods: data.shipping_methods,
+        custom_shipping_method: data.custom_shipping_method,
         city: data.city,
         state: data.state,
         categories: data.categories,
@@ -921,6 +1068,107 @@ export default function SuppliersManagement() {
   const getCategoryName = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     return category ? category.name : categoryId;
+  };
+
+  // Criar planilha modelo com dados de exemplo
+  const downloadTemplate = () => {
+    // Cabeçalho da planilha
+    const header = [
+      'Código',
+      'Nome',
+      'Descrição',
+      'Instagram',
+      'WhatsApp',
+      'Website',
+      'Pedido Mínimo',
+      'Métodos de Pagamento (pix,card,bankslip)',
+      'Requer CNPJ (true/false)',
+      'Preço Médio (low,medium,high)',
+      'Métodos de Envio (correios,delivery,transporter,excursion,air,custom)',
+      'Método de Envio Personalizado',
+      'Cidade',
+      'Estado',
+      'Categorias (IDs separados por vírgula)',
+      'Destacado (true/false)',
+      'Oculto (true/false)'
+    ];
+
+    // Dados de exemplo
+    const exampleData = [
+      [
+        'SP001',
+        'Moda Fashion SP',
+        'Atacado de roupas femininas com foco em tendências atuais',
+        '@modafashionsp',
+        '11999999999',
+        'https://modafashionsp.com.br',
+        'R$ 300,00',
+        'pix,card,bankslip',
+        'true',
+        'medium',
+        'correios,transporter',
+        '',
+        'São Paulo',
+        'SP',
+        '1,2',
+        'true',
+        'false'
+      ],
+      [
+        'CE001',
+        'Brindes Fortaleza',
+        'Acessórios e bijuterias para revenda',
+        '@brindesfortaleza',
+        '85999999999',
+        '',
+        '15 peças',
+        'pix,bankslip',
+        'false',
+        'low',
+        'correios',
+        '',
+        'Fortaleza',
+        'CE',
+        '4',
+        'false',
+        'false'
+      ],
+      [
+        'GO001',
+        'Plus Size Goiânia',
+        'Especializada em moda plus size feminina',
+        '@plussizegoiania',
+        '62999999999',
+        'https://plussizegoiania.com.br',
+        'R$ 500,00',
+        'pix,card',
+        'true',
+        'medium',
+        'correios,transporter,air',
+        '',
+        'Goiânia',
+        'GO',
+        '3',
+        'true',
+        'false'
+      ]
+    ];
+
+    // Criar conteúdo CSV
+    const csvContent = [
+      header.join(','),
+      ...exampleData.map(row => row.join(','))
+    ].join('\n');
+
+    // Criar e fazer download do arquivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'modelo_importacao_fornecedores.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -1078,6 +1326,18 @@ export default function SuppliersManagement() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-2">Ajuda para importação em massa</h3>
+            <p className="text-muted-foreground mb-3">
+              Para importar fornecedores em massa, você pode baixar um modelo de planilha pré-preenchido para referência. 
+              Preencha os dados seguindo o formato e importe através da página de importação em massa.
+            </p>
+            <Button variant="outline" onClick={downloadTemplate}>
+              <Download className="mr-2 h-4 w-4" />
+              Baixar modelo de planilha
+            </Button>
           </div>
         </TabsContent>
         

@@ -40,8 +40,9 @@ export const supplierFormSchema = z.object({
   requires_cnpj: z.boolean(),
   avg_price: z.enum(['low', 'medium', 'high']),
   shipping_methods: z
-    .array(z.enum(['correios', 'delivery', 'transporter']))
+    .array(z.enum(['correios', 'delivery', 'transporter', 'excursion', 'air', 'custom']))
     .min(1, 'Selecione pelo menos um método de envio'),
+  custom_shipping_method: z.string().optional(),
   city: z
     .string()
     .min(2, 'Cidade é obrigatória')
