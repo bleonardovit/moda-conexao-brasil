@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { MobileNav } from './MobileNav';
 
 export function MobileHeader() {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,27 +54,7 @@ export function MobileHeader() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="glass-morphism border-border">
-                  <div className="flex flex-col space-y-4 pt-6 px-6">
-                    <Link to="/suppliers" className="text-lg font-medium py-2 text-foreground hover:text-[#9b87f5]" onClick={() => setIsOpen(false)}>
-                      Fornecedores
-                    </Link>
-                    <Link to="/favorites" className="text-lg font-medium py-2 text-foreground hover:text-[#9b87f5]" onClick={() => setIsOpen(false)}>
-                      Favoritos
-                    </Link>
-                    <Link to="/notifications" className="text-lg font-medium py-2 text-foreground hover:text-[#9b87f5]" onClick={() => setIsOpen(false)}>
-                      Notificações
-                    </Link>
-                    <Link to="/profile" className="text-lg font-medium py-2 text-foreground hover:text-[#9b87f5]" onClick={() => setIsOpen(false)}>
-                      Meu Perfil
-                    </Link>
-                    <hr className="border-border" />
-                    <Button className="w-full bg-[#9b87f5] hover:bg-[#9b87f5]/80 text-white" onClick={() => {
-                      setIsOpen(false);
-                      // Adicionar lógica de logout
-                    }}>
-                      Sair
-                    </Button>
-                  </div>
+                  <MobileNav />
                 </SheetContent>
               </Sheet>
             </div>

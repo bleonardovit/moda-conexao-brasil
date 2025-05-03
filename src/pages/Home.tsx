@@ -10,6 +10,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext
 import { useFavorites } from '@/hooks/use-favorites';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Supplier } from '@/types';
+import { Article } from '@/types/article';
 
 // Mock data for suppliers
 const MOCK_SUPPLIERS: Supplier[] = [
@@ -125,6 +126,55 @@ const MOCK_SUPPLIERS: Supplier[] = [
   }
 ];
 
+// Mock data for articles
+const MOCK_ARTICLES: Article[] = [
+  {
+    id: "1",
+    title: "Como encontrar os melhores fornecedores",
+    slug: "como-encontrar-os-melhores-fornecedores",
+    content: "Neste artigo, vamos explorar as melhores estratégias para encontrar fornecedores confiáveis...",
+    excerpt: "Descubra as melhores estratégias para encontrar fornecedores confiáveis para o seu negócio.",
+    featured_image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df",
+    category: "Guia",
+    tags: ["fornecedores", "negócios", "compras"],
+    author: "Maria Silva",
+    published_at: "2025-04-10T14:30:00Z",
+    created_at: "2025-04-05T10:15:00Z",
+    updated_at: "2025-04-10T14:30:00Z",
+    status: "published"
+  },
+  {
+    id: "2",
+    title: "Negociando com fornecedores: dicas essenciais",
+    slug: "negociando-com-fornecedores-dicas-essenciais",
+    content: "A negociação com fornecedores é uma habilidade crucial para qualquer empresário...",
+    excerpt: "Aprenda técnicas eficazes de negociação para obter melhores condições com seus fornecedores.",
+    featured_image: "https://images.unsplash.com/photo-1573164713988-8665fc963095",
+    category: "Negociação",
+    tags: ["negociação", "fornecedores", "compras"],
+    author: "João Santos",
+    published_at: "2025-04-12T09:45:00Z",
+    created_at: "2025-04-08T16:20:00Z",
+    updated_at: "2025-04-12T09:45:00Z",
+    status: "published"
+  },
+  {
+    id: "3",
+    title: "Tendências do mercado de fornecimento para 2025",
+    slug: "tendencias-do-mercado-de-fornecimento-para-2025",
+    content: "O mercado de fornecimento está em constante evolução. Neste artigo, analisamos as principais tendências...",
+    excerpt: "Conheça as principais tendências que estão moldando o mercado de fornecimento em 2025.",
+    featured_image: "https://images.unsplash.com/photo-1664575599618-8f6bd76fc670",
+    category: "Tendências",
+    tags: ["tendências", "mercado", "futuro", "fornecimento"],
+    author: "Ana Lima",
+    published_at: "2025-04-15T11:20:00Z",
+    created_at: "2025-04-11T08:30:00Z",
+    updated_at: "2025-04-15T11:20:00Z",
+    status: "published"
+  }
+];
+
 // Component for supplier card - optimized for mobile
 const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -189,6 +239,43 @@ const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
   );
 };
 
+// Component for article card
+const ArticleCard = ({ article }: { article: Article }) => {
+  const isMobile = useIsMobile();
+  
+  return (
+    <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300">
+      <div className="relative overflow-hidden" style={{ height: isMobile ? '130px' : '160px' }}>
+        <img 
+          src={article.featured_image} 
+          alt={article.title} 
+          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+        />
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+          <Badge className="bg-[#9b87f5]/90 text-white border-0">
+            {article.category}
+          </Badge>
+        </div>
+      </div>
+      <CardContent className="p-3">
+        <h3 className="font-medium line-clamp-2 mb-2">{article.title}</h3>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-400">
+            {new Date(article.published_at).toLocaleDateString('pt-BR')}
+          </span>
+          <Link 
+            to={`/articles/${article.slug}`} 
+            className="text-[#9b87f5] hover:text-[#D946EF] text-sm font-medium transition-colors flex items-center gap-1"
+          >
+            Ler mais
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export default function Home() {
   const isMobile = useIsMobile();
   
@@ -198,6 +285,11 @@ export default function Home() {
   ).slice(0, 4);
   
   const popularSuppliers = MOCK_SUPPLIERS.filter(supplier => supplier.featured);
+  
+  // Get recent articles
+  const recentArticles = [...MOCK_ARTICLES].sort((a, b) => 
+    new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  ).slice(0, 3);
 
   return (
     <AppLayout>
@@ -221,7 +313,13 @@ export default function Home() {
 
       {/* Popular Suppliers Section */}
       <section className="mb-6">
-        <h2 className="text-xl md:text-2xl font-bold mb-3 text-gradient">Fornecedores Populares</h2>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-gradient">Fornecedores Populares</h2>
+          <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
+            Ver todos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
         <Carousel className="w-full">
           <CarouselContent className="-ml-2 md:-ml-4">
             {popularSuppliers.map(supplier => (
@@ -233,6 +331,24 @@ export default function Home() {
           <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
           <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
         </Carousel>
+      </section>
+      
+      {/* Recent Articles Section */}
+      <section className="mb-6">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-gradient">Artigos Recentes</h2>
+          <Link to="/articles" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
+            Ver todos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+          {recentArticles.map(article => (
+            <div key={article.id} className="animate-fade-in">
+              <ArticleCard article={article} />
+            </div>
+          ))}
+        </div>
       </section>
     </AppLayout>
   );

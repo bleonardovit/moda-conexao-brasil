@@ -13,6 +13,10 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { toast } from '@/hooks/use-toast';
+import { LogOut } from 'lucide-react';
+import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
+import { SubscriptionManager } from '@/components/profile/SubscriptionManager';
 import type { User } from '@/types';
 
 // Dados de exemplo
@@ -53,199 +57,150 @@ export default function Profile() {
       email: formData.email,
       phone: formData.phone
     }));
+    
+    toast({
+      title: "Sucesso!",
+      description: "Suas informações foram atualizadas."
+    });
+    
     setIsEditing(false);
   };
   
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  const handleLogout = () => {
+    // Lógica para sair da conta
+    toast({
+      title: "Saindo...",
+      description: "Você foi desconectado da sua conta."
+    });
+    
+    // Redirecionaria para a página de login
   };
   
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold">Meu Perfil</h1>
         
-        {/* Cartão de informações do usuário */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Suas Informações</CardTitle>
-            <CardDescription>
-              Gerencie suas informações pessoais
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isEditing ? (
-              // Modo de edição
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">Nome Completo</Label>
-                  <Input
-                    id="full_name"
-                    name="full_name"
-                    value={formData.full_name}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="(99) 99999-9999"
-                  />
-                </div>
-              </>
-            ) : (
-              // Modo de visualização
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-muted-foreground">Nome</h3>
-                    <p>{user.full_name}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Coluna da esquerda - Informações do usuário */}
+          <div className="md:col-span-2 space-y-6">
+            {/* Cartão de informações do usuário */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Suas Informações</CardTitle>
+                <CardDescription>
+                  Gerencie suas informações pessoais
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isEditing ? (
+                  // Modo de edição
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="full_name">Nome Completo</Label>
+                      <Input
+                        id="full_name"
+                        name="full_name"
+                        value={formData.full_name}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Telefone</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        placeholder="(99) 99999-9999"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  // Modo de visualização
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-medium text-muted-foreground">Nome</h3>
+                        <p>{user.full_name}</p>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
+                        <p>{user.email}</p>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-medium text-muted-foreground">Telefone</h3>
+                        <p>{user.phone || 'Não informado'}</p>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-medium text-muted-foreground">Último acesso</h3>
+                        <p>{user.last_login ? new Date(user.last_login).toLocaleString('pt-BR') : 'N/A'}</p>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
-                    <p>{user.email}</p>
+                )}
+              </CardContent>
+              <CardFooter>
+                {isEditing ? (
+                  <div className="flex space-x-2 w-full">
+                    <Button variant="outline" onClick={() => setIsEditing(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSave}>
+                      Salvar alterações
+                    </Button>
                   </div>
-                  
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-muted-foreground">Telefone</h3>
-                    <p>{user.phone || 'Não informado'}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-muted-foreground">Último acesso</h3>
-                    <p>{user.last_login ? new Date(user.last_login).toLocaleString('pt-BR') : 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter>
-            {isEditing ? (
-              <div className="flex space-x-2 w-full">
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleSave}>
-                  Salvar alterações
-                </Button>
-              </div>
-            ) : (
-              <Button variant="outline" onClick={() => setIsEditing(true)}>
-                Editar informações
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-        
-        {/* Cartão de informações da assinatura */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Sua Assinatura</CardTitle>
-            <CardDescription>
-              Detalhes do seu plano atual
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-medium">
-                    Plano {user.subscription_type === 'monthly' ? 'Mensal' : 'Anual'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {user.subscription_status === 'active' ? 'Ativo' : 'Inativo'}
-                  </p>
-                </div>
-                <Badge className="bg-green-500" />
-              </div>
-            </div>
+                ) : (
+                  <Button variant="outline" onClick={() => setIsEditing(true)}>
+                    Editar informações
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium text-muted-foreground">Data de Início</h3>
-                <p>{user.subscription_start_date ? formatDate(user.subscription_start_date) : 'N/A'}</p>
-              </div>
-              
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium text-muted-foreground">Próxima cobrança</h3>
-                <p>
-                  {user.subscription_start_date 
-                    ? (() => {
-                        const nextDate = new Date(user.subscription_start_date);
-                        nextDate.setMonth(nextDate.getMonth() + (user.subscription_type === 'monthly' ? 1 : 12));
-                        return formatDate(nextDate.toISOString());
-                      })()
-                    : 'N/A'
-                  }
-                </p>
-              </div>
-              
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium text-muted-foreground">Valor</h3>
-                <p>{user.subscription_type === 'monthly' ? 'R$ 49,90/mês' : 'R$ 479,90/ano'}</p>
-              </div>
-              
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                <div className="flex items-center">
-                  <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
-                  <span>Ativa</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-2">
-            <Button variant="outline" className="w-full">
-              Gerenciar assinatura
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              Você pode alterar seu plano ou método de pagamento a qualquer momento.
-            </p>
-          </CardFooter>
-        </Card>
-        
-        {/* Opções de conta */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Opções da Conta</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start">
-              Alterar senha
-            </Button>
-            <Separator />
-            <Button variant="destructive" className="w-full justify-start">
-              Sair da conta
-            </Button>
-          </CardContent>
-        </Card>
+            {/* Formulário de troca de senha */}
+            <PasswordChangeForm />
+          </div>
+          
+          {/* Coluna da direita - Assinatura e opções de conta */}
+          <div className="space-y-6">
+            {/* Gerenciador de assinatura */}
+            <SubscriptionManager user={user} />
+            
+            {/* Opções de conta */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Opções da Conta</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button 
+                  variant="destructive" 
+                  className="w-full justify-start"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-2 h-5 w-5" />
+                  Sair da conta
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </AppLayout>
-  );
-}
-
-// Componente Badge para status de assinatura
-function Badge({ className }: { className?: string }) {
-  return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${className}`}>
-      Ativo
-    </span>
   );
 }
