@@ -13,10 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { toast } from 'sonner';
 import type { User } from '@/types';
-import { ChangePasswordForm } from '@/components/profile/ChangePasswordForm';
-import { SubscriptionManager } from '@/components/profile/SubscriptionManager';
 
 // Dados de exemplo
 const MOCK_USER: User = {
@@ -39,7 +36,6 @@ export default function Profile() {
     email: user.email,
     phone: user.phone || ''
   });
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -58,13 +54,6 @@ export default function Profile() {
       phone: formData.phone
     }));
     setIsEditing(false);
-    toast.success("Informações atualizadas com sucesso");
-  };
-
-  const handleLogout = () => {
-    // Aqui seria implementada a lógica para logout
-    toast.info("Sessão encerrada");
-    // Redirecionar para página de login
   };
   
   const formatDate = (dateString: string) => {
@@ -165,8 +154,72 @@ export default function Profile() {
           </CardFooter>
         </Card>
         
-        {/* Cartão de assinatura - Agora é um componente separado */}
-        <SubscriptionManager user={user} />
+        {/* Cartão de informações da assinatura */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Sua Assinatura</CardTitle>
+            <CardDescription>
+              Detalhes do seu plano atual
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-medium">
+                    Plano {user.subscription_type === 'monthly' ? 'Mensal' : 'Anual'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {user.subscription_status === 'active' ? 'Ativo' : 'Inativo'}
+                  </p>
+                </div>
+                <Badge className="bg-green-500" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-muted-foreground">Data de Início</h3>
+                <p>{user.subscription_start_date ? formatDate(user.subscription_start_date) : 'N/A'}</p>
+              </div>
+              
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-muted-foreground">Próxima cobrança</h3>
+                <p>
+                  {user.subscription_start_date 
+                    ? (() => {
+                        const nextDate = new Date(user.subscription_start_date);
+                        nextDate.setMonth(nextDate.getMonth() + (user.subscription_type === 'monthly' ? 1 : 12));
+                        return formatDate(nextDate.toISOString());
+                      })()
+                    : 'N/A'
+                  }
+                </p>
+              </div>
+              
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-muted-foreground">Valor</h3>
+                <p>{user.subscription_type === 'monthly' ? 'R$ 49,90/mês' : 'R$ 479,90/ano'}</p>
+              </div>
+              
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                <div className="flex items-center">
+                  <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
+                  <span>Ativa</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-2">
+            <Button variant="outline" className="w-full">
+              Gerenciar assinatura
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Você pode alterar seu plano ou método de pagamento a qualquer momento.
+            </p>
+          </CardFooter>
+        </Card>
         
         {/* Opções de conta */}
         <Card>
@@ -174,27 +227,25 @@ export default function Profile() {
             <CardTitle>Opções da Conta</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => setShowPasswordForm(!showPasswordForm)}
-            >
+            <Button variant="outline" className="w-full justify-start">
               Alterar senha
             </Button>
-            
-            {showPasswordForm && (
-              <div className="mt-4 p-4 border rounded-md">
-                <ChangePasswordForm onComplete={() => setShowPasswordForm(false)} />
-              </div>
-            )}
-            
             <Separator />
-            <Button variant="destructive" className="w-full justify-start" onClick={handleLogout}>
+            <Button variant="destructive" className="w-full justify-start">
               Sair da conta
             </Button>
           </CardContent>
         </Card>
       </div>
     </AppLayout>
+  );
+}
+
+// Componente Badge para status de assinatura
+function Badge({ className }: { className?: string }) {
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${className}`}>
+      Ativo
+    </span>
   );
 }
