@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext
 import { useFavorites } from '@/hooks/use-favorites';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Supplier } from '@/types';
-import { Article } from '@/types/article';
+import { Article, DEFAULT_CATEGORIES } from '@/types/article';
 
 // Mock data for suppliers
 const MOCK_SUPPLIERS: Supplier[] = [
@@ -131,47 +130,35 @@ const MOCK_ARTICLES: Article[] = [
   {
     id: "1",
     title: "Como encontrar os melhores fornecedores",
-    slug: "como-encontrar-os-melhores-fornecedores",
+    summary: "Descubra as melhores estratégias para encontrar fornecedores confiáveis para o seu negócio.",
     content: "Neste artigo, vamos explorar as melhores estratégias para encontrar fornecedores confiáveis...",
-    excerpt: "Descubra as melhores estratégias para encontrar fornecedores confiáveis para o seu negócio.",
-    featured_image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df",
-    category: "Guia",
-    tags: ["fornecedores", "negócios", "compras"],
+    category: "marketing",
     author: "Maria Silva",
-    published_at: "2025-04-10T14:30:00Z",
-    created_at: "2025-04-05T10:15:00Z",
-    updated_at: "2025-04-10T14:30:00Z",
-    status: "published"
+    created_at: "2025-04-10T14:30:00Z",
+    image_url: "https://images.unsplash.com/photo-1551836022-d5d88e9218df",
+    published: true
   },
   {
     id: "2",
     title: "Negociando com fornecedores: dicas essenciais",
-    slug: "negociando-com-fornecedores-dicas-essenciais",
+    summary: "Aprenda técnicas eficazes de negociação para obter melhores condições com seus fornecedores.",
     content: "A negociação com fornecedores é uma habilidade crucial para qualquer empresário...",
-    excerpt: "Aprenda técnicas eficazes de negociação para obter melhores condições com seus fornecedores.",
-    featured_image: "https://images.unsplash.com/photo-1573164713988-8665fc963095",
-    category: "Negociação",
-    tags: ["negociação", "fornecedores", "compras"],
+    category: "finance",
     author: "João Santos",
-    published_at: "2025-04-12T09:45:00Z",
-    created_at: "2025-04-08T16:20:00Z",
-    updated_at: "2025-04-12T09:45:00Z",
-    status: "published"
+    created_at: "2025-04-12T09:45:00Z",
+    image_url: "https://images.unsplash.com/photo-1573164713988-8665fc963095",
+    published: true
   },
   {
     id: "3",
     title: "Tendências do mercado de fornecimento para 2025",
-    slug: "tendencias-do-mercado-de-fornecimento-para-2025",
+    summary: "Conheça as principais tendências que estão moldando o mercado de fornecimento em 2025.",
     content: "O mercado de fornecimento está em constante evolução. Neste artigo, analisamos as principais tendências...",
-    excerpt: "Conheça as principais tendências que estão moldando o mercado de fornecimento em 2025.",
-    featured_image: "https://images.unsplash.com/photo-1664575599618-8f6bd76fc670",
-    category: "Tendências",
-    tags: ["tendências", "mercado", "futuro", "fornecimento"],
+    category: "entrepreneurship",
     author: "Ana Lima",
-    published_at: "2025-04-15T11:20:00Z",
-    created_at: "2025-04-11T08:30:00Z",
-    updated_at: "2025-04-15T11:20:00Z",
-    status: "published"
+    created_at: "2025-04-15T11:20:00Z",
+    image_url: "https://images.unsplash.com/photo-1664575599618-8f6bd76fc670",
+    published: true
   }
 ];
 
@@ -247,7 +234,7 @@ const ArticleCard = ({ article }: { article: Article }) => {
     <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300">
       <div className="relative overflow-hidden" style={{ height: isMobile ? '130px' : '160px' }}>
         <img 
-          src={article.featured_image} 
+          src={article.image_url} 
           alt={article.title} 
           className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
         />
@@ -261,10 +248,10 @@ const ArticleCard = ({ article }: { article: Article }) => {
         <h3 className="font-medium line-clamp-2 mb-2">{article.title}</h3>
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-400">
-            {new Date(article.published_at).toLocaleDateString('pt-BR')}
+            {new Date(article.created_at).toLocaleDateString('pt-BR')}
           </span>
           <Link 
-            to={`/articles/${article.slug}`} 
+            to={`/articles/${article.id}`} 
             className="text-[#9b87f5] hover:text-[#D946EF] text-sm font-medium transition-colors flex items-center gap-1"
           >
             Ler mais
@@ -288,7 +275,7 @@ export default function Home() {
   
   // Get recent articles
   const recentArticles = [...MOCK_ARTICLES].sort((a, b) => 
-    new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   ).slice(0, 3);
 
   return (
