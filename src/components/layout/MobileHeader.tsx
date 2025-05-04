@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -11,9 +12,13 @@ import { MobileNav } from './MobileNav';
 export function MobileHeader() {
   const [isOpen, setIsOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const location = useLocation();
+  
+  // Verificar se estamos na landing page
+  const isLandingPage = location.pathname === '/';
   
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+    <header className={`sticky top-0 z-50 w-full border-b border-border ${isLandingPage ? 'bg-white/90 backdrop-blur-md' : 'bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60'}`}>
       <div className="container flex h-14 items-center justify-between">
         {showSearch ? (
           <div className="flex-1 flex items-center gap-2">
@@ -32,15 +37,19 @@ export function MobileHeader() {
             </Link>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setShowSearch(true)}>
-                <Search className="h-5 w-5" />
-              </Button>
+              {!isLandingPage && (
+                <>
+                  <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setShowSearch(true)}>
+                    <Search className="h-5 w-5" />
+                  </Button>
+                  
+                  <ThemeToggle />
+                  
+                  <NotificationDropdown />
+                </>
+              )}
               
-              <ThemeToggle />
-              
-              <NotificationDropdown />
-              
-              <Link to="/profile">
+              <Link to={isLandingPage ? "/auth/login" : "/profile"}>
                 <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground">
                   <User className="h-5 w-5" />
                 </Button>

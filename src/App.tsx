@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +9,7 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
+import LandingPage from "./pages/LandingPage";
 
 // Páginas de autenticação
 import Login from "./pages/auth/Login";
@@ -128,12 +130,15 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Home page redirects to suppliers */}
+      {/* Landing page como rota principal */}
+      <Route path="/" element={<LandingPage />} />
+      
+      {/* Home page redirects to suppliers when authenticated */}
       <Route 
-        path="/" 
+        path="/home" 
         element={
           auth.isAuthenticated 
-            ? <Navigate to="/home" replace /> 
+            ? <Navigate to="/suppliers" replace /> 
             : <Navigate to="/auth/login" replace />
         } 
       />

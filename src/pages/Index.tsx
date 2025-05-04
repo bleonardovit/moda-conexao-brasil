@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -5,8 +6,8 @@ const Index = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Redirecionar para a página principal do app
-    navigate('/suppliers');
+    // Redirecionar para a landing page
+    navigate('/');
   }, [navigate]);
 
   return (
