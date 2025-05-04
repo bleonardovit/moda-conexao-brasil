@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, Search, User } from 'lucide-react';
@@ -47,16 +46,18 @@ export function MobileHeader() {
                 </Button>
               </Link>
               
-              <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="glass-morphism border-border">
-                  <MobileNav />
-                </SheetContent>
-              </Sheet>
+              <div className="block md:hidden">
+                <Sheet open={isOpen} onOpenChange={setIsOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="bg-gradient-to-br from-[#9b87f5] to-[#D946EF] bg-opacity-95 border-none shadow-xl">
+                    <MobileNav />
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
           </>
         )}

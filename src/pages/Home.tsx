@@ -170,11 +170,11 @@ const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
   
   return (
     <Card 
-      className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300"
+      className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <div className="relative overflow-hidden" style={{ height: isMobile ? '130px' : '180px' }}>
+      <div className="relative overflow-hidden w-full" style={{ height: isMobile ? '130px' : '180px' }}>
         <img 
           src={supplier.images[0]} 
           alt={supplier.name} 
@@ -231,8 +231,8 @@ const ArticleCard = ({ article }: { article: Article }) => {
   const isMobile = useIsMobile();
   
   return (
-    <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300">
-      <div className="relative overflow-hidden" style={{ height: isMobile ? '130px' : '160px' }}>
+    <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
+      <div className="relative overflow-hidden w-full" style={{ height: isMobile ? '130px' : '160px' }}>
         <img 
           src={article.image_url} 
           alt={article.title} 
@@ -289,9 +289,9 @@ export default function Home() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-x-auto">
           {recentSuppliers.map(supplier => (
-            <div key={supplier.id} className="animate-fade-in w-full">
+            <div key={supplier.id} className="animate-fade-in w-full max-w-full">
               <SupplierCard supplier={supplier} />
             </div>
           ))}
@@ -307,17 +307,19 @@ export default function Home() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <Carousel className="w-full">
-          <CarouselContent className="-ml-2 md:-ml-4">
-            {popularSuppliers.map(supplier => (
-              <CarouselItem key={supplier.id} className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3">
-                <SupplierCard supplier={supplier} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
-          <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
-        </Carousel>
+        <div className="w-full max-w-full overflow-x-auto">
+          <Carousel className="w-full max-w-full">
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {popularSuppliers.map(supplier => (
+                <CarouselItem key={supplier.id} className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3 w-full max-w-full">
+                  <SupplierCard supplier={supplier} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
+            <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
+          </Carousel>
+        </div>
       </section>
       
       {/* Recent Articles Section */}
@@ -329,9 +331,9 @@ export default function Home() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 w-full max-w-full overflow-x-auto">
           {recentArticles.map(article => (
-            <div key={article.id} className="animate-fade-in">
+            <div key={article.id} className="animate-fade-in w-full max-w-full">
               <ArticleCard article={article} />
             </div>
           ))}

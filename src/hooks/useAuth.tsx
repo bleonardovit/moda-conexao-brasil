@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -97,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "Bem-vindo(a) de volta.",
       });
       
-      navigate('/suppliers');
+      navigate('/home');
       return true;
     } catch (error) {
       console.error('Erro no login:', error);

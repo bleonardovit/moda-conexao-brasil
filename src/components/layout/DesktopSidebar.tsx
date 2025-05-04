@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
@@ -21,6 +20,11 @@ export function DesktopSidebar() {
       label: 'Início',
       path: '/home'
     }, 
+    {
+      icon: Users,
+      label: 'Fornecedores',
+      path: '/suppliers'
+    },
     {
       icon: Search,
       label: 'Buscar',

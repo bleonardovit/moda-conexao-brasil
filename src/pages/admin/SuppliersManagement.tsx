@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -211,10 +210,10 @@ const SupplierForm: React.FC<{
       whatsapp: '',
       website: '',
       min_order: '',
-      payment_methods: ['pix'],
+      payment_methods: [],
       requires_cnpj: false,
-      avg_price: 'medium',
-      shipping_methods: ['correios'],
+      avg_price: undefined,
+      shipping_methods: [],
       custom_shipping_method: '',
       city: '',
       state: 'SP',
@@ -1070,107 +1069,6 @@ export default function SuppliersManagement() {
     return category ? category.name : categoryId;
   };
 
-  // Criar planilha modelo com dados de exemplo
-  const downloadTemplate = () => {
-    // Cabeçalho da planilha
-    const header = [
-      'Código',
-      'Nome',
-      'Descrição',
-      'Instagram',
-      'WhatsApp',
-      'Website',
-      'Pedido Mínimo',
-      'Métodos de Pagamento (pix,card,bankslip)',
-      'Requer CNPJ (true/false)',
-      'Preço Médio (low,medium,high)',
-      'Métodos de Envio (correios,delivery,transporter,excursion,air,custom)',
-      'Método de Envio Personalizado',
-      'Cidade',
-      'Estado',
-      'Categorias (IDs separados por vírgula)',
-      'Destacado (true/false)',
-      'Oculto (true/false)'
-    ];
-
-    // Dados de exemplo
-    const exampleData = [
-      [
-        'SP001',
-        'Moda Fashion SP',
-        'Atacado de roupas femininas com foco em tendências atuais',
-        '@modafashionsp',
-        '11999999999',
-        'https://modafashionsp.com.br',
-        'R$ 300,00',
-        'pix,card,bankslip',
-        'true',
-        'medium',
-        'correios,transporter',
-        '',
-        'São Paulo',
-        'SP',
-        '1,2',
-        'true',
-        'false'
-      ],
-      [
-        'CE001',
-        'Brindes Fortaleza',
-        'Acessórios e bijuterias para revenda',
-        '@brindesfortaleza',
-        '85999999999',
-        '',
-        '15 peças',
-        'pix,bankslip',
-        'false',
-        'low',
-        'correios',
-        '',
-        'Fortaleza',
-        'CE',
-        '4',
-        'false',
-        'false'
-      ],
-      [
-        'GO001',
-        'Plus Size Goiânia',
-        'Especializada em moda plus size feminina',
-        '@plussizegoiania',
-        '62999999999',
-        'https://plussizegoiania.com.br',
-        'R$ 500,00',
-        'pix,card',
-        'true',
-        'medium',
-        'correios,transporter,air',
-        '',
-        'Goiânia',
-        'GO',
-        '3',
-        'true',
-        'false'
-      ]
-    ];
-
-    // Criar conteúdo CSV
-    const csvContent = [
-      header.join(','),
-      ...exampleData.map(row => row.join(','))
-    ].join('\n');
-
-    // Criar e fazer download do arquivo
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'modelo_importacao_fornecedores.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <AdminLayout>
       <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as any)}>
@@ -1326,18 +1224,6 @@ export default function SuppliersManagement() {
                 )}
               </TableBody>
             </Table>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Ajuda para importação em massa</h3>
-            <p className="text-muted-foreground mb-3">
-              Para importar fornecedores em massa, você pode baixar um modelo de planilha pré-preenchido para referência. 
-              Preencha os dados seguindo o formato e importe através da página de importação em massa.
-            </p>
-            <Button variant="outline" onClick={downloadTemplate}>
-              <Download className="mr-2 h-4 w-4" />
-              Baixar modelo de planilha
-            </Button>
           </div>
         </TabsContent>
         

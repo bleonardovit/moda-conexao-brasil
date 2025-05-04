@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -125,6 +124,7 @@ const CNPJ_OPTIONS = [
   { label: 'Não exige CNPJ', value: 'false' }
 ];
 
+export { MOCK_SUPPLIERS };
 export default function SuppliersList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');

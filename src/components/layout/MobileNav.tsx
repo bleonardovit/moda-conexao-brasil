@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, LogOut } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,6 +22,11 @@ export function MobileNav() {
       label: 'Início',
       path: '/home'
     }, 
+    {
+      icon: Users,
+      label: 'Fornecedores',
+      path: '/suppliers'
+    },
     {
       icon: Search,
       label: 'Buscar',

@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -89,9 +88,63 @@ export default function SuppliersBulkUpload() {
   const excelInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
   
+  // Função para normalizar strings (remover acentos e padronizar minúsculas)
+  function normalize(str: string) {
+    return (str || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\u0300-\u036f/g, "");
+  }
+  
   // Gerar template para download
   const downloadTemplate = () => {
-    const worksheet = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS]);
+    // Dados de exemplo
+    const exampleData = [
+      [
+        'F001',
+        'Moda Fashion SP',
+        'Atacado de roupas femininas com foco em tendências atuais',
+        '@modafashionsp',
+        '11999999999',
+        'https://modafashionsp.com.br',
+        'médio',
+        'Pedido mínimo R$ 300,00',
+        'São Paulo',
+        'SP',
+        'correios,transportadora',
+        'sim',
+        '10 peças',
+        'pix,cartão,boleto',
+        '1,2,3',
+        '4',
+        'F001-img1.jpg,F001-img2.jpg'
+      ],
+      [
+        'F002',
+        'Plus Size Goiânia',
+        'Especializada em moda plus size feminina',
+        '@plussizegoiania',
+        '62999999999',
+        'https://plussizegoiania.com.br',
+        'baixo',
+        'Pedido mínimo R$ 500,00',
+        'Goiânia',
+        'GO',
+        'correios,entrega',
+        'não',
+        '5 peças',
+        'pix,boleto',
+        '3,4',
+        '5',
+        'F002-img1.jpg,F002-img2.jpg,F002-img3.jpg'
+      ]
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      TEMPLATE_HEADERS,
+      ...exampleData
+    ]);
+    
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Fornecedores');
     XLSX.writeFile(workbook, 'template_fornecedores.xlsx');
@@ -245,18 +298,18 @@ export default function SuppliersBulkUpload() {
       if (!supplier.estado) supplierErrors.push('Estado é obrigatório');
       
       // Validar preço médio
-      if (!['baixo', 'medio', 'alto', 'low', 'medium', 'high'].includes(supplier.preco_medio?.toLowerCase())) {
+      if (!['baixo', 'medio', 'alto', 'low', 'medium', 'high'].includes(normalize(supplier.preco_medio))) {
         supplierErrors.push('Preço médio deve ser baixo, médio ou alto');
       }
       
       // Validar formas de envio
-      const envioArray = supplier.envio?.split(',').map(v => v.trim().toLowerCase());
+      const envioArray = supplier.envio?.split(',').map(v => normalize(v.trim()));
       if (!envioArray?.some(v => ['correios', 'transportadora', 'entrega'].includes(v))) {
         supplierErrors.push('Envio deve incluir correios, transportadora e/ou entrega');
       }
       
       // Validar formas de pagamento
-      const pagamentoArray = supplier.formas_pagamento?.split(',').map(v => v.trim().toLowerCase());
+      const pagamentoArray = supplier.formas_pagamento?.split(',').map(v => normalize(v.trim()));
       if (!pagamentoArray?.some(v => ['pix', 'cartao', 'cartão', 'boleto'].includes(v))) {
         supplierErrors.push('Formas de pagamento deve incluir pix, cartão e/ou boleto');
       }
@@ -279,6 +332,27 @@ export default function SuppliersBulkUpload() {
     setValidationErrors(errors);
     return errors;
   };
+  
+  // Função utilitária para exportar erros em CSV
+  function exportValidationErrorsToCSV(errors) {
+    if (!errors || !Object.keys(errors).length) return '';
+    const header = 'Linha,Código,Erro';
+    const lines = Object.entries(errors).flatMap(([codigo, msgs]) =>
+      (Array.isArray(msgs) ? msgs : []).map(msg => `${codigo},${msg.replace(/"/g, '""')}`)
+    );
+    return [header, ...lines].join('\n');
+  }
+
+  function downloadCSV(csvContent, filename = 'erros_importacao.csv') {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
   
   // Confirmar importação
   const confirmImport = () => {
@@ -473,6 +547,14 @@ export default function SuppliersBulkUpload() {
               <h2 className="text-xl font-semibold">Revisar dados importados</h2>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setActiveTab('upload')}>Voltar</Button>
+                {Object.keys(validationErrors).length > 0 && (
+                  <Button variant="outline" onClick={() => {
+                    const csv = exportValidationErrorsToCSV(validationErrors);
+                    downloadCSV(csv);
+                  }}>
+                    Exportar relatório de erro
+                  </Button>
+                )}
                 <Button 
                   onClick={confirmImport}
                   disabled={
