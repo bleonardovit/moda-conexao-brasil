@@ -3,13 +3,20 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ResetConfirmation() {
   const [countdown, setCountdown] = useState(10);
   const navigate = useNavigate();
+  const { isInitializing } = useAuth();
   
   // Countdown timer and auto-redirect
   useEffect(() => {
+    // Certifique-se de que o sistema de auth inicializou antes de iniciar o contador
+    if (isInitializing) {
+      return;
+    }
+    
     const timer = setInterval(() => {
       setCountdown(prevCount => {
         if (prevCount <= 1) {
@@ -22,7 +29,28 @@ export default function ResetConfirmation() {
     }, 1000);
     
     return () => clearInterval(timer);
-  }, [navigate]);
+  }, [navigate, isInitializing]);
+  
+  // Aguarde até que a inicialização seja concluída para renderizar
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-brand.dark">
+        <Card className="w-full max-w-md glass-morphism border-white/10">
+          <CardHeader className="space-y-1 text-center">
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
+              Redefinição de Senha
+            </CardTitle>
+            <CardDescription className="text-base text-slate-400">
+              Carregando...
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">

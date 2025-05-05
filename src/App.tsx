@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { ThemeProvider } from "@/hooks/use-theme";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
@@ -58,51 +59,48 @@ const App = () => {
 
 // Componente separado para rotas para usar o AuthProvider
 const AppRoutes = () => {
+  const { user, isInitializing } = useAuth();
   const [auth, setAuth] = useState({
     isAuthenticated: false,
     isAdmin: false,
     hasSubscription: true
   });
   
-  // Efeito para verificar o status de autenticação no sessionStorage
+  // Efeito para verificar o status de autenticação baseado no user do AuthProvider
   useEffect(() => {
-    const checkAuthStatus = () => {
-      const userRole = sessionStorage.getItem('user_role');
-      
-      if (userRole) {
+    // Somente atualizar o estado de auth quando a inicialização estiver completa
+    if (!isInitializing) {
+      if (user) {
         setAuth({
           isAuthenticated: true,
-          isAdmin: userRole === 'admin',
-          hasSubscription: true  // Mantendo a assinatura como true para esse exemplo
+          isAdmin: user.role === 'admin',
+          hasSubscription: user.subscription_status === 'active' || true // Temporariamente considerando todos como tendo assinatura
         });
+        console.log('Auth state atualizado: usuário autenticado');
       } else {
         setAuth({
           isAuthenticated: false,
           isAdmin: false,
           hasSubscription: true
         });
+        console.log('Auth state atualizado: sem usuário');
       }
-    };
-    
-    // Verificar status inicial
-    checkAuthStatus();
-    
-    // Escutar mudanças no sessionStorage
-    const handleStorageChange = () => {
-      checkAuthStatus();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+    }
+  }, [user, isInitializing]);
+
+  // Loading state durante inicialização
+  if (isInitializing) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-brand.dark">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white"></div>
+      </div>
+    );
+  }
 
   // Componente para rota protegida que requer autenticação
   const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (!auth.isAuthenticated) {
+      console.log('Redirecionando rota protegida para login');
       return <Navigate to="/auth/login" replace />;
     }
     return <>{children}</>;
@@ -111,10 +109,12 @@ const AppRoutes = () => {
   // Componente para rota protegida que requer assinatura ativa
   const SubscriptionRoute = ({ children }: { children: React.ReactNode }) => {
     if (!auth.isAuthenticated) {
+      console.log('Redirecionando rota de assinatura para login');
       return <Navigate to="/auth/login" replace />;
     }
     if (!auth.hasSubscription) {
       // Redirecionar para página de assinatura (a ser implementada)
+      console.log('Redirecionando para assinatura');
       return <Navigate to="/subscription" replace />;
     }
     return <>{children}</>;
@@ -123,6 +123,16 @@ const AppRoutes = () => {
   // Componente para rota protegida que requer privilégios de administrador
   const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     if (!auth.isAuthenticated || !auth.isAdmin) {
+      console.log('Redirecionando rota admin: usuário não é admin');
+      return <Navigate to="/suppliers" replace />;
+    }
+    return <>{children}</>;
+  };
+
+  // Componente para rotas públicas que devem redirecionar usuários já logados
+  const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
+    if (auth.isAuthenticated) {
+      console.log('Redirecionando rota pública: usuário já está logado');
       return <Navigate to="/suppliers" replace />;
     }
     return <>{children}</>;
@@ -143,11 +153,11 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Rotas de autenticação */}
-      <Route path="/auth/login" element={<Login />} />
-      <Route path="/auth/register" element={<Register />} />
-      <Route path="/auth/reset-password" element={<ResetPassword />} />
-      <Route path="/auth/reset-confirmation" element={<ResetConfirmation />} />
+      {/* Rotas de autenticação - apenas para usuários não autenticados */}
+      <Route path="/auth/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+      <Route path="/auth/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+      <Route path="/auth/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
+      <Route path="/auth/reset-confirmation" element={<PublicOnlyRoute><ResetConfirmation /></PublicOnlyRoute>} />
       <Route path="/auth/payment" element={<Payment />} />
       
       {/* Rotas de aplicativo protegidas (requerem assinatura) */}

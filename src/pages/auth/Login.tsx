@@ -12,43 +12,87 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localSubmitting, setLocalSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  
   const {
     login,
     isLoading,
-    user
+    user,
+    isInitializing
   } = useAuth();
   const navigate = useNavigate();
   
   // Verificar se o usuário já está autenticado e redirecionar
   useEffect(() => {
-    if (user) {
+    // Somente redirecionar se o usuário estiver autenticado e a verificação inicial de auth estiver concluída
+    if (user && !isInitializing) {
+      console.log('Usuário autenticado, redirecionando para /home');
       navigate('/home');
     }
-  }, [user, navigate]);
+  }, [user, navigate, isInitializing]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Evitar submissão duplicada
-    if (isSubmitting) return;
+    setFormError('');
     
     // Validar campos antes de submeter
-    if (!email || !password) {
+    if (!email.trim()) {
+      setFormError('Email é obrigatório');
       return;
     }
     
-    setIsSubmitting(true);
+    if (!password.trim()) {
+      setFormError('Senha é obrigatória');
+      return;
+    }
+    
+    // Evitar submissão duplicada ou durante inicialização
+    if (localSubmitting || isLoading || isInitializing) {
+      console.log('Submissão bloqueada: já está em andamento ou sistema inicializando');
+      return;
+    }
+    
+    setLocalSubmitting(true);
     try {
-      await login(email, password);
+      console.log('Iniciando processo de login para:', email);
+      const success = await login(email, password);
+      if (success) {
+        console.log('Login bem sucedido');
+        // Não precisamos navegar aqui, o useEffect vai cuidar disso
+      }
+    } catch (error) {
+      console.error('Erro no login:', error);
+      setFormError('Erro ao fazer login. Verifique suas credenciais.');
     } finally {
-      setIsSubmitting(false);
+      setLocalSubmitting(false);
     }
   };
   
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
   };
+  
+  // Aguarde até que a inicialização seja concluída para renderizar
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-brand.dark">
+        <Card className="w-full max-w-md glass-morphism border-white/10">
+          <CardHeader className="space-y-1 text-center">
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
+              Conexão Brasil
+            </CardTitle>
+            <CardDescription className="text-base text-slate-400">
+              Carregando...
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
@@ -63,6 +107,11 @@ export default function Login() {
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
+            {formError && (
+              <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-2 rounded-md text-sm">
+                {formError}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-white">Email</Label>
               <Input 
@@ -73,6 +122,7 @@ export default function Login() {
                 onChange={e => setEmail(e.target.value)} 
                 className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50" 
                 required 
+                disabled={localSubmitting || isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -91,11 +141,13 @@ export default function Login() {
                   onChange={e => setPassword(e.target.value)} 
                   className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50 pr-12" 
                   required 
+                  disabled={localSubmitting || isLoading}
                 />
                 <button 
                   type="button" 
                   onClick={toggleShowPassword} 
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  disabled={localSubmitting || isLoading}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -106,9 +158,9 @@ export default function Login() {
             <Button 
               type="submit" 
               className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" 
-              disabled={isLoading || isSubmitting}
+              disabled={localSubmitting || isLoading}
             >
-              {isLoading ? (
+              {(localSubmitting || isLoading) ? (
                 <span className="flex items-center gap-2">
                   <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
                   Entrando...

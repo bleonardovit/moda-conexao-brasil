@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isInitializing: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (fullName: string, email: string, password: string, phone?: string) => Promise<boolean>;
   logout: () => void;
@@ -18,108 +19,151 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Função auxiliar para obter o perfil do usuário
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.error('Erro ao buscar perfil:', error);
+        return null;
+      }
+      
+      return profile;
+    } catch (error) {
+      console.error('Erro ao buscar perfil:', error);
+      return null;
+    }
+  };
+
+  // Função para atualizar o último login
+  const updateLastLogin = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', userId);
+        
+      if (error) {
+        console.error('Erro ao atualizar último login:', error);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar último login:', error);
+    }
+  };
+
+  // Manipulador de mudança de estado de autenticação
+  const handleAuthChange = async (event: string, session: any) => {
+    console.log(`Evento de autenticação: ${event}`);
+    
+    if (!session) {
+      console.log('Sem sessão, definindo usuário como nulo');
+      setUser(null);
+      sessionStorage.removeItem('user_role');
+      return;
+    }
+    
+    try {
+      // Buscar dados do perfil de forma assíncrona
+      const profile = await fetchUserProfile(session.user.id);
+      
+      if (profile) {
+        // Atualizar último login se necessário
+        if (event === 'SIGNED_IN') {
+          await updateLastLogin(session.user.id);
+        }
+        
+        // Obter a role do usuário e armazenar em sessionStorage
+        const userRole = profile.role || 'user';
+        sessionStorage.setItem('user_role', userRole);
+        
+        // Combinar dados de autenticação e perfil
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          full_name: profile.full_name || session.user.user_metadata?.full_name || '',
+          phone: profile.phone || session.user.phone || '',
+          role: userRole as 'user' | 'admin',
+          subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive'
+        });
+        
+        console.log('Usuário autenticado:', session.user.email);
+      } else {
+        console.log('Perfil não encontrado para o usuário autenticado');
+        setUser(null);
+        sessionStorage.removeItem('user_role');
+      }
+    } catch (error) {
+      console.error('Erro ao processar alteração de autenticação:', error);
+    }
+  };
+
   // Check auth status and set up listener for auth changes
   useEffect(() => {
-    // First check if we already have a user in localStorage to avoid flickering
-    const storedUserRole = sessionStorage.getItem('user_role');
+    console.log('Inicializando provedor de autenticação');
     
-    const handleAuthChange = async (event: string, session: any) => {
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        setIsLoading(true);
-        
-        if (session?.user) {
-          try {
-            // Fetch user profile data from our profiles table
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            if (profileError) {
-              console.error('Error fetching profile:', profileError);
-            }
-
-            // Update last login time
-            if (profile) {
-              const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ last_login: new Date().toISOString() })
-                .eq('id', session.user.id);
-
-              if (updateError) {
-                console.error('Error updating last login time:', updateError);
-              }
-            }
-
-            // Get the user role and store it in sessionStorage for UI components
-            const userRole = profile?.role || 'user';
-            sessionStorage.setItem('user_role', userRole);
-
-            // Combine auth and profile data
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
-              phone: profile?.phone || session.user.phone || '',
-              role: userRole as 'user' | 'admin',
-              subscription_status: profile?.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive'
-            });
-          } catch (error) {
-            console.error('Error in auth state change:', error);
+    const initializeAuth = async () => {
+      setIsInitializing(true);
+      
+      try {
+        // Configurar listener de mudança de estado primeiro
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          (event, session) => {
+            console.log(`Evento de autenticação detectado: ${event}`);
+            
+            // Use setTimeout para evitar bloqueios
+            setTimeout(() => {
+              handleAuthChange(event, session);
+            }, 0);
           }
+        );
+        
+        // Verificar sessão atual
+        console.log('Verificando sessão atual');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log('Sessão existente encontrada');
+          await handleAuthChange('INITIAL_SESSION', session);
         } else {
+          console.log('Nenhuma sessão encontrada');
           setUser(null);
-          // Clear session storage when user logs out
           sessionStorage.removeItem('user_role');
         }
         
-        setIsLoading(false);
-      } else if (event === 'SIGNED_OUT') {
-        // Handle sign out
-        setUser(null);
-        sessionStorage.removeItem('user_role');
-        setIsLoading(false);
+        return subscription;
+      } catch (error) {
+        console.error('Erro durante a inicialização da autenticação:', error);
+      } finally {
+        setIsInitializing(false);
+        console.log('Inicialização de autenticação concluída');
       }
     };
-
-    // Check for initial session and set up auth listener
-    const initializeAuth = async () => {
-      setIsLoading(true);
-
-      // Set up auth listener FIRST to catch any auth events
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
-      
-      // Then check for current session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        handleAuthChange('INITIAL_SESSION', session);
-      } else {
-        setIsLoading(false);
-      }
-
-      setIsInitialized(true);
-      return subscription;
-    };
-
+    
     const subscription = initializeAuth();
     
-    // Cleanup function
     return () => {
       if (subscription && typeof subscription.then === 'function') {
-        subscription.then(sub => sub.unsubscribe());
+        subscription.then(sub => {
+          if (sub) sub.unsubscribe();
+        });
       }
     };
   }, []);
 
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
+    console.log('Tentativa de login para:', email);
+    
     if (!email || !password) {
       toast({
         variant: "destructive",
@@ -137,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        console.error('Erro no login:', error.message);
         throw error;
       }
 
@@ -145,14 +190,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "Bem-vindo(a) de volta.",
       });
       
-      navigate('/home');
       return true;
     } catch (error: any) {
       console.error('Erro no login:', error);
       toast({
         variant: "destructive",
         title: "Erro ao fazer login",
-        description: error.message || "Verifique suas credenciais e tente novamente.",
+        description: error.message === "Invalid login credentials" 
+          ? "Credenciais inválidas. Verifique seu email e senha." 
+          : error.message || "Verifique suas credenciais e tente novamente.",
       });
       return false;
     } finally {
@@ -260,6 +306,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     user,
     isLoading,
+    isInitializing,
     login,
     register,
     logout,
