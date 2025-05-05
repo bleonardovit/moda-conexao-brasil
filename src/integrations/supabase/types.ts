@@ -17,6 +17,7 @@ export type Database = {
           id: string
           last_login: string | null
           phone: string | null
+          role: string
           subscription_start_date: string | null
           subscription_status: string | null
           subscription_type: string | null
@@ -29,6 +30,7 @@ export type Database = {
           id: string
           last_login?: string | null
           phone?: string | null
+          role?: string
           subscription_start_date?: string | null
           subscription_status?: string | null
           subscription_type?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           id?: string
           last_login?: string | null
           phone?: string | null
+          role?: string
           subscription_start_date?: string | null
           subscription_status?: string | null
           subscription_type?: string | null

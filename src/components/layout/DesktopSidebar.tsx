@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
@@ -11,6 +12,17 @@ export function DesktopSidebar() {
     // Check user role from session storage
     const userRole = sessionStorage.getItem('user_role');
     setIsAdmin(userRole === 'admin');
+
+    // Setup listener for storage changes (in case role is updated elsewhere)
+    const handleStorageChange = () => {
+      const currentUserRole = sessionStorage.getItem('user_role');
+      setIsAdmin(currentUserRole === 'admin');
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Define menu items for regular users

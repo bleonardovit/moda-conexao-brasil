@@ -1,13 +1,16 @@
+
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, LogOut } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 export function MobileNav() {
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState(false);
+  const { logout } = useAuth();
   
   useEffect(() => {
     // Check user role from session storage
@@ -130,10 +133,8 @@ export function MobileNav() {
       </ScrollArea>
       <Separator />
       <div className="p-4">
-        <Button variant="outline" className="w-full justify-start" onClick={() => {
-          // Logout logic would go here
-        }}>
-          <LogOut className="mr-2 h-5 w-5" />
+        <Button variant="outline" className="w-full justify-start" onClick={logout}>
+          <LogOut className="mr-2 h-5 w-4" />
           Sair
         </Button>
       </div>

@@ -60,6 +60,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               (subscriptionStatus === 'active' || subscriptionStatus === 'pending') 
                 ? subscriptionStatus 
                 : 'inactive';
+            
+            // Get the user role and store it in sessionStorage for UI components
+            const userRole = profile?.role || 'user';
+            sessionStorage.setItem('user_role', userRole);
 
             // Combine auth and profile data
             setUser({
@@ -67,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: session.user.email || '',
               full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
               phone: profile?.phone || session.user.phone || '',
-              role: 'user', // Default role
+              role: userRole as 'user' | 'admin',
               subscription_status: validStatus
             });
           } catch (error) {
@@ -75,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           setUser(null);
+          // Clear session storage when user logs out
+          sessionStorage.removeItem('user_role');
         }
         
         setIsLoading(false);
@@ -101,13 +107,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (subscriptionStatus === 'active' || subscriptionStatus === 'pending') 
               ? subscriptionStatus 
               : 'inactive';
+          
+          // Get the user role and store it in sessionStorage for UI components
+          const userRole = profile?.role || 'user';
+          sessionStorage.setItem('user_role', userRole);
 
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
             phone: profile?.phone || session.user.phone || '',
-            role: 'user', // Default role
+            role: userRole as 'user' | 'admin',
             subscription_status: validStatus
           });
         } catch (error) {
@@ -207,6 +217,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await supabase.auth.signOut();
       setUser(null);
+      // Clear session storage when user logs out
+      sessionStorage.removeItem('user_role');
       toast({
         title: "Logout realizado",
         description: "Você saiu da sua conta com sucesso.",
