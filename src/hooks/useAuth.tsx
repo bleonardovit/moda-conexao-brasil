@@ -54,6 +54,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             }
 
+            // Ensure the subscription_status is a valid type
+            const subscriptionStatus = profile?.subscription_status || 'inactive';
+            const validStatus: 'active' | 'inactive' | 'pending' = 
+              (subscriptionStatus === 'active' || subscriptionStatus === 'pending') 
+                ? subscriptionStatus 
+                : 'inactive';
+
             // Combine auth and profile data
             setUser({
               id: session.user.id,
@@ -61,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
               phone: profile?.phone || session.user.phone || '',
               role: 'user', // Default role
-              subscription_status: profile?.subscription_status || 'inactive'
+              subscription_status: validStatus
             });
           } catch (error) {
             console.error('Error in auth state change:', error);
@@ -88,13 +95,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .eq('id', session.user.id)
             .single();
 
+          // Ensure the subscription_status is a valid type
+          const subscriptionStatus = profile?.subscription_status || 'inactive';
+          const validStatus: 'active' | 'inactive' | 'pending' = 
+            (subscriptionStatus === 'active' || subscriptionStatus === 'pending') 
+              ? subscriptionStatus 
+              : 'inactive';
+
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
             phone: profile?.phone || session.user.phone || '',
             role: 'user', // Default role
-            subscription_status: profile?.subscription_status || 'inactive'
+            subscription_status: validStatus
           });
         } catch (error) {
           console.error('Error fetching initial auth state:', error);
