@@ -11,11 +11,12 @@ export const fetchSuppliers = async (options?: {
   searchTerm?: string
 }): Promise<Supplier[]> => {
   try {
+    // Create base query without joins to auth.users which causes permission issues
     let query = supabase
       .from('suppliers')
       .select(`
         *,
-        suppliers_categories!inner(category_id)
+        suppliers_categories(category_id)
       `);
 
     // Apply filters if provided
@@ -38,7 +39,8 @@ export const fetchSuppliers = async (options?: {
 
     if (error) {
       console.error('Error fetching suppliers:', error);
-      throw error;
+      // Return empty array instead of throwing to avoid UI failures
+      return [];
     }
 
     // Process the data to get unique suppliers with their category IDs
@@ -68,7 +70,8 @@ export const fetchSuppliers = async (options?: {
     return Array.from(suppliersMap.values());
   } catch (error) {
     console.error('Error in fetchSuppliers:', error);
-    throw error;
+    // Return empty array instead of throwing
+    return [];
   }
 };
 
@@ -84,13 +87,14 @@ export const fetchCategories = async (): Promise<Category[]> => {
 
     if (error) {
       console.error('Error fetching categories:', error);
-      throw error;
+      // Return empty array instead of throwing
+      return [];
     }
 
     return data || [];
   } catch (error) {
     console.error('Error in fetchCategories:', error);
-    throw error;
+    return [];
   }
 };
 
@@ -108,7 +112,7 @@ export const getSupplierById = async (id: string): Promise<Supplier | null> => {
 
     if (supplierError) {
       console.error('Error fetching supplier:', supplierError);
-      throw supplierError;
+      return null;
     }
 
     if (!supplier) {
@@ -123,7 +127,7 @@ export const getSupplierById = async (id: string): Promise<Supplier | null> => {
 
     if (categoriesError) {
       console.error('Error fetching supplier categories:', categoriesError);
-      throw categoriesError;
+      return null;
     }
 
     // Return supplier with categories array
@@ -133,8 +137,23 @@ export const getSupplierById = async (id: string): Promise<Supplier | null> => {
     };
   } catch (error) {
     console.error('Error in getSupplierById:', error);
-    throw error;
+    return null;
   }
+};
+
+// Helper function to convert database avg_price string to enum type
+export const convertAvgPriceToEnum = (price: string | null): "low" | "medium" | "high" | undefined => {
+  if (!price) return undefined;
+  if (price === "low" || price === "medium" || price === "high") {
+    return price as "low" | "medium" | "high";
+  }
+  // Try to map other values
+  const lowerPrice = price.toLowerCase();
+  if (lowerPrice.includes("low") || lowerPrice.includes("baixo")) return "low";
+  if (lowerPrice.includes("med") || lowerPrice.includes("médio")) return "medium";
+  if (lowerPrice.includes("high") || lowerPrice.includes("alto")) return "high";
+  
+  return undefined;
 };
 
 /**

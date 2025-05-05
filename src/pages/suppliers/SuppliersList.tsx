@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Instagram, MapPin, ShoppingBag, Star, Search, Filter } from 'lucide-react';
+import { Instagram, MapPin, ShoppingBag, Star, Search, Filter, AlertTriangle } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -17,6 +17,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SuppliersList() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -24,6 +25,7 @@ export default function SuppliersList() {
   const [filteredSuppliers, setFilteredSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,19 +45,30 @@ export default function SuppliersList() {
           fetchSuppliers()
         ]);
         
-        setCategories(categoriesData);
-        setSuppliers(suppliersData);
-        setFilteredSuppliers(suppliersData);
+        if (categoriesData.length === 0 && suppliersData.length === 0) {
+          // Se ambos retornarem vazios, pode ser um problema de permissão ou conexão
+          setError('Não foi possível carregar os dados. Verifique sua conexão ou permissões.');
+        } else {
+          setCategories(categoriesData);
+          setSuppliers(suppliersData);
+          setFilteredSuppliers(suppliersData);
+        }
       } catch (err) {
         console.error('Error loading data:', err);
         setError('Erro ao carregar dados. Por favor, tente novamente.');
+        
+        toast({
+          title: "Erro de carregamento",
+          description: "Não foi possível carregar os fornecedores. Verifique se você tem as permissões necessárias.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
     
     loadData();
-  }, []);
+  }, [toast]);
   
   // Aplicar filtros quando os parâmetros de filtragem mudam
   useEffect(() => {
@@ -93,6 +106,11 @@ export default function SuppliersList() {
     return category ? category.name : '';
   };
   
+  // Tentar novamente carregamento
+  const handleRetry = () => {
+    window.location.reload();
+  };
+  
   // Renderizar placeholders de carregamento
   if (loading) {
     return (
@@ -114,8 +132,15 @@ export default function SuppliersList() {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-64">
-          <div className="text-red-500 mb-4">{error}</div>
-          <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+          <div className="text-red-500 mb-4 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            {error}
+          </div>
+          <p className="text-muted-foreground mb-4 max-w-md text-center">
+            Isso pode estar acontecendo devido a um problema de permissões no banco de dados.
+            Certifique-se de que sua conta tem acesso aos dados de fornecedores.
+          </p>
+          <Button onClick={handleRetry}>Tentar novamente</Button>
         </div>
       </AppLayout>
     );
@@ -222,12 +247,12 @@ export default function SuppliersList() {
                     </p>
                     
                     <div className="mt-3 flex flex-wrap gap-1">
-                      {supplier.categories.slice(0, 3).map(categoryId => (
+                      {supplier.categories && supplier.categories.slice(0, 3).map(categoryId => (
                         <Badge key={categoryId} variant="outline" className="text-xs">
                           {getCategoryName(categoryId)}
                         </Badge>
                       ))}
-                      {supplier.categories.length > 3 && (
+                      {supplier.categories && supplier.categories.length > 3 && (
                         <Badge variant="outline" className="text-xs">
                           +{supplier.categories.length - 3}
                         </Badge>
