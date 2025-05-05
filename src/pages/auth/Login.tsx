@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,14 +12,38 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const {
     login,
-    isLoading
+    isLoading,
+    user
   } = useAuth();
+  const navigate = useNavigate();
+  
+  // Verificar se o usuário já está autenticado e redirecionar
+  useEffect(() => {
+    if (user) {
+      navigate('/home');
+    }
+  }, [user, navigate]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(email, password);
+    
+    // Evitar submissão duplicada
+    if (isSubmitting) return;
+    
+    // Validar campos antes de submeter
+    if (!email || !password) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      await login(email, password);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const toggleShowPassword = () => {
@@ -82,7 +106,7 @@ export default function Login() {
             <Button 
               type="submit" 
               className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" 
-              disabled={isLoading}
+              disabled={isLoading || isSubmitting}
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">

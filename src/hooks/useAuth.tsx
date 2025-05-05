@@ -19,14 +19,17 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   // Check auth status and set up listener for auth changes
   useEffect(() => {
-    // Setup auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    // First check if we already have a user in localStorage to avoid flickering
+    const storedUserRole = sessionStorage.getItem('user_role');
+    
+    const handleAuthChange = async (event: string, session: any) => {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
         setIsLoading(true);
         
         if (session?.user) {
@@ -54,13 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             }
 
-            // Ensure the subscription_status is a valid type
-            const subscriptionStatus = profile?.subscription_status || 'inactive';
-            const validStatus: 'active' | 'inactive' | 'pending' = 
-              (subscriptionStatus === 'active' || subscriptionStatus === 'pending') 
-                ? subscriptionStatus 
-                : 'inactive';
-            
             // Get the user role and store it in sessionStorage for UI components
             const userRole = profile?.role || 'user';
             sessionStorage.setItem('user_role', userRole);
@@ -72,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
               phone: profile?.phone || session.user.phone || '',
               role: userRole as 'user' | 'admin',
-              subscription_status: validStatus
+              subscription_status: profile?.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive'
             });
           } catch (error) {
             console.error('Error in auth state change:', error);
@@ -84,59 +80,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         setIsLoading(false);
+      } else if (event === 'SIGNED_OUT') {
+        // Handle sign out
+        setUser(null);
+        sessionStorage.removeItem('user_role');
+        setIsLoading(false);
       }
-    );
-
-    // Get initial session
-    const initAuth = async () => {
-      setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        try {
-          // Fetch user profile data
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          // Ensure the subscription_status is a valid type
-          const subscriptionStatus = profile?.subscription_status || 'inactive';
-          const validStatus: 'active' | 'inactive' | 'pending' = 
-            (subscriptionStatus === 'active' || subscriptionStatus === 'pending') 
-              ? subscriptionStatus 
-              : 'inactive';
-          
-          // Get the user role and store it in sessionStorage for UI components
-          const userRole = profile?.role || 'user';
-          sessionStorage.setItem('user_role', userRole);
-
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
-            phone: profile?.phone || session.user.phone || '',
-            role: userRole as 'user' | 'admin',
-            subscription_status: validStatus
-          });
-        } catch (error) {
-          console.error('Error fetching initial auth state:', error);
-        }
-      }
-      
-      setIsLoading(false);
     };
 
-    initAuth();
+    // Check for initial session and set up auth listener
+    const initializeAuth = async () => {
+      setIsLoading(true);
 
+      // Set up auth listener FIRST to catch any auth events
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+      
+      // Then check for current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        handleAuthChange('INITIAL_SESSION', session);
+      } else {
+        setIsLoading(false);
+      }
+
+      setIsInitialized(true);
+      return subscription;
+    };
+
+    const subscription = initializeAuth();
+    
+    // Cleanup function
     return () => {
-      subscription.unsubscribe();
+      if (subscription && typeof subscription.then === 'function') {
+        subscription.then(sub => sub.unsubscribe());
+      }
     };
   }, []);
 
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
+    if (!email || !password) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao fazer login",
+        description: "Email e senha são obrigatórios.",
+      });
+      return false;
+    }
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
