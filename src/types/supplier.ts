@@ -13,5 +13,27 @@ export type SupplierWithCategories = Supplier & {
   categoryNames?: string[]; // Resolved category names for display
 };
 
+// Define the SupplierFormValues type for the form
+export type SupplierFormValues = {
+  code: string;
+  name: string;
+  description: string;
+  images: string[];
+  instagram?: string;
+  whatsapp?: string;
+  website?: string;
+  min_order?: string;
+  payment_methods: string[];
+  requires_cnpj: boolean;
+  avg_price?: "low" | "medium" | "high"; // Make sure it matches the enum values in the form
+  shipping_methods: string[];
+  custom_shipping_method?: string;
+  city: string;
+  state: string;
+  categories: string[];
+  featured: boolean;
+  hidden: boolean;
+};
+
 // Re-export the SupplierFormValues from the validator file to maintain consistency
-export { type SupplierFormValues } from '@/lib/validators/supplier-form';
+export { type SupplierFormValues as SupplierFormSchemaValues } from '@/lib/validators/supplier-form';

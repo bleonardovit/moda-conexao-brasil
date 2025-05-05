@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -65,8 +66,8 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
-import { supplierFormSchema, type SupplierFormValues } from '@/lib/validators/supplier-form';
-import { Supplier, Category } from '@/types/supplier';
+import { supplierFormSchema } from '@/lib/validators/supplier-form';
+import { Supplier, Category, SupplierFormValues } from '@/types/supplier';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { 
   fetchSuppliers, 
@@ -95,13 +96,16 @@ const SupplierForm: React.FC<{
   onCancel: () => void;
   initialData?: Supplier;
   categories: Category[];
-  onAddCategory: (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => void;
+  onAddCategory: (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => Promise<string>;
 }> = ({ onSave, onCancel, initialData, categories, onAddCategory }) => {
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierFormSchema),
     defaultValues: initialData ? {
       ...initialData,
-      custom_shipping_method: initialData.custom_shipping_method || ''
+      // Convert the avg_price from database string to enum value
+      avg_price: initialData.avg_price as "low" | "medium" | "high" | undefined,
+      custom_shipping_method: initialData.custom_shipping_method || '',
+      images: initialData.images || []
     } : {
       code: '',
       name: '',
@@ -299,7 +303,7 @@ const SupplierForm: React.FC<{
                     <FormLabel>Preço médio</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -954,9 +958,12 @@ export default function SuppliersManagement() {
   // Alternar destaque de fornecedor
   const toggleFeatured = async (supplier: Supplier) => {
     try {
-      const updatedData = {
+      // Create a new object with the correct avg_price type
+      const updatedData: SupplierFormValues = {
         ...supplier,
-        featured: !supplier.featured
+        avg_price: supplier.avg_price as "low" | "medium" | "high" | undefined,
+        featured: !supplier.featured,
+        images: supplier.images || []
       };
       
       const updatedSupplier = await updateSupplier(supplier.id, updatedData);
@@ -983,9 +990,12 @@ export default function SuppliersManagement() {
   // Alternar visibilidade de fornecedor
   const toggleVisibility = async (supplier: Supplier) => {
     try {
-      const updatedData = {
+      // Create a new object with the correct avg_price type
+      const updatedData: SupplierFormValues = {
         ...supplier,
-        hidden: !supplier.hidden
+        avg_price: supplier.avg_price as "low" | "medium" | "high" | undefined,
+        hidden: !supplier.hidden,
+        images: supplier.images || []
       };
       
       const updatedSupplier = await updateSupplier(supplier.id, updatedData);
@@ -1193,7 +1203,6 @@ export default function SuppliersManagement() {
         <TabsContent value="categories">
           <CategoryManagement
             categories={categories}
-            onAddCategory={addCategory}
             setCategories={setCategories}
           />
         </TabsContent>
