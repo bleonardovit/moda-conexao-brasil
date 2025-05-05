@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Table, 
@@ -66,115 +66,16 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { supplierFormSchema, type SupplierFormValues } from '@/lib/validators/supplier-form';
-import type { Supplier, Category } from '@/types';
+import { Supplier, Category } from '@/types/supplier';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-
-// Dados de exemplo
-const MOCK_SUPPLIERS: Supplier[] = [
-  {
-    id: '1',
-    code: 'SP001',
-    name: 'Moda Fashion SP',
-    description: 'Atacado de roupas femininas com foco em tendências atuais',
-    images: ['/placeholder.svg'],
-    instagram: '@modafashionsp',
-    whatsapp: '+5511999999999',
-    min_order: 'R$ 300,00',
-    payment_methods: ['pix', 'card', 'bankslip'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'delivery', 'transporter'],
-    city: 'São Paulo',
-    state: 'SP',
-    categories: ['1', '2'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '2',
-    code: 'CE001',
-    name: 'Brindes Fortaleza',
-    description: 'Acessórios e bijuterias para revenda',
-    images: ['/placeholder.svg'],
-    instagram: '@brindesfortaleza',
-    whatsapp: '+5585999999999',
-    min_order: '15 peças',
-    payment_methods: ['pix', 'bankslip'],
-    requires_cnpj: false,
-    avg_price: 'low',
-    shipping_methods: ['correios'],
-    city: 'Fortaleza',
-    state: 'CE',
-    categories: ['4'],
-    featured: false,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '3',
-    code: 'GO001',
-    name: 'Plus Size Goiânia',
-    description: 'Especializada em moda plus size feminina',
-    images: ['/placeholder.svg'],
-    instagram: '@plussizegoiania',
-    whatsapp: '+5562999999999',
-    website: 'https://plussizegoiania.com.br',
-    min_order: 'R$ 500,00',
-    payment_methods: ['pix', 'card'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'Goiânia',
-    state: 'GO',
-    categories: ['3'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  }
-];
-
-// Dados de exemplo para categorias
-const MOCK_CATEGORIES: Category[] = [
-  {
-    id: '1',
-    name: 'Casual',
-    description: 'Roupas para uso diário',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '2',
-    name: 'Fitness',
-    description: 'Roupas esportivas e fitness',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '3',
-    name: 'Plus Size',
-    description: 'Moda em tamanhos maiores',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '4',
-    name: 'Acessórios',
-    description: 'Bolsas, cintos, bijuterias etc',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '5',
-    name: 'Praia',
-    description: 'Roupas de praia e verão',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  }
-];
+import { 
+  fetchSuppliers, 
+  fetchCategories, 
+  createSupplier, 
+  updateSupplier, 
+  deleteSupplier, 
+  createCategory 
+} from '@/services/supplierService';
 
 const STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 
@@ -893,11 +794,38 @@ export default function SuppliersManagement() {
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
   
   // Dados para fornecedores e categorias
-  const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Tab atual
   const [currentTab, setCurrentTab] = useState<'suppliers' | 'categories'>('suppliers');
+  
+  // Carregar dados na inicialização
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Carregar categorias
+        const categoriesData = await fetchCategories();
+        setCategories(categoriesData);
+        
+        // Carregar fornecedores
+        const suppliersData = await fetchSuppliers();
+        setSuppliers(suppliersData);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Erro ao carregar dados. Por favor, tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
   
   // Filtragem de fornecedores
   const filteredSuppliers = suppliers.filter(supplier => {
@@ -913,24 +841,28 @@ export default function SuppliersManagement() {
   });
   
   // Função para adicionar uma categoria
-  const addCategory = (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
-    const newCategory: Category = {
-      id: `${categories.length + 1}`,
-      name: categoryData.name,
-      description: categoryData.description,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    setCategories([...categories, newCategory]);
-    
-    toast({
-      title: "Categoria adicionada",
-      description: `A categoria "${categoryData.name}" foi criada com sucesso.`,
-      variant: "default",
-    });
-    
-    return newCategory.id;
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const newCategory = await createCategory(categoryData);
+      
+      setCategories(prev => [...prev, newCategory]);
+      
+      toast({
+        title: "Categoria adicionada",
+        description: `A categoria "${categoryData.name}" foi criada com sucesso.`,
+        variant: "default",
+      });
+      
+      return newCategory.id;
+    } catch (err) {
+      console.error('Error adding category:', err);
+      toast({
+        title: "Erro ao adicionar categoria",
+        description: "Ocorreu um erro ao adicionar a categoria. Tente novamente.",
+        variant: "destructive",
+      });
+      return '';
+    }
   };
   
   // Abrir modal para editar fornecedor
@@ -954,113 +886,127 @@ export default function SuppliersManagement() {
   };
   
   // Excluir fornecedor
-  const deleteSupplier = () => {
+  const handleDeleteSupplier = async () => {
     if (supplierToDelete) {
-      const updatedSuppliers = suppliers.filter(s => s.id !== supplierToDelete.id);
-      setSuppliers(updatedSuppliers);
-      
-      toast({
-        title: "Fornecedor excluído",
-        description: `${supplierToDelete.name} foi removido com sucesso.`,
-        variant: "default",
-      });
-      
-      setIsDeleteDialogOpen(false);
-      setSupplierToDelete(null);
+      try {
+        await deleteSupplier(supplierToDelete.id);
+        
+        setSuppliers(prev => prev.filter(s => s.id !== supplierToDelete.id));
+        
+        toast({
+          title: "Fornecedor excluído",
+          description: `${supplierToDelete.name} foi removido com sucesso.`,
+          variant: "default",
+        });
+      } catch (err) {
+        console.error('Error deleting supplier:', err);
+        toast({
+          title: "Erro ao excluir fornecedor",
+          description: "Ocorreu um erro ao excluir o fornecedor. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsDeleteDialogOpen(false);
+        setSupplierToDelete(null);
+      }
     }
   };
   
   // Salvar fornecedor (novo ou editado)
-  const handleSaveSupplier = (data: SupplierFormValues) => {
-    if (isEditMode && currentSupplier) {
-      // Editar fornecedor existente
-      const updatedSuppliers = suppliers.map(s => 
-        s.id === currentSupplier.id ? { 
-          ...s, 
-          ...data, 
-          updated_at: new Date().toISOString()
-        } : s
-      );
+  const handleSaveSupplier = async (data: SupplierFormValues) => {
+    try {
+      if (isEditMode && currentSupplier) {
+        // Editar fornecedor existente
+        const updatedSupplier = await updateSupplier(currentSupplier.id, data);
+        
+        setSuppliers(prev => prev.map(s => s.id === currentSupplier.id ? updatedSupplier : s));
+        
+        toast({
+          title: "Fornecedor atualizado",
+          description: `${data.name} foi atualizado com sucesso.`,
+          variant: "default",
+        });
+      } else {
+        // Adicionar novo fornecedor
+        const newSupplier = await createSupplier(data);
+        
+        setSuppliers(prev => [...prev, newSupplier]);
+        
+        toast({
+          title: "Fornecedor adicionado",
+          description: `${data.name} foi adicionado com sucesso.`,
+          variant: "default",
+        });
+      }
       
-      setSuppliers(updatedSuppliers);
-      
+      // Fechar modal
+      setIsAddSupplierOpen(false);
+    } catch (err) {
+      console.error('Error saving supplier:', err);
       toast({
-        title: "Fornecedor atualizado",
-        description: `${data.name} foi atualizado com sucesso.`,
-        variant: "default",
-      });
-    } else {
-      // Adicionar novo fornecedor
-      // Ensure all required fields are present
-      const newSupplier: Supplier = {
-        id: `${suppliers.length + 1}`,
-        code: data.code,
-        name: data.name,
-        description: data.description,
-        images: data.images || [],
-        instagram: data.instagram || '',
-        whatsapp: data.whatsapp || '',
-        website: data.website || '',
-        min_order: data.min_order || '',
-        payment_methods: data.payment_methods,
-        requires_cnpj: data.requires_cnpj,
-        avg_price: data.avg_price,
-        shipping_methods: data.shipping_methods,
-        custom_shipping_method: data.custom_shipping_method,
-        city: data.city,
-        state: data.state,
-        categories: data.categories,
-        featured: data.featured,
-        hidden: data.hidden,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      setSuppliers([...suppliers, newSupplier]);
-      
-      toast({
-        title: "Fornecedor adicionado",
-        description: `${data.name} foi adicionado com sucesso.`,
-        variant: "default",
+        title: "Erro ao salvar fornecedor",
+        description: "Ocorreu um erro ao salvar o fornecedor. Tente novamente.",
+        variant: "destructive",
       });
     }
-    
-    // Fechar modal
-    setIsAddSupplierOpen(false);
   };
   
   // Alternar destaque de fornecedor
-  const toggleFeatured = (supplier: Supplier) => {
-    const updatedSuppliers = suppliers.map(s => 
-      s.id === supplier.id ? { ...s, featured: !s.featured } : s
-    );
-    
-    setSuppliers(updatedSuppliers);
-    
-    toast({
-      title: !supplier.featured ? "Fornecedor destacado" : "Destaque removido",
-      description: !supplier.featured 
-        ? `${supplier.name} agora aparecerá como destaque.` 
-        : `${supplier.name} não aparecerá mais como destaque.`,
-      variant: "default",
-    });
+  const toggleFeatured = async (supplier: Supplier) => {
+    try {
+      const updatedData = {
+        ...supplier,
+        featured: !supplier.featured
+      };
+      
+      const updatedSupplier = await updateSupplier(supplier.id, updatedData);
+      
+      setSuppliers(prev => prev.map(s => s.id === supplier.id ? updatedSupplier : s));
+      
+      toast({
+        title: !supplier.featured ? "Fornecedor destacado" : "Destaque removido",
+        description: !supplier.featured 
+          ? `${supplier.name} agora aparecerá como destaque.` 
+          : `${supplier.name} não aparecerá mais como destaque.`,
+        variant: "default",
+      });
+    } catch (err) {
+      console.error('Error toggling featured status:', err);
+      toast({
+        title: "Erro ao atualizar destaque",
+        description: "Ocorreu um erro ao atualizar o destaque do fornecedor. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Alternar visibilidade de fornecedor
-  const toggleVisibility = (supplier: Supplier) => {
-    const updatedSuppliers = suppliers.map(s => 
-      s.id === supplier.id ? { ...s, hidden: !s.hidden } : s
-    );
-    
-    setSuppliers(updatedSuppliers);
-    
-    toast({
-      title: supplier.hidden ? "Fornecedor visível" : "Fornecedor oculto",
-      description: supplier.hidden 
-        ? `${supplier.name} agora está visível para usuários.` 
-        : `${supplier.name} foi ocultado dos usuários.`,
-      variant: "default",
-    });
+  const toggleVisibility = async (supplier: Supplier) => {
+    try {
+      const updatedData = {
+        ...supplier,
+        hidden: !supplier.hidden
+      };
+      
+      const updatedSupplier = await updateSupplier(supplier.id, updatedData);
+      
+      setSuppliers(prev => prev.map(s => s.id === supplier.id ? updatedSupplier : s));
+      
+      toast({
+        title: supplier.hidden ? "Fornecedor visível" : "Fornecedor oculto",
+        description: supplier.hidden 
+          ? `${supplier.name} agora está visível para usuários.` 
+          : `${supplier.name} foi ocultado dos usuários.`,
+        variant: "default",
+      });
+    } catch (err) {
+      console.error('Error toggling visibility:', err);
+      toast({
+        title: "Erro ao atualizar visibilidade",
+        description: "Ocorreu um erro ao atualizar a visibilidade do fornecedor. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Obter nome da categoria a partir do ID
@@ -1068,6 +1014,29 @@ export default function SuppliersManagement() {
     const category = categories.find(c => c.id === categoryId);
     return category ? category.name : categoryId;
   };
+
+  // Exibir mensagem de carregamento se necessário
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // Exibir mensagem de erro se necessário
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center h-64">
+          <div className="text-red-500 mb-4">{error}</div>
+          <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -1078,208 +1047,3 @@ export default function SuppliersManagement() {
           </TabsTrigger>
           <TabsTrigger value="categories" className="rounded-r-md">
             Categorias
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="suppliers" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">Gerenciamento de Fornecedores</h1>
-            <div className="flex gap-2">
-              <Button variant="outline" asChild>
-                <Link to="/admin/suppliers/bulk-upload">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Importação em Massa
-                </Link>
-              </Button>
-              <Button onClick={openAddModal}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Fornecedor
-              </Button>
-            </div>
-          </div>
-          
-          {/* Filtros */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, código..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            
-            <Select 
-              value={categoryFilter} 
-              onValueChange={setCategoryFilter}
-            >
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {categories.map(category => (
-                  <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Tabela de fornecedores */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="hidden md:table-cell">Categorias</TableHead>
-                  <TableHead className="hidden sm:table-cell">Localização</TableHead>
-                  <TableHead className="hidden lg:table-cell">Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSuppliers.length > 0 ? (
-                  filteredSuppliers.map(supplier => (
-                    <TableRow key={supplier.id}>
-                      <TableCell>{supplier.code}</TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          {supplier.name}
-                          {supplier.featured && (
-                            <Star className="ml-1 h-4 w-4 text-yellow-500 fill-yellow-500" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {supplier.categories.map(categoryId => (
-                            <Badge key={categoryId} variant="outline" className="text-xs">
-                              {getCategoryName(categoryId)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {`${supplier.city}, ${supplier.state}`}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {supplier.hidden ? (
-                          <Badge variant="outline" className="text-xs bg-gray-100">Oculto</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Visível</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => openEditModal(supplier)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toggleFeatured(supplier)}>
-                              <Star className="mr-2 h-4 w-4" />
-                              {supplier.featured ? 'Remover destaque' : 'Destacar'}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toggleVisibility(supplier)}>
-                              {supplier.hidden ? (
-                                <>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Tornar visível
-                                </>
-                              ) : (
-                                <>
-                                  <EyeOff className="mr-2 h-4 w-4" />
-                                  Ocultar
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => confirmDelete(supplier)}
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      Nenhum fornecedor encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="categories" className="space-y-4">
-          <CategoryManagement 
-            categories={categories}
-            setCategories={setCategories}
-          />
-        </TabsContent>
-      </Tabs>
-      
-      {/* Modal para adicionar/editar fornecedor */}
-      <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {isEditMode ? 'Editar Fornecedor' : 'Adicionar Fornecedor'}
-            </DialogTitle>
-            <DialogDescription>
-              {isEditMode 
-                ? 'Altere os dados do fornecedor conforme necessário.' 
-                : 'Preencha os dados para adicionar um novo fornecedor.'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <SupplierForm
-            onSave={handleSaveSupplier}
-            onCancel={() => setIsAddSupplierOpen(false)}
-            initialData={currentSupplier || undefined}
-            categories={categories}
-            onAddCategory={addCategory}
-          />
-        </DialogContent>
-      </Dialog>
-      
-      {/* Modal de confirmação de exclusão */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o fornecedor{' '}
-              <span className="font-semibold">{supplierToDelete?.name}</span>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={deleteSupplier}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </AdminLayout>
-  );
-}

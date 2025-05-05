@@ -1,8 +1,15 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { fetchSuppliers, fetchCategories } from '@/services/supplierService';
+import { Supplier, Category } from '@/types/supplier';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Instagram, MapPin, ShoppingBag, Star, Search, Filter } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -10,455 +17,241 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { Input } from '@/components/ui/input';
-import { useFavorites } from '@/hooks/use-favorites';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToast } from "@/hooks/use-toast";
-import type { Supplier } from '@/types';
 
-const MOCK_SUPPLIERS: Supplier[] = [
-  {
-    id: '1',
-    code: 'SP001',
-    name: 'Moda Fashion SP',
-    description: 'Atacado de roupas femininas com foco em tendências atuais',
-    images: ['https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'],
-    instagram: '@modafashionsp',
-    whatsapp: '+5511999999999',
-    min_order: 'R$ 300,00',
-    payment_methods: ['pix', 'card', 'bankslip'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'São Paulo',
-    state: 'SP',
-    categories: ['Casual', 'Fitness'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '2',
-    code: 'CE001',
-    name: 'Brindes Fortaleza',
-    description: 'Acessórios e bijuterias para revenda',
-    images: ['https://images.unsplash.com/photo-1506744038136-46273834b3fb'],
-    instagram: '@brindesfortaleza',
-    whatsapp: '+5585999999999',
-    min_order: 'R$ 200,00',
-    payment_methods: ['pix', 'bankslip'],
-    requires_cnpj: false,
-    avg_price: 'low',
-    shipping_methods: ['correios'],
-    city: 'Fortaleza',
-    state: 'CE',
-    categories: ['Acessórios'],
-    featured: false,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '3',
-    code: 'GO001',
-    name: 'Plus Size Goiânia',
-    description: 'Especializada em moda plus size feminina',
-    images: ['https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07'],
-    instagram: '@plussizegoiania',
-    whatsapp: '+5562999999999',
-    website: 'https://plussizegoiania.com.br',
-    min_order: 'R$ 500,00',
-    payment_methods: ['pix', 'card'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'Goiânia',
-    state: 'GO',
-    categories: ['Plus Size'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  }
-];
-
-const CATEGORIES = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Casual', value: 'Casual' },
-  { label: 'Fitness', value: 'Fitness' },
-  { label: 'Plus Size', value: 'Plus Size' },
-  { label: 'Praia', value: 'Praia' },
-  { label: 'Acessórios', value: 'Acessórios' }
-];
-
-const STATES = [
-  { label: 'Todos', value: 'all' },
-  { label: 'São Paulo', value: 'SP' },
-  { label: 'Ceará', value: 'CE' },
-  { label: 'Goiás', value: 'GO' },
-  { label: 'Pernambuco', value: 'PE' }
-];
-
-// Add cities filter
-const CITIES = [
-  { label: 'Todas', value: 'all' },
-  { label: 'São Paulo', value: 'São Paulo' },
-  { label: 'Fortaleza', value: 'Fortaleza' },
-  { label: 'Goiânia', value: 'Goiânia' },
-  { label: 'Recife', value: 'Recife' }
-];
-
-const PRICE_RANGES = [
-  { label: 'Todos', value: 'all' },
-  { label: 'Baixo', value: 'low' },
-  { label: 'Médio', value: 'medium' },
-  { label: 'Alto', value: 'high' }
-];
-
-const CNPJ_OPTIONS = [
-  { label: 'Todos', value: 'all' },
-  { label: 'Exige CNPJ', value: 'true' },
-  { label: 'Não exige CNPJ', value: 'false' }
-];
-
-export { MOCK_SUPPLIERS };
 export default function SuppliersList() {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [filteredSuppliers, setFilteredSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Filtros
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [stateFilter, setStateFilter] = useState('all');
-  const [cityFilter, setCityFilter] = useState('all'); // New city filter
-  const [priceFilter, setPriceFilter] = useState('all');
-  const [cnpjFilter, setCnpjFilter] = useState('all');
-  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const { favorites, toggleFavorite, isFavorite } = useFavorites();
-  const { toast } = useToast();
-
-  const filteredSuppliers = MOCK_SUPPLIERS.filter(supplier => {
-    const matchesSearch = searchTerm === '' || 
-      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedTab, setSelectedTab] = useState<'all' | 'featured'>('all');
+  
+  // Carregar dados na inicialização
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Carregar categorias e fornecedores
+        const [categoriesData, suppliersData] = await Promise.all([
+          fetchCategories(),
+          fetchSuppliers()
+        ]);
+        
+        setCategories(categoriesData);
+        setSuppliers(suppliersData);
+        setFilteredSuppliers(suppliersData);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Erro ao carregar dados. Por favor, tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    const matchesCategory = categoryFilter === 'all' || 
-      supplier.categories.includes(categoryFilter);
+    loadData();
+  }, []);
+  
+  // Aplicar filtros quando os parâmetros de filtragem mudam
+  useEffect(() => {
+    let filtered = suppliers;
     
-    const matchesState = stateFilter === 'all' || 
-      supplier.state === stateFilter;
-    
-    const matchesCity = cityFilter === 'all' || 
-      supplier.city === cityFilter;
-    
-    const matchesPrice = priceFilter === 'all' || 
-      supplier.avg_price === priceFilter;
-      
-    const matchesCnpj = cnpjFilter === 'all' || 
-      supplier.requires_cnpj === (cnpjFilter === 'true');
-    
-    const matchesFavorites = !showOnlyFavorites || isFavorite(supplier.id);
-    
-    return matchesSearch && matchesCategory && matchesState && matchesCity && matchesPrice && matchesCnpj && matchesFavorites;
-  });
-
-  const formatAvgPrice = (price: string) => {
-    switch(price) {
-      case 'low': return 'Baixo';
-      case 'medium': return 'Médio';
-      case 'high': return 'Alto';
-      default: return 'Não informado';
+    // Filtrar por aba (todos ou destacados)
+    if (selectedTab === 'featured') {
+      filtered = filtered.filter(supplier => supplier.featured);
     }
+    
+    // Filtrar por categoria
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(supplier => 
+        supplier.categories.includes(selectedCategory)
+      );
+    }
+    
+    // Filtrar por termo de busca
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(supplier => 
+        supplier.name.toLowerCase().includes(term) ||
+        supplier.description.toLowerCase().includes(term) ||
+        supplier.city.toLowerCase().includes(term) ||
+        supplier.state.toLowerCase().includes(term)
+      );
+    }
+    
+    setFilteredSuppliers(filtered);
+  }, [suppliers, selectedTab, selectedCategory, searchTerm]);
+  
+  // Obter nome da categoria a partir do ID
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : '';
   };
-
-  const handleToggleFavorite = (supplier: Supplier, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    toggleFavorite(supplier.id);
-    
-    const action = isFavorite(supplier.id) ? 'removido dos' : 'adicionado aos';
-    
-    toast({
-      title: isFavorite(supplier.id) ? "Removido dos favoritos" : "Adicionado aos favoritos",
-      description: `${supplier.name} foi ${action} seus favoritos`,
-      duration: 2000,
-    });
-  };
-
+  
+  // Renderizar placeholders de carregamento
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="space-y-4">
+          <div className="w-full h-10 animate-pulse bg-gray-200 rounded"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-64 animate-pulse bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+  
+  // Renderizar mensagem de erro
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center h-64">
+          <div className="text-red-500 mb-4">{error}</div>
+          <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+        </div>
+      </AppLayout>
+    );
+  }
+  
   return (
     <AppLayout>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6">
+        <div className="space-y-2">
           <h1 className="text-2xl font-bold">Fornecedores</h1>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
-            className={showOnlyFavorites ? "bg-accent text-accent-foreground" : ""}
-          >
-            <Heart className={`mr-2 h-4 w-4 ${showOnlyFavorites ? "fill-current" : ""}`} />
-            Favoritos
-          </Button>
+          <p className="text-muted-foreground">
+            Encontre os melhores fornecedores para o seu negócio
+          </p>
         </div>
         
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar fornecedor..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={isFilterOpen ? "bg-accent text-accent-foreground" : ""}
-          >
-            <Filter className="mr-2 h-4 w-4" />
-            Filtros
-            {isFilterOpen ? " (ativos)" : ""}
-          </Button>
-          
-          <span className="text-sm text-muted-foreground">
-            {filteredSuppliers.length} fornecedores encontrados
-          </span>
-        </div>
-        
-        {isFilterOpen && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-muted rounded-md">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Categoria</label>
-              <Select 
-                value={categoryFilter} 
-                onValueChange={setCategoryFilter}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(category => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Estado</label>
-              <Select 
-                value={stateFilter} 
-                onValueChange={setStateFilter}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATES.map(state => (
-                    <SelectItem key={state.value} value={state.value}>
-                      {state.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* New city filter */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Cidade</label>
-              <Select 
-                value={cityFilter} 
-                onValueChange={setCityFilter}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma cidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CITIES.map(city => (
-                    <SelectItem key={city.value} value={city.value}>
-                      {city.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Faixa de Preço</label>
-              <Select 
-                value={priceFilter} 
-                onValueChange={setPriceFilter}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma faixa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRICE_RANGES.map(price => (
-                    <SelectItem key={price.value} value={price.value}>
-                      {price.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Requisito CNPJ</label>
-              <Select 
-                value={cnpjFilter} 
-                onValueChange={setCnpjFilter}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Requisito CNPJ" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CNPJ_OPTIONS.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-        
+        {/* Filtros */}
         <div className="space-y-4">
-          {filteredSuppliers.length > 0 ? (
-            filteredSuppliers.map(supplier => (
-              <Card key={supplier.id} className="overflow-hidden card-hover">
-                <div className="sm:flex">
-                  <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
-                    <img 
-                      src={supplier.images[0]} 
-                      alt={supplier.name}
-                      className="w-full h-full object-cover"
-                    />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar fornecedores..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as categorias</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <Tabs defaultValue="all" value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'all' | 'featured')}>
+            <TabsList className="grid w-full max-w-xs grid-cols-2">
+              <TabsTrigger value="all">Todos</TabsTrigger>
+              <TabsTrigger value="featured">
+                <Star className="mr-2 h-4 w-4 fill-current" />
+                Destaques
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        
+        {/* Resultados */}
+        {filteredSuppliers.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="mb-4">
+              <Filter className="h-12 w-12 mx-auto text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium">Nenhum fornecedor encontrado</h3>
+            <p className="text-muted-foreground mt-1">
+              Tente ajustar seus filtros ou buscar por outro termo
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredSuppliers.map(supplier => (
+              <Link to={`/suppliers/${supplier.id}`} key={supplier.id}>
+                <Card className="h-full overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="h-48 overflow-hidden bg-gray-100 relative">
+                    {supplier.images && supplier.images.length > 0 ? (
+                      <img 
+                        src={supplier.images[0]} 
+                        alt={supplier.name} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        <ShoppingBag className="h-12 w-12 text-gray-400" />
+                      </div>
+                    )}
+                    
+                    {supplier.featured && (
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                          <Star className="h-3 w-3 mr-1 fill-yellow-500" />
+                          Destaque
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                  <CardContent className="sm:w-2/3 md:w-3/4 p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold flex items-center">
-                          {supplier.name}
-                          {supplier.featured && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  Fornecedor em destaque
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-2">{supplier.city}, {supplier.state}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => handleToggleFavorite(supplier, e)}
-                        title={isFavorite(supplier.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-                      >
-                        <Heart 
-                          className={`h-5 w-5 ${isFavorite(supplier.id) ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
-                        />
-                        <span className="sr-only">
-                          {isFavorite(supplier.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-                        </span>
-                      </Button>
+                  
+                  <CardContent className="p-4">
+                    <h3 className="font-bold text-lg line-clamp-1">{supplier.name}</h3>
+                    
+                    <div className="mt-2 flex items-center text-muted-foreground text-sm">
+                      <MapPin className="h-4 w-4 mr-1" />
+                      <span>{supplier.city}, {supplier.state}</span>
                     </div>
                     
-                    <p className="text-sm mb-4 line-clamp-2">{supplier.description}</p>
+                    <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                      {supplier.description}
+                    </p>
                     
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {supplier.categories.map(category => {
-                        const categoryColors: Record<string, string> = {
-                          'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                          'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                          'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-                          'Acessórios': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
-                          'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
-                        };
-                        
-                        return (
-                          <Badge 
-                            key={category} 
-                            variant="outline"
-                            className={categoryColors[category] || ''}
-                          >
-                            {category}
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                      <div>
-                        <span className="font-medium">Pedido mínimo:</span> {supplier.min_order}
-                      </div>
-                      <div>
-                        <span className="font-medium">Preço médio:</span> {formatAvgPrice(supplier.avg_price)}
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {supplier.instagram && (
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={`https://instagram.com/${supplier.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
-                            <Instagram className="mr-1 h-4 w-4" />
-                            Instagram
-                          </a>
-                        </Button>
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {supplier.categories.slice(0, 3).map(categoryId => (
+                        <Badge key={categoryId} variant="outline" className="text-xs">
+                          {getCategoryName(categoryId)}
+                        </Badge>
+                      ))}
+                      {supplier.categories.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{supplier.categories.length - 3}
+                        </Badge>
                       )}
-                      
-                      {supplier.website && (
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={supplier.website} target="_blank" rel="noopener noreferrer">
-                            <LinkIcon className="mr-1 h-4 w-4" />
-                            Site
-                          </a>
-                        </Button>
-                      )}
-                      
-                      <Button size="sm" asChild>
-                        <Link to={`/suppliers/${supplier.id}`}>
-                          Ver detalhes
-                        </Link>
-                      </Button>
                     </div>
                   </CardContent>
-                </div>
-              </Card>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Nenhum fornecedor encontrado com os filtros selecionados.</p>
-              <Button 
-                variant="link" 
-                onClick={() => {
-                  setSearchTerm('');
-                  setCategoryFilter('all');
-                  setStateFilter('all');
-                  setCityFilter('all');
-                  setPriceFilter('all');
-                  setCnpjFilter('all');
-                  setShowOnlyFavorites(false);
-                }}
-              >
-                Limpar filtros
-              </Button>
-            </div>
-          )}
-        </div>
+                  
+                  <CardFooter className="px-4 py-3 bg-gray-50 flex justify-between">
+                    {supplier.instagram && (
+                      <span className="text-sm text-muted-foreground flex items-center">
+                        <Instagram className="h-4 w-4 mr-1" />
+                        {supplier.instagram}
+                      </span>
+                    )}
+                    
+                    <Button variant="ghost" size="sm" className="ml-auto text-primary">
+                      Ver detalhes
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </AppLayout>
   );
