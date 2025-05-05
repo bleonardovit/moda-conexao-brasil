@@ -167,9 +167,10 @@ export const CategoryDialog: React.FC<{
 interface CategoryManagementProps {
   categories: Category[];
   setCategories: Dispatch<SetStateAction<Category[]>>;
+  onAddCategory: (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => Promise<string>;
 }
 
-export const CategoryManagement: React.FC<CategoryManagementProps> = ({ categories, setCategories }) => {
+export const CategoryManagement: React.FC<CategoryManagementProps> = ({ categories, setCategories, onAddCategory }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -217,6 +218,15 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({ categori
       description: `A categoria "${categoryData.name}" foi criada com sucesso.`,
       variant: "default",
     });
+
+    // Call the onAddCategory prop to actually save the category to the database
+    onAddCategory(categoryData)
+      .then(newId => {
+        console.log(`Category saved with ID: ${newId}`);
+      })
+      .catch(error => {
+        console.error('Error saving category:', error);
+      });
   };
 
   // Editar categoria existente
