@@ -1,7 +1,9 @@
+
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: User | null;
@@ -20,77 +22,108 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Verificar se o usuário está autenticado ao carregar a página
+  // Check auth status and set up listener for auth changes
   useEffect(() => {
-    const checkAuthStatus = () => {
-      const storedUser = sessionStorage.getItem('user');
-      const userRole = sessionStorage.getItem('user_role');
+    // Setup auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setIsLoading(true);
+        
+        if (session?.user) {
+          try {
+            // Fetch user profile data from our profiles table
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (profileError) {
+              console.error('Error fetching profile:', profileError);
+            }
+
+            // Update last login time
+            if (profile) {
+              const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ last_login: new Date().toISOString() })
+                .eq('id', session.user.id);
+
+              if (updateError) {
+                console.error('Error updating last login time:', updateError);
+              }
+            }
+
+            // Combine auth and profile data
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
+              phone: profile?.phone || session.user.phone || '',
+              role: 'user', // Default role
+              subscription_status: profile?.subscription_status || 'inactive'
+            });
+          } catch (error) {
+            console.error('Error in auth state change:', error);
+          }
+        } else {
+          setUser(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // Get initial session
+    const initAuth = async () => {
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (storedUser) {
+      if (session?.user) {
         try {
-          const parsedUser = JSON.parse(storedUser);
+          // Fetch user profile data
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
           setUser({
-            ...parsedUser,
-            role: userRole as 'user' | 'admin' || 'user'
+            id: session.user.id,
+            email: session.user.email || '',
+            full_name: profile?.full_name || session.user.user_metadata?.full_name || '',
+            phone: profile?.phone || session.user.phone || '',
+            role: 'user', // Default role
+            subscription_status: profile?.subscription_status || 'inactive'
           });
-        } catch (e) {
-          console.error('Erro ao analisar dados do usuário:', e);
-          sessionStorage.removeItem('user');
-          sessionStorage.removeItem('user_role');
+        } catch (error) {
+          console.error('Error fetching initial auth state:', error);
         }
       }
+      
       setIsLoading(false);
     };
-    
-    checkAuthStatus();
+
+    initAuth();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Função de login
+  // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Mock login para demonstração
-      // Aqui seria a integração com API de autenticação
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-      // Autenticação do administrador
-      if (email === 'admin@conexaobrasil.com' && password === 'admin123') {
-        const adminUser: User = {
-          id: 'admin-1',
-          email: 'admin@conexaobrasil.com',
-          full_name: 'Administrador',
-          role: 'admin',
-          subscription_status: 'active'
-        };
-        
-        setUser(adminUser);
-        sessionStorage.setItem('user', JSON.stringify(adminUser));
-        sessionStorage.setItem('user_role', 'admin');
-        
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo(a) à área administrativa.",
-        });
-        
-        navigate('/admin/suppliers');
-        return true;
+      if (error) {
+        throw error;
       }
-      
-      // Autenticação de usuários comuns
-      // Simulação de API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser: User = {
-        id: 'user-' + Math.random().toString(36).substr(2, 9),
-        email: email,
-        full_name: 'Usuário ' + email.split('@')[0],
-        role: 'user',
-        subscription_status: 'active'
-      };
-      
-      setUser(mockUser);
-      sessionStorage.setItem('user', JSON.stringify(mockUser));
-      sessionStorage.setItem('user_role', 'user');
-      
+
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo(a) de volta.",
@@ -98,12 +131,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       navigate('/home');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no login:', error);
       toast({
         variant: "destructive",
         title: "Erro ao fazer login",
-        description: "Verifique suas credenciais e tente novamente.",
+        description: error.message || "Verifique suas credenciais e tente novamente.",
       });
       return false;
     } finally {
@@ -111,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Função de registro
+  // Register function
   const register = async (
     fullName: string, 
     email: string, 
@@ -120,36 +153,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Simulação de API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Criar novo usuário
-      const newUser: User = {
-        id: 'user-' + Math.random().toString(36).substr(2, 9),
+      // Sign up user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
         email,
-        full_name: fullName,
-        phone,
-        role: 'user',
-        subscription_status: 'active'
-      };
-      
-      // Armazenar usuário no sessionStorage
-      setUser(newUser);
-      sessionStorage.setItem('user', JSON.stringify(newUser));
-      sessionStorage.setItem('user_role', 'user');
-      
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone
+          },
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
       toast({
         title: "Registro realizado com sucesso!",
         description: "Seja bem-vindo(a) à Conexão Brasil!",
       });
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no registro:', error);
       toast({
         variant: "destructive",
         title: "Erro ao registrar conta",
-        description: "Não foi possível criar sua conta. Tente novamente.",
+        description: error.message || "Não foi possível criar sua conta. Tente novamente.",
       });
       return false;
     } finally {
@@ -157,24 +188,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Função de logout
-  const logout = () => {
-    setUser(null);
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('user_role');
-    toast({
-      title: "Logout realizado",
-      description: "Você saiu da sua conta com sucesso.",
-    });
-    navigate('/auth/login');
+  // Logout function
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      toast({
+        title: "Logout realizado",
+        description: "Você saiu da sua conta com sucesso.",
+      });
+      navigate('/auth/login');
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: "Não foi possível processar o logout. Tente novamente.",
+      });
+    }
   };
 
-  // Função de recuperação de senha
+  // Reset password function
   const resetPassword = async (email: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Simulação de API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/auth/reset-confirmation',
+      });
+
+      if (error) {
+        throw error;
+      }
       
       toast({
         title: "Solicitação enviada",
@@ -182,12 +226,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro na recuperação de senha:', error);
       toast({
         variant: "destructive",
         title: "Erro ao processar solicitação",
-        description: "Não foi possível processar sua solicitação. Tente novamente.",
+        description: error.message || "Não foi possível processar sua solicitação. Tente novamente.",
       });
       return false;
     } finally {

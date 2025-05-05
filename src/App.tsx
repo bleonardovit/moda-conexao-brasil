@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,7 @@ import LandingPage from "./pages/LandingPage";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ResetPassword from "./pages/auth/ResetPassword";
+import ResetConfirmation from "./pages/auth/ResetConfirmation";
 import Payment from "./pages/auth/Payment";
 
 // Páginas do app
@@ -147,6 +147,7 @@ const AppRoutes = () => {
       <Route path="/auth/login" element={<Login />} />
       <Route path="/auth/register" element={<Register />} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/reset-confirmation" element={<ResetConfirmation />} />
       <Route path="/auth/payment" element={<Payment />} />
       
       {/* Rotas de aplicativo protegidas (requerem assinatura) */}
