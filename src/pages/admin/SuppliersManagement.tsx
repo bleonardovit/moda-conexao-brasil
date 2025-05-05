@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -90,6 +89,21 @@ interface ImportError {
   errors: string[];
 }
 
+// Helper function to convert database avg_price string to enum type
+const convertAvgPriceToEnum = (price: string | null): "low" | "medium" | "high" | undefined => {
+  if (!price) return undefined;
+  if (price === "low" || price === "medium" || price === "high") {
+    return price as "low" | "medium" | "high";
+  }
+  // Try to map other values
+  const lowerPrice = price.toLowerCase();
+  if (lowerPrice.includes("low") || lowerPrice.includes("baixo")) return "low";
+  if (lowerPrice.includes("med") || lowerPrice.includes("médio")) return "medium";
+  if (lowerPrice.includes("high") || lowerPrice.includes("alto")) return "high";
+  
+  return undefined;
+};
+
 // Componente para o formulário de fornecedor
 const SupplierForm: React.FC<{
   onSave: (data: SupplierFormValues) => void;
@@ -103,7 +117,7 @@ const SupplierForm: React.FC<{
     defaultValues: initialData ? {
       ...initialData,
       // Convert the avg_price from database string to enum value
-      avg_price: initialData.avg_price as "low" | "medium" | "high" | undefined,
+      avg_price: convertAvgPriceToEnum(initialData.avg_price),
       custom_shipping_method: initialData.custom_shipping_method || '',
       images: initialData.images || []
     } : {
@@ -961,7 +975,7 @@ export default function SuppliersManagement() {
       // Create a new object with the correct avg_price type
       const updatedData: SupplierFormValues = {
         ...supplier,
-        avg_price: supplier.avg_price as "low" | "medium" | "high" | undefined,
+        avg_price: convertAvgPriceToEnum(supplier.avg_price),
         featured: !supplier.featured,
         images: supplier.images || []
       };
@@ -993,7 +1007,7 @@ export default function SuppliersManagement() {
       // Create a new object with the correct avg_price type
       const updatedData: SupplierFormValues = {
         ...supplier,
-        avg_price: supplier.avg_price as "low" | "medium" | "high" | undefined,
+        avg_price: convertAvgPriceToEnum(supplier.avg_price),
         hidden: !supplier.hidden,
         images: supplier.images || []
       };
@@ -1204,6 +1218,7 @@ export default function SuppliersManagement() {
           <CategoryManagement
             categories={categories}
             setCategories={setCategories}
+            onAddCategory={addCategory}
           />
         </TabsContent>
       </Tabs>
