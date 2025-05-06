@@ -3,7 +3,7 @@ import React from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { KPICards } from '@/components/reports/KPICards';
+import { KPIGrid } from '@/components/reports/KPICards';
 
 export default function Dashboard() {
   return (
@@ -14,7 +14,7 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Visão geral do sistema</p>
         </div>
 
-        <KPICards />
+        <KPIGrid />
 
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-3 md:w-fit">
