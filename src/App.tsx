@@ -7,6 +7,7 @@ import SuppliersManagement from './pages/admin/SuppliersManagement';
 import SuppliersBulkUpload from './pages/admin/SuppliersBulkUpload';
 import Dashboard from './pages/admin/Dashboard';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 
 function App() {
   return (
@@ -21,7 +22,9 @@ function App() {
         <Route path="/admin/suppliers" element={<SuppliersManagement />} />
         <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
       </Routes>
+      {/* Include both toasters to ensure all toast notifications work */}
       <Toaster />
+      <SonnerToaster />
     </Router>
   );
 }
