@@ -1,10 +1,11 @@
-
 import type { Tables } from "@/integrations/supabase/types";
 
 // Use the existing types from Supabase but add additional app-specific types or utilities
 
 export type Supplier = Tables<"suppliers"> & {
   categories: string[]; // References to category IDs
+  delivery_time?: string; // Added this property
+  shipping_cost?: string; // Added this property
 };
 
 export type Category = Tables<"categories">;
@@ -33,6 +34,8 @@ export type SupplierFormValues = {
   categories: string[];
   featured: boolean;
   hidden: boolean;
+  delivery_time?: string; // Added this property
+  shipping_cost?: string; // Added this property
 };
 
 // Re-export the SupplierFormValues from the validator file to maintain consistency

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -41,7 +40,8 @@ export default function SupplierDetails() {
           featured: true,
           hidden: false,
           created_at: "2023-06-15T10:30:00Z",
-          updated_at: "2023-08-05T14:45:00Z"
+          updated_at: "2023-08-05T14:45:00Z",
+          shipping_methods: []
         });
       } else if (id === "2") {
         setSupplier({
@@ -66,7 +66,8 @@ export default function SupplierDetails() {
           featured: false,
           hidden: false,
           created_at: "2023-04-22T09:15:00Z",
-          updated_at: "2023-07-12T16:20:00Z"
+          updated_at: "2023-07-12T16:20:00Z",
+          shipping_methods: []
         });
       } else {
         setSupplier({
@@ -91,7 +92,8 @@ export default function SupplierDetails() {
           featured: true,
           hidden: false,
           created_at: "2023-03-10T11:45:00Z",
-          updated_at: "2023-09-01T13:30:00Z"
+          updated_at: "2023-09-01T13:30:00Z",
+          shipping_methods: []
         });
       }
       setIsLoading(false);
@@ -145,7 +147,7 @@ export default function SupplierDetails() {
               </a>
             </Button>
             <Button variant="outline" asChild>
-              <a href={`https://wa.me/${supplier.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+              <a href={`https://wa.me/${supplier.whatsapp?.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
                 WhatsApp
               </a>
             </Button>
@@ -165,11 +167,11 @@ export default function SupplierDetails() {
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                   <img 
-                    src={supplier.images[0] || "/placeholder.svg"} 
+                    src={supplier.images?.[0] || "/placeholder.svg"} 
                     alt={supplier.name} 
                     className="w-full h-64 object-cover rounded-lg"
                   />
-                  {supplier.images.length > 1 && (
+                  {supplier.images && supplier.images.length > 1 && (
                     <img 
                       src={supplier.images[1]} 
                       alt={supplier.name} 
@@ -203,7 +205,7 @@ export default function SupplierDetails() {
                   
                   <div>
                     <h3 className="font-medium text-sm text-muted-foreground mb-1">Tempo de Entrega</h3>
-                    <p>{supplier.delivery_time}</p>
+                    <p>{supplier.delivery_time || "Não informado"}</p>
                   </div>
                   
                   <div>
@@ -238,7 +240,7 @@ export default function SupplierDetails() {
                 <Separator className="my-6" />
                 
                 <h2 className="text-xl font-semibold mb-4">Informações de Envio</h2>
-                <p className="mb-2">{supplier.shipping_cost}</p>
+                <p className="mb-2">{supplier.shipping_cost || "Não informado"}</p>
                 {supplier.custom_shipping_method && (
                   <p className="text-sm text-muted-foreground">{supplier.custom_shipping_method}</p>
                 )}
