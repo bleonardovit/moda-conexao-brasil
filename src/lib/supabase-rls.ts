@@ -1,4 +1,6 @@
 
+import { supabase } from "@/integrations/supabase/client";
+
 // Este arquivo define as permissões do banco de dados necessárias para o aplicativo funcionar corretamente.
 // Você precisa configurar essas políticas no console do Supabase.
 
@@ -55,7 +57,18 @@ FOR ALL USING (
  * Esta função verifica se o usuário atual é um administrador
  * Usada internamente no aplicativo para controle de acesso
  */
-export const isUserAdmin = () => {
-  // Para implementação futura
-  return false;
+export const isUserAdmin = async (): Promise<boolean> => {
+  try {
+    // Obter o usuário atual
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return false;
+    
+    // Verificar se o usuário tem a role 'admin' no app_metadata
+    const appMetadata = user.app_metadata;
+    return appMetadata && appMetadata.role === 'admin';
+  } catch (error) {
+    console.error('Erro ao verificar permissões de administrador:', error);
+    return false;
+  }
 };

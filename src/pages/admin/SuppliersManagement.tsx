@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save, Upload, Plane, Bus, Download } from 'lucide-react';
+import { Search, MoreHorizontal, Plus, Edit, Trash, Eye, EyeOff, Star, Save, Upload, Plane, Bus, Download, Import } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
   Select, 
@@ -76,12 +76,7 @@ import {
   deleteSupplier, 
   createCategory 
 } from '@/services/supplierService';
-
-const STATES = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 
-  'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 
-  'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
+import { isUserAdmin } from '@/lib/supabase-rls';
 
 // Interface para erros de importação
 interface ImportError {
@@ -1077,10 +1072,18 @@ export default function SuppliersManagement() {
         <TabsContent value="suppliers" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold">Lista de Fornecedores</h2>
-            <Button onClick={openAddModal}>
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Fornecedor
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/admin/suppliers/bulk-upload">
+                  <Import className="h-4 w-4 mr-2" />
+                  Importação em Massa
+                </Link>
+              </Button>
+              <Button onClick={openAddModal}>
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Fornecedor
+              </Button>
+            </div>
           </div>
           
           <div className="flex flex-col md:flex-row gap-4 mb-6">

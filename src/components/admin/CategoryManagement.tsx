@@ -1,24 +1,23 @@
+
 import React, { useState } from 'react';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle 
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -27,389 +26,279 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle 
+  AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Plus, MoreHorizontal, Edit, Trash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash, Search } from 'lucide-react';
+import { CategoryDialog } from './CategoryManagement';
 import { Category } from '@/types';
-import { Dispatch, SetStateAction } from 'react';
+import { deleteCategory, updateCategory } from '@/services/supplierService';
 
-// Dados de exemplo para categorias
-const MOCK_CATEGORIES: Category[] = [
-  {
-    id: '1',
-    name: 'Casual',
-    description: 'Roupas para uso diário',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '2',
-    name: 'Fitness',
-    description: 'Roupas esportivas e fitness',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '3',
-    name: 'Plus Size',
-    description: 'Moda em tamanhos maiores',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '4',
-    name: 'Acessórios',
-    description: 'Bolsas, cintos, bijuterias etc',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '5',
-    name: 'Praia',
-    description: 'Roupas de praia e verão',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  }
-];
+export interface CategoryManagementProps {
+  categories: Category[];
+  setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
+  onAddCategory: (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => Promise<string>;
+}
 
 export const CategoryDialog: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSave: (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => void;
-  initialCategory?: Category;
+  initialCategory?: Partial<Category>;
 }> = ({ isOpen, onClose, onSave, initialCategory }) => {
   const [name, setName] = useState(initialCategory?.name || '');
   const [description, setDescription] = useState(initialCategory?.description || '');
-  const { toast } = useToast();
-
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome da categoria é obrigatório",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    onSave({ name, description });
+    onSave({ 
+      name, 
+      description 
+    });
     onClose();
-    
-    // Reset form
-    setName('');
-    setDescription('');
   };
-
+  
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{initialCategory ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
-          <DialogDescription>
-            {initialCategory 
-              ? 'Edite os dados da categoria existente.' 
-              : 'Adicione uma nova categoria para organizar seus fornecedores.'}
-          </DialogDescription>
-        </DialogHeader>
+    <div className={`fixed inset-0 z-50 bg-black/50 flex items-center justify-center ${isOpen ? 'block' : 'hidden'}`}>
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">
+          {initialCategory?.id ? 'Editar Categoria' : 'Nova Categoria'}
+        </h2>
         
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="space-y-2">
-            <label htmlFor="name" className="text-sm font-medium">
-              Nome da categoria *
-            </label>
-            <Input
-              id="name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Ex: Moda Infantil"
-              required
-            />
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Nome</label>
+              <Input 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+                placeholder="Nome da categoria"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Descrição</label>
+              <Input 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+                placeholder="Descrição (opcional)"
+              />
+            </div>
           </div>
           
-          <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium">
-              Descrição
-            </label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Uma breve descrição da categoria (opcional)"
-              rows={3}
-            />
+          <div className="flex justify-end gap-2 mt-6">
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="submit">Salvar</Button>
           </div>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              {initialCategory ? 'Salvar alterações' : 'Adicionar categoria'}
-            </Button>
-          </DialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
 
-interface CategoryManagementProps {
-  categories: Category[];
-  setCategories: Dispatch<SetStateAction<Category[]>>;
-  onAddCategory: (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => Promise<string>;
-}
-
-export const CategoryManagement: React.FC<CategoryManagementProps> = ({ categories, setCategories, onAddCategory }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
+export const CategoryManagement: React.FC<CategoryManagementProps> = ({ 
+  categories, 
+  setCategories,
+  onAddCategory
+}) => {
   const { toast } = useToast();
-
-  // Filtrar categorias com base na busca
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filtrar categorias
   const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-
-  // Abrir diálogo para adicionar nova categoria
-  const openAddDialog = () => {
-    setIsAddDialogOpen(true);
+  
+  // Abrir modal para adicionar categoria
+  const openAddModal = () => {
+    setCurrentCategory(null);
+    setIsAddCategoryOpen(true);
   };
-
-  // Abrir diálogo para editar categoria
-  const openEditDialog = (category: Category) => {
+  
+  // Abrir modal para editar categoria
+  const openEditModal = (category: Category) => {
     setCurrentCategory(category);
-    setIsEditDialogOpen(true);
+    setIsEditCategoryOpen(true);
   };
-
-  // Abrir diálogo para confirmar exclusão
-  const openDeleteDialog = (category: Category) => {
-    setCurrentCategory(category);
+  
+  // Confirmar exclusão
+  const confirmDelete = (category: Category) => {
+    setCategoryToDelete(category);
     setIsDeleteDialogOpen(true);
   };
-
-  // Adicionar nova categoria
-  const addCategory = (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
-    const newCategory: Category = {
-      id: `${categories.length + 1}`,
-      name: categoryData.name,
-      description: categoryData.description,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    setCategories([...categories, newCategory]);
-    
-    toast({
-      title: "Categoria adicionada",
-      description: `A categoria "${categoryData.name}" foi criada com sucesso.`,
-      variant: "default",
-    });
-
-    // Call the onAddCategory prop to actually save the category to the database
-    onAddCategory(categoryData)
-      .then(newId => {
-        console.log(`Category saved with ID: ${newId}`);
-      })
-      .catch(error => {
-        console.error('Error saving category:', error);
-      });
-  };
-
-  // Editar categoria existente
-  const editCategory = (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!currentCategory) return;
-    
-    const updatedCategories = categories.map(category =>
-      category.id === currentCategory.id
-        ? {
-            ...category,
-            name: categoryData.name,
-            description: categoryData.description,
-            updated_at: new Date().toISOString(),
-          }
-        : category
-    );
-    
-    setCategories(updatedCategories);
-    
-    toast({
-      title: "Categoria atualizada",
-      description: `A categoria "${categoryData.name}" foi atualizada com sucesso.`,
-      variant: "default",
-    });
-  };
-
+  
   // Excluir categoria
-  const deleteCategory = () => {
-    if (!currentCategory) return;
-    
-    const updatedCategories = categories.filter(
-      category => category.id !== currentCategory.id
-    );
-    
-    setCategories(updatedCategories);
-    
-    toast({
-      title: "Categoria excluída",
-      description: `A categoria "${currentCategory.name}" foi removida com sucesso.`,
-      variant: "default",
-    });
-    
-    setIsDeleteDialogOpen(false);
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gerenciamento de Categorias</CardTitle>
-        <CardDescription>
-          Crie, edite e gerencie as categorias disponíveis para classificar seus fornecedores.
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <div className="flex flex-col sm:flex-row gap-4 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar categorias..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Button onClick={openAddDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Categoria
-          </Button>
-        </div>
+  const handleDeleteCategory = async () => {
+    if (categoryToDelete) {
+      try {
+        await deleteCategory(categoryToDelete.id);
         
-        {filteredCategories.length > 0 ? (
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="hidden md:table-cell">Descrição</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCategories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {category.description || 
-                        <span className="text-muted-foreground text-sm italic">
-                          Sem descrição
-                        </span>
-                      }
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditDialog(category)}
-                        >
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only md:not-sr-only md:ml-2">
-                            Editar
-                          </span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-600 hover:bg-red-100/20"
-                          onClick={() => openDeleteDialog(category)}
-                        >
-                          <Trash className="h-4 w-4" />
-                          <span className="sr-only md:not-sr-only md:ml-2">
-                            Excluir
-                          </span>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center border rounded-md p-8">
-            {searchTerm ? (
-              <>
-                <p className="text-muted-foreground mb-2">
-                  Nenhuma categoria encontrada para "{searchTerm}".
-                </p>
-                <Button variant="outline" onClick={() => setSearchTerm('')}>
-                  Limpar busca
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-muted-foreground mb-2">
-                  Nenhuma categoria cadastrada.
-                </p>
-                <Button onClick={openAddDialog}>
-                  Criar primeira categoria
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-      </CardContent>
+        setCategories(prev => prev.filter(c => c.id !== categoryToDelete.id));
+        
+        toast({
+          title: "Categoria excluída",
+          description: `${categoryToDelete.name} foi removida com sucesso.`,
+          variant: "default",
+        });
+      } catch (err) {
+        console.error('Error deleting category:', err);
+        toast({
+          title: "Erro ao excluir categoria",
+          description: "Ocorreu um erro ao excluir a categoria. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsDeleteDialogOpen(false);
+        setCategoryToDelete(null);
+      }
+    }
+  };
+  
+  // Salvar categoria (nova ou editada)
+  const handleSaveCategory = async (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      if (currentCategory) {
+        // Editar categoria existente
+        const updatedCategory = await updateCategory(currentCategory.id, categoryData);
+        
+        setCategories(prev => prev.map(c => c.id === currentCategory.id ? updatedCategory : c));
+        
+        toast({
+          title: "Categoria atualizada",
+          description: `${categoryData.name} foi atualizada com sucesso.`,
+          variant: "default",
+        });
+        
+        setIsEditCategoryOpen(false);
+      } else {
+        // Adicionar nova categoria
+        // Use a função onAddCategory para salvar no banco de dados e obter o ID
+        const newCategoryId = await onAddCategory(categoryData);
+        
+        // Se a adição foi bem-sucedida (onAddCategory já faz o toast de sucesso)
+        if (newCategoryId) {
+          setIsAddCategoryOpen(false);
+        }
+      }
+    } catch (err) {
+      console.error('Error saving category:', err);
+      toast({
+        title: "Erro ao salvar categoria",
+        description: "Ocorreu um erro ao salvar a categoria. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold">Categorias de Fornecedores</h2>
+        <Button onClick={openAddModal}>
+          <Plus className="h-4 w-4 mr-2" />
+          Adicionar Categoria
+        </Button>
+      </div>
       
-      <CardFooter className="flex justify-between border-t pt-4">
-        <div className="text-sm text-muted-foreground">
-          {filteredCategories.length} {filteredCategories.length === 1 ? 'categoria' : 'categorias'} {searchTerm ? 'encontrada' : 'cadastrada'}{searchTerm ? `s para "${searchTerm}"` : ''}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Input
+            placeholder="Buscar categorias..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-      </CardFooter>
+      </div>
       
-      {/* Diálogo para adicionar categoria */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredCategories.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                  Nenhuma categoria encontrada
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredCategories.map(category => (
+                <TableRow key={category.id}>
+                  <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell>{category.description || '-'}</TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Abrir menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => openEditModal(category)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onSelect={() => confirmDelete(category)}
+                          className="text-red-600"
+                        >
+                          <Trash className="h-4 w-4 mr-2" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      
+      {/* Modal para adicionar categoria */}
       <CategoryDialog
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        onSave={addCategory}
+        isOpen={isAddCategoryOpen}
+        onClose={() => setIsAddCategoryOpen(false)}
+        onSave={handleSaveCategory}
       />
       
-      {/* Diálogo para editar categoria */}
+      {/* Modal para editar categoria */}
       <CategoryDialog
-        isOpen={isEditDialogOpen}
-        onClose={() => setIsEditDialogOpen(false)}
-        onSave={editCategory}
+        isOpen={isEditCategoryOpen}
+        onClose={() => setIsEditCategoryOpen(false)}
+        onSave={handleSaveCategory}
         initialCategory={currentCategory || undefined}
       />
       
-      {/* Diálogo para confirmar exclusão */}
+      {/* Confirmação de exclusão */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a categoria "{currentCategory?.name}"?
-              <br />
-              Esta ação não pode ser desfeita.
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente a categoria 
+              <span className="font-bold">{' '}{categoryToDelete?.name}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={deleteCategory}
+            <AlertDialogAction
+              onClick={handleDeleteCategory}
               className="bg-red-600 hover:bg-red-700"
             >
               Excluir
@@ -417,6 +306,6 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({ categori
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </div>
   );
 };
