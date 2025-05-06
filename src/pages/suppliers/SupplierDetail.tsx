@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -34,7 +35,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Input } from '@/components/ui/input';
-import type { Supplier, Review } from '@/types';
+import type { Supplier } from '@/types/supplier';
+
+interface Review {
+  id: string;
+  supplier_id: string;
+  user_id: string;
+  user_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
 
 const MOCK_SUPPLIERS: Supplier[] = [
   {
@@ -170,13 +181,13 @@ export default function SupplierDetail() {
   
   const goToPreviousSupplier = () => {
     if (previousSupplier) {
-      navigate(`/suppliers/${previousSupplier.id}`);
+      navigate(`/fornecedores/${previousSupplier.id}`);
     }
   };
   
   const goToNextSupplier = () => {
     if (nextSupplier) {
-      navigate(`/suppliers/${nextSupplier.id}`);
+      navigate(`/fornecedores/${nextSupplier.id}`);
     }
   };
   
@@ -266,7 +277,7 @@ export default function SupplierDetail() {
       <AppLayout>
         <div className="text-center py-12">
           <h1 className="text-xl font-bold mb-4">Fornecedor não encontrado</h1>
-          <Button onClick={() => navigate('/suppliers')}>
+          <Button onClick={() => navigate('/fornecedores')}>
             Voltar para lista
           </Button>
         </div>
@@ -307,7 +318,7 @@ export default function SupplierDetail() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => navigate('/suppliers')}
+            onClick={() => navigate('/fornecedores')}
           >
             <ArrowLeft className="mr-1 h-4 w-4" />
             Voltar
@@ -763,7 +774,7 @@ export default function SupplierDetail() {
                       size="sm" 
                       variant="link" 
                       className="p-0 h-auto text-primary"
-                      onClick={() => navigate(`/suppliers/${similar.id}`)}
+                      onClick={() => navigate(`/fornecedores/${similar.id}`)}
                     >
                       Ver detalhes
                     </Button>

@@ -796,6 +796,14 @@ const ImportErrorsDisplay: React.FC<{ errors: ImportError[] }> = ({ errors }) =>
   );
 };
 
+// Add the missing STATES constant to the file
+// You'll need to add this at the top of the file along with other constants or imports
+
+const STATES = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", 
+  "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+];
+
 export default function SuppliersManagement() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
