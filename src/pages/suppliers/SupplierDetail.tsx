@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -6,101 +7,59 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Supplier } from '@/types/supplier';
+import { getSupplierById, fetchCategories } from '@/services/supplierService';
+import { Category } from '@/types/supplier';
+import { AlertTriangle } from 'lucide-react';
 
 export default function SupplierDetails() {
   const { id } = useParams<{ id: string }>();
   const [supplier, setSupplier] = useState<Supplier | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real application, fetch data from an API
-    // For now, we'll simulate loading and then set mock data
-    const timer = setTimeout(() => {
-      if (id === "1") {
-        setSupplier({
-          id: "1",
-          code: "SUP001",
-          name: "Moda Sustentável Ltda",
-          description: "Fornecedor especializado em roupas e acessórios produzidos com materiais sustentáveis e processos éticos.",
-          images: ["/placeholder.svg", "/placeholder.svg"],
-          instagram: "@modasustentavel",
-          whatsapp: "+5511999999999",
-          website: "https://example.com",
-          min_order: "R$ 500,00",
-          payment_methods: ["Boleto", "Pix", "Cartão de Crédito"],
-          requires_cnpj: true,
-          avg_price: "R$ 150,00",
-          city: "São Paulo",
-          state: "SP",
-          categories: ["Roupas", "Acessórios"],
-          delivery_time: "7-15 dias úteis",
-          shipping_cost: "Frete fixo para todo Brasil",
-          custom_shipping_method: "",
-          featured: true,
-          hidden: false,
-          created_at: "2023-06-15T10:30:00Z",
-          updated_at: "2023-08-05T14:45:00Z",
-          shipping_methods: []
-        });
-      } else if (id === "2") {
-        setSupplier({
-          id: "2",
-          code: "SUP002",
-          name: "Joias Artesanais",
-          description: "Produção artesanal de joias com materiais de alta qualidade e design exclusivo.",
-          images: ["/placeholder.svg", "/placeholder.svg"],
-          instagram: "@joiasartesanais",
-          whatsapp: "+5511988888888",
-          website: "https://example.com",
-          min_order: "R$ 300,00",
-          payment_methods: ["Pix", "Transferência Bancária"],
-          requires_cnpj: false,
-          avg_price: "R$ 200,00",
-          city: "Rio de Janeiro",
-          state: "RJ",
-          categories: ["Joias", "Acessórios"],
-          delivery_time: "15-20 dias úteis",
-          shipping_cost: "Calcular no fechamento",
-          custom_shipping_method: "",
-          featured: false,
-          hidden: false,
-          created_at: "2023-04-22T09:15:00Z",
-          updated_at: "2023-07-12T16:20:00Z",
-          shipping_methods: []
-        });
-      } else {
-        setSupplier({
-          id: "3",
-          code: "SUP003",
-          name: "EcoHome Decorações",
-          description: "Itens de decoração produzidos com materiais reciclados e de baixo impacto ambiental.",
-          images: ["/placeholder.svg", "/placeholder.svg"],
-          instagram: "@ecohome",
-          whatsapp: "+5511977777777",
-          website: "https://example.com",
-          min_order: "R$ 400,00",
-          payment_methods: ["Boleto", "Pix"],
-          requires_cnpj: true,
-          avg_price: "R$ 250,00",
-          city: "Curitiba",
-          state: "PR",
-          categories: ["Decoração", "Casa"],
-          delivery_time: "10-15 dias úteis",
-          shipping_cost: "Grátis acima de R$ 1.000,00",
-          custom_shipping_method: "",
-          featured: true,
-          hidden: false,
-          created_at: "2023-03-10T11:45:00Z",
-          updated_at: "2023-09-01T13:30:00Z",
-          shipping_methods: []
-        });
+    const loadData = async () => {
+      if (!id) {
+        setError('ID do fornecedor não especificado');
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
-    }, 1000);
 
-    return () => clearTimeout(timer);
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        console.log('Fetching supplier with ID:', id);
+        const [supplierData, categoriesData] = await Promise.all([
+          getSupplierById(id),
+          fetchCategories()
+        ]);
+
+        if (!supplierData) {
+          setError('Fornecedor não encontrado');
+          console.error('Supplier not found for ID:', id);
+        } else {
+          console.log('Supplier data loaded:', supplierData);
+          setSupplier(supplierData);
+          setCategories(categoriesData);
+        }
+      } catch (err) {
+        console.error('Error loading supplier data:', err);
+        setError('Erro ao carregar dados do fornecedor. Por favor, tente novamente.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, [id]);
+
+  // Get category name from ID
+  const getCategoryName = (categoryId: string): string => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : categoryId;
+  };
 
   if (isLoading) {
     return (
@@ -120,12 +79,15 @@ export default function SupplierDetails() {
     return (
       <AppLayout>
         <div className="container mx-auto py-6 text-center">
+          <div className="flex justify-center mb-4">
+            <AlertTriangle className="h-12 w-12 text-red-500" />
+          </div>
           <h1 className="text-2xl font-bold mb-4">Fornecedor não encontrado</h1>
           <p className="text-muted-foreground mb-6">
             {error || "Não foi possível encontrar o fornecedor solicitado."}
           </p>
           <Button asChild>
-            <Link to="/fornecedores">Voltar para lista de fornecedores</Link>
+            <Link to="/suppliers">Voltar para lista de fornecedores</Link>
           </Button>
         </div>
       </AppLayout>
@@ -141,16 +103,20 @@ export default function SupplierDetails() {
             <p className="text-muted-foreground">Código: {supplier.code}</p>
           </div>
           <div className="mt-4 md:mt-0 space-x-2">
-            <Button variant="outline" asChild>
-              <a href={`https://instagram.com/${supplier.instagram}`} target="_blank" rel="noopener noreferrer">
-                Instagram
-              </a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a href={`https://wa.me/${supplier.whatsapp?.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-                WhatsApp
-              </a>
-            </Button>
+            {supplier.instagram && (
+              <Button variant="outline" asChild>
+                <a href={`https://instagram.com/${supplier.instagram}`} target="_blank" rel="noopener noreferrer">
+                  Instagram
+                </a>
+              </Button>
+            )}
+            {supplier.whatsapp && (
+              <Button variant="outline" asChild>
+                <a href={`https://wa.me/${supplier.whatsapp?.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                  WhatsApp
+                </a>
+              </Button>
+            )}
             {supplier.website && (
               <Button variant="outline" asChild>
                 <a href={supplier.website} target="_blank" rel="noopener noreferrer">
@@ -166,11 +132,17 @@ export default function SupplierDetails() {
             <Card>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                  <img 
-                    src={supplier.images?.[0] || "/placeholder.svg"} 
-                    alt={supplier.name} 
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
+                  {supplier.images && supplier.images.length > 0 ? (
+                    <img 
+                      src={supplier.images[0]} 
+                      alt={supplier.name} 
+                      className="w-full h-64 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <p className="text-gray-500">Sem imagem</p>
+                    </div>
+                  )}
                   {supplier.images && supplier.images.length > 1 && (
                     <img 
                       src={supplier.images[1]} 
@@ -190,12 +162,12 @@ export default function SupplierDetails() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                   <div>
                     <h3 className="font-medium text-sm text-muted-foreground mb-1">Pedido Mínimo</h3>
-                    <p>{supplier.min_order}</p>
+                    <p>{supplier.min_order || "Não informado"}</p>
                   </div>
                   
                   <div>
                     <h3 className="font-medium text-sm text-muted-foreground mb-1">Preço Médio</h3>
-                    <p>{supplier.avg_price}</p>
+                    <p>{supplier.avg_price || "Não informado"}</p>
                   </div>
                   
                   <div>
@@ -215,7 +187,7 @@ export default function SupplierDetails() {
                   
                   <div>
                     <h3 className="font-medium text-sm text-muted-foreground mb-1">Formas de Pagamento</h3>
-                    <p>{supplier.payment_methods.join(", ")}</p>
+                    <p>{supplier.payment_methods?.join(", ") || "Não informado"}</p>
                   </div>
                 </div>
               </CardContent>
@@ -227,22 +199,36 @@ export default function SupplierDetails() {
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4">Categorias</h2>
                 <div className="flex flex-wrap gap-2">
-                  {supplier.categories.map((category) => (
-                    <span 
-                      key={category}
-                      className="px-3 py-1 bg-muted text-sm rounded-full"
-                    >
-                      {category}
-                    </span>
-                  ))}
+                  {supplier.categories && supplier.categories.length > 0 ? (
+                    supplier.categories.map((categoryId) => (
+                      <span 
+                        key={categoryId}
+                        className="px-3 py-1 bg-muted text-sm rounded-full"
+                      >
+                        {getCategoryName(categoryId)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-muted-foreground">Sem categorias</span>
+                  )}
                 </div>
                 
                 <Separator className="my-6" />
                 
                 <h2 className="text-xl font-semibold mb-4">Informações de Envio</h2>
-                <p className="mb-2">{supplier.shipping_cost || "Não informado"}</p>
+                {supplier.shipping_methods && supplier.shipping_methods.length > 0 ? (
+                  <p className="mb-2">{supplier.shipping_methods.join(', ')}</p>
+                ) : (
+                  <p className="mb-2 text-muted-foreground">Não informado</p>
+                )}
                 {supplier.custom_shipping_method && (
                   <p className="text-sm text-muted-foreground">{supplier.custom_shipping_method}</p>
+                )}
+                {supplier.shipping_cost && (
+                  <div className="mt-2">
+                    <h3 className="font-medium text-sm text-muted-foreground mb-1">Custo de Envio</h3>
+                    <p>{supplier.shipping_cost}</p>
+                  </div>
                 )}
               </CardContent>
             </Card>

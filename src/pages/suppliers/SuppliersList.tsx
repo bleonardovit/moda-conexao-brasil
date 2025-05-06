@@ -38,6 +38,7 @@ export default function SuppliersList() {
       try {
         setLoading(true);
         setError(null);
+        console.log('SuppliersList: Loading suppliers and categories data');
         
         // Carregar categorias e fornecedores
         const [categoriesData, suppliersData] = await Promise.all([
@@ -45,8 +46,12 @@ export default function SuppliersList() {
           fetchSuppliers()
         ]);
         
+        console.log('SuppliersList: Categories loaded:', categoriesData);
+        console.log('SuppliersList: Suppliers loaded:', suppliersData);
+        
         if (categoriesData.length === 0 && suppliersData.length === 0) {
           // Se ambos retornarem vazios, pode ser um problema de permissão ou conexão
+          console.warn('SuppliersList: Both categories and suppliers are empty arrays');
           setError('Não foi possível carregar os dados. Verifique sua conexão ou permissões.');
         } else {
           setCategories(categoriesData);
@@ -54,7 +59,7 @@ export default function SuppliersList() {
           setFilteredSuppliers(suppliersData);
         }
       } catch (err) {
-        console.error('Error loading data:', err);
+        console.error('SuppliersList: Error loading data:', err);
         setError('Erro ao carregar dados. Por favor, tente novamente.');
         
         toast({
@@ -73,6 +78,7 @@ export default function SuppliersList() {
   // Aplicar filtros quando os parâmetros de filtragem mudam
   useEffect(() => {
     let filtered = suppliers;
+    console.log('SuppliersList: Applying filters:', { selectedTab, selectedCategory, searchTerm });
     
     // Filtrar por aba (todos ou destacados)
     if (selectedTab === 'featured') {
@@ -97,6 +103,7 @@ export default function SuppliersList() {
       );
     }
     
+    console.log('SuppliersList: Filtered suppliers count:', filtered.length);
     setFilteredSuppliers(filtered);
   }, [suppliers, selectedTab, selectedCategory, searchTerm]);
   

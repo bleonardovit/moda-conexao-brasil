@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Supplier, SupplierFormValues, Category } from "@/types/supplier";
 
@@ -11,6 +10,7 @@ export const fetchSuppliers = async (options?: {
   searchTerm?: string
 }): Promise<Supplier[]> => {
   try {
+    console.log('Fetching suppliers with options:', options);
     // Create base query without joins to auth.users which causes permission issues
     let query = supabase
       .from('suppliers')
@@ -33,7 +33,13 @@ export const fetchSuppliers = async (options?: {
     }
 
     // Only show visible suppliers for non-admin users
-    query = query.eq('hidden', false);
+    const isAdmin = await isUserAdmin();
+    if (!isAdmin) {
+      console.log('User is not admin, filtering hidden suppliers');
+      query = query.eq('hidden', false);
+    } else {
+      console.log('User is admin, showing all suppliers');
+    }
 
     const { data, error } = await query;
 
@@ -42,6 +48,8 @@ export const fetchSuppliers = async (options?: {
       // Return empty array instead of throwing to avoid UI failures
       return [];
     }
+
+    console.log('Suppliers data from Supabase:', data);
 
     // Process the data to get unique suppliers with their category IDs
     const suppliersMap = new Map<string, Supplier>();
@@ -67,7 +75,9 @@ export const fetchSuppliers = async (options?: {
       }
     });
     
-    return Array.from(suppliersMap.values());
+    const result = Array.from(suppliersMap.values());
+    console.log('Processed suppliers:', result);
+    return result;
   } catch (error) {
     console.error('Error in fetchSuppliers:', error);
     // Return empty array instead of throwing
@@ -80,6 +90,7 @@ export const fetchSuppliers = async (options?: {
  */
 export const fetchCategories = async (): Promise<Category[]> => {
   try {
+    console.log('Fetching categories');
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -91,10 +102,29 @@ export const fetchCategories = async (): Promise<Category[]> => {
       return [];
     }
 
+    console.log('Categories data from Supabase:', data);
     return data || [];
   } catch (error) {
     console.error('Error in fetchCategories:', error);
     return [];
+  }
+};
+
+// Helper function to check if user is admin
+const isUserAdmin = async (): Promise<boolean> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    
+    // Try to get user's role from app_metadata
+    if (user.app_metadata && user.app_metadata.role === 'admin') {
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    return false;
   }
 };
 

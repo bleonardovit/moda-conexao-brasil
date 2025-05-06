@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -69,6 +70,7 @@ const AppRoutes = () => {
     // Somente atualizar o estado de auth quando a inicialização estiver completa
     if (!isInitializing) {
       if (user) {
+        console.log('Auth state: User is authenticated:', user);
         setAuth({
           isAuthenticated: true,
           isAdmin: user.role === 'admin',
@@ -76,6 +78,7 @@ const AppRoutes = () => {
         });
         console.log('Auth state atualizado: usuário autenticado');
       } else {
+        console.log('Auth state: No user found');
         setAuth({
           isAuthenticated: false,
           isAdmin: false,
@@ -142,14 +145,13 @@ const AppRoutes = () => {
       
       {/* Home page redirects to suppliers when authenticated */}
       <Route 
-  path="/home" 
-  element={
-    auth.isAuthenticated 
-      ? <Home /> 
-      : <Navigate to="/auth/login" replace />
-  } 
-/>
-
+        path="/home" 
+        element={
+          auth.isAuthenticated 
+            ? <Home /> 
+            : <Navigate to="/auth/login" replace />
+        } 
+      />
 
       {/* Rotas de autenticação - apenas para usuários não autenticados */}
       <Route path="/auth/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
@@ -158,15 +160,7 @@ const AppRoutes = () => {
       <Route path="/auth/reset-confirmation" element={<PublicOnlyRoute><ResetConfirmation /></PublicOnlyRoute>} />
       <Route path="/auth/payment" element={<Payment />} />
       
-      {/* Rotas de aplicativo protegidas (requerem assinatura) */}
-<Route 
-        path="/home" 
-        element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        } 
-      />
+      {/* Fornecedores - acessível a todos os usuários autenticados */}
       <Route 
         path="/suppliers" 
         element={
@@ -175,29 +169,22 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
+      
       <Route 
         path="/suppliers/:id" 
         element={
-          <SubscriptionRoute>
+          <ProtectedRoute>
             <SupplierDetail />
-          </SubscriptionRoute>
+          </ProtectedRoute>
         } 
       />
+      
+      {/* Página de perfil */}
       <Route 
         path="/profile" 
         element={
           <ProtectedRoute>
             <Profile />
-          </ProtectedRoute>
-        } 
-      />
-      
-       {/* Fornecedores */}
-      <Route 
-        path="/suppliers" 
-        element={
-          <ProtectedRoute>
-            <SuppliersList />
           </ProtectedRoute>
         } 
       />
@@ -221,7 +208,8 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
-       {/* Notificações */}
+      
+      {/* Notificações */}
       <Route 
         path="/notifications" 
         element={
@@ -239,7 +227,7 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Novas rotas para artigos (requerem assinatura) */}
+      {/* Artigos (requerem assinatura) */}
       <Route 
         path="/articles" 
         element={
@@ -254,16 +242,6 @@ const AppRoutes = () => {
           <SubscriptionRoute>
             <ArticleDetailPage />
           </SubscriptionRoute>
-        } 
-      />
-      
-      {/* Configurações */}
-      <Route 
-        path="/settings" 
-        element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
         } 
       />
       
@@ -284,7 +262,7 @@ const AppRoutes = () => {
           </AdminRoute>
         } 
       />
-<Route 
+      <Route 
         path="/admin/suppliers" 
         element={
           <AdminRoute>
@@ -307,7 +285,7 @@ const AppRoutes = () => {
             <NotificationsManagement />
           </AdminRoute>
         } 
-         />
+      />
       <Route 
         path="/admin/reports" 
         element={

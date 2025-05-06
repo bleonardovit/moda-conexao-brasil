@@ -46,7 +46,7 @@ FOR SELECT
 USING (true);
 
 -- Permite administradores gerenciarem relações entre fornecedores e categorias
-CREATE POLICY "Admins podem gerenciar relações de categorias" 
+CREATE POLICY "Admins podem gerenciar categorias" 
 ON public.suppliers_categories 
 FOR ALL USING (
   auth.jwt() -> 'app_metadata' ->> 'role' = 'admin'
