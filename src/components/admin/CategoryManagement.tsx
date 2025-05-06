@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Table, 
@@ -30,7 +29,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, MoreHorizontal, Edit, Trash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { CategoryDialog } from './CategoryManagement';
 import { Category } from '@/types';
 import { deleteCategory, updateCategory } from '@/services/supplierService';
 

@@ -1,8 +1,8 @@
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
-import SuppliersList from './pages/SuppliersList';
-import SupplierDetails from './pages/SupplierDetails';
+import SuppliersList from './pages/suppliers/SuppliersList';
+import SupplierDetails from './pages/suppliers/SupplierDetails';
 import SuppliersManagement from './pages/admin/SuppliersManagement';
 import SuppliersBulkUpload from './pages/admin/SuppliersBulkUpload';
 import Dashboard from './pages/admin/Dashboard';
