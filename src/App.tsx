@@ -130,7 +130,7 @@ const AppRoutes = () => {
   const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     if (auth.isAuthenticated) {
       console.log('Redirecionando rota pública: usuário já está logado');
-      return <Navigate to="/suppliers" replace />;
+      return <Navigate to="/home" replace />;
     }
     return <>{children}</>;
   };
@@ -142,14 +142,15 @@ const AppRoutes = () => {
       
       {/* Home page redirects to suppliers when authenticated */}
       <Route 
-        path="/home" 
-        element={
-          auth.isAuthenticated 
-            ? <Navigate to="/suppliers" replace /> 
-            : <Navigate to="/auth/login" replace />
-        } 
-      />
-      
+  path="/home" 
+  element={
+    auth.isAuthenticated 
+      ? <Home /> 
+      : <Navigate to="/auth/login" replace />
+  } 
+/>
+
+
       {/* Rotas de autenticação - apenas para usuários não autenticados */}
       <Route path="/auth/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
       <Route path="/auth/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />

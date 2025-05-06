@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { LogOut } from 'lucide-react';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { SubscriptionManager } from '@/components/profile/SubscriptionManager';
+import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@/types';
 
 // Dados de exemplo
@@ -33,12 +33,12 @@ const MOCK_USER: User = {
 };
 
 export default function Profile() {
-  const [user, setUser] = useState<User>(MOCK_USER);
+  const { user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: user.full_name,
-    email: user.email,
-    phone: user.phone || ''
+    full_name: user?.full_name || '',
+    email: user?.email || '',
+    phone: user?.phone || ''
   });
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,29 +51,20 @@ export default function Profile() {
   
   const handleSave = () => {
     // Aqui seria implementada a lógica para salvar os dados do usuário
-    setUser(prev => ({
-      ...prev,
-      full_name: formData.full_name,
-      email: formData.email,
-      phone: formData.phone
-    }));
-    
-    toast({
-      title: "Sucesso!",
-      description: "Suas informações foram atualizadas."
-    });
-    
-    setIsEditing(false);
+    // ... existing code ...
   };
   
-  const handleLogout = () => {
-    // Lógica para sair da conta
-    toast({
-      title: "Saindo...",
-      description: "Você foi desconectado da sua conta."
-    });
-    
-    // Redirecionaria para a página de login
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: "Não foi possível sair da conta. Tente novamente."
+      });
+    }
   };
   
   return (
@@ -134,22 +125,22 @@ export default function Profile() {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <h3 className="text-sm font-medium text-muted-foreground">Nome</h3>
-                        <p>{user.full_name}</p>
+                        <p>{user?.full_name}</p>
                       </div>
                       
                       <div className="space-y-1">
                         <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
-                        <p>{user.email}</p>
+                        <p>{user?.email}</p>
                       </div>
                       
                       <div className="space-y-1">
                         <h3 className="text-sm font-medium text-muted-foreground">Telefone</h3>
-                        <p>{user.phone || 'Não informado'}</p>
+                        <p>{user?.phone || 'Não informado'}</p>
                       </div>
                       
                       <div className="space-y-1">
                         <h3 className="text-sm font-medium text-muted-foreground">Último acesso</h3>
-                        <p>{user.last_login ? new Date(user.last_login).toLocaleString('pt-BR') : 'N/A'}</p>
+                        <p>{user?.last_login ? new Date(user.last_login).toLocaleString('pt-BR') : 'N/A'}</p>
                       </div>
                     </div>
                   </div>

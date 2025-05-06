@@ -114,7 +114,8 @@ const SupplierForm: React.FC<{
       // Convert the avg_price from database string to enum value
       avg_price: convertAvgPriceToEnum(initialData.avg_price),
       custom_shipping_method: initialData.custom_shipping_method || '',
-      images: initialData.images || []
+      images: initialData.images || [],
+      categories: initialData.categories || []
     } : {
       code: '',
       name: '',
@@ -647,6 +648,8 @@ const SupplierForm: React.FC<{
           </TabsContent>
           
           <TabsContent value="details" className="space-y-4">
+            {console.log('Categories:', categories)}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -695,15 +698,14 @@ const SupplierForm: React.FC<{
               name="categories"
               render={({ field }) => (
                 <FormItem>
-                  <CategorySelector
-                    categories={categories}
-                    selectedCategories={field.value || []}
-                    onChange={(value) => {
-                      field.onChange(value);
-                      form.setValue('categories', value, { shouldValidate: true });
-                    }}
-                    onAddCategory={onAddCategory}
-                  />
+                  <FormControl>
+                    <CategorySelector
+                      categories={categories}
+                      selectedCategories={field.value || []}
+                      onChange={field.onChange}
+                      onAddCategory={onAddCategory}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -832,6 +834,7 @@ export default function SuppliersManagement() {
         
         // Carregar categorias
         const categoriesData = await fetchCategories();
+        console.log('Categorias carregadas:', categoriesData); // Debug log
         setCategories(categoriesData);
         
         // Carregar fornecedores
