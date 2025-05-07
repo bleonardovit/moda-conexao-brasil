@@ -48,7 +48,7 @@ export function CategorySelector({
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getCategories();
+      await getCategories();
       // We don't need to set categories here anymore since they're passed as props
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -121,6 +121,10 @@ export function CategorySelector({
     }
   };
 
+  // Ensure that we're always working with arrays, even if undefined is passed
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeSelectedCategories = Array.isArray(selectedCategories) ? selectedCategories : [];
+
   return (
     <div className="space-y-2">
       <div className="flex items-end space-x-2">
@@ -133,8 +137,8 @@ export function CategorySelector({
                 aria-expanded={open}
                 className="w-full justify-between"
               >
-                {selectedCategories.length > 0
-                  ? `${selectedCategories.length} categorias selecionadas`
+                {safeSelectedCategories.length > 0
+                  ? `${safeSelectedCategories.length} categorias selecionadas`
                   : "Selecionar categorias..."}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
@@ -142,48 +146,50 @@ export function CategorySelector({
             <PopoverContent className="w-full p-0" align="start">
               <Command>
                 <CommandInput placeholder="Buscar categoria..." />
-                <CommandEmpty>
-                  {isLoading ? (
-                    <div className="flex items-center justify-center p-4">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="ml-2">Carregando...</span>
-                    </div>
-                  ) : (
-                    "Nenhuma categoria encontrada."
-                  )}
-                </CommandEmpty>
-                <CommandGroup>
-                  {categories.map((category) => (
-                    <CommandItem
-                      key={category.id}
-                      value={category.id}
-                      onSelect={() => handleSelect(category.id)}
+                <CommandList>
+                  <CommandEmpty>
+                    {isLoading ? (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="ml-2">Carregando...</span>
+                      </div>
+                    ) : (
+                      "Nenhuma categoria encontrada."
+                    )}
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {safeCategories.map((category) => (
+                      <CommandItem
+                        key={category.id}
+                        value={category.id}
+                        onSelect={() => handleSelect(category.id)}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            safeSelectedCategories.includes(category.id)
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        {category.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                  <div className="p-2 border-t">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setIsAddDialogOpen(true);
+                        setOpen(false);
+                      }}
                     >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          selectedCategories.includes(category.id)
-                            ? "opacity-100"
-                            : "opacity-0"
-                        )}
-                      />
-                      {category.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                <div className="p-2 border-t">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setIsAddDialogOpen(true);
-                      setOpen(false);
-                    }}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar nova categoria
-                  </Button>
-                </div>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar nova categoria
+                    </Button>
+                  </div>
+                </CommandList>
               </Command>
             </PopoverContent>
           </Popover>
@@ -219,10 +225,10 @@ export function CategorySelector({
       </div>
 
       {/* Selected categories display */}
-      {selectedCategories.length > 0 && (
+      {safeSelectedCategories.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
-          {selectedCategories.map((categoryId) => {
-            const category = categories.find((c) => c.id === categoryId);
+          {safeSelectedCategories.map((categoryId) => {
+            const category = safeCategories.find((c) => c.id === categoryId);
             return category ? (
               <Badge
                 key={categoryId}
@@ -283,5 +289,20 @@ export function CategorySelector({
     </div>
   );
 }
+
+// Add this component to ensure CommandList is properly defined
+// This is important because CommandList isn't explicitly imported but is used in the JSX
+const CommandList = React.forwardRef<
+  React.ElementRef<typeof Command.List>,
+  React.ComponentPropsWithoutRef<typeof Command.List>
+>(({ className, ...props }, ref) => (
+  <Command.List
+    ref={ref}
+    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+    {...props}
+  />
+));
+
+CommandList.displayName = "CommandList";
 
 export default CategorySelector;
