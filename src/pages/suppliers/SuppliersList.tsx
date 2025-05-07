@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -108,6 +107,11 @@ export default function SuppliersList() {
   }, [toast]);
 
   const filteredSuppliers = suppliers.filter(supplier => {
+    // Make sure supplier.categories exists before using it
+    if (!supplier.categories) {
+      return false;
+    }
+    
     const matchesSearch = searchTerm === '' || 
       supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       supplier.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -156,7 +160,7 @@ export default function SuppliersList() {
     });
   };
 
-  // Get category name by ID
+  // Get category name by ID - with safeguards
   const getCategoryName = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     return category ? category.name : '';
@@ -378,20 +382,24 @@ export default function SuppliersList() {
                     <p className="text-sm mb-4 line-clamp-2">{supplier.description}</p>
                     
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {supplier.categories.map(categoryId => {
-                        const categoryName = getCategoryName(categoryId);
-                        const categoryStyle = getCategoryStyle(categoryName);
-                        
-                        return categoryName ? (
-                          <Badge 
-                            key={categoryId} 
-                            variant="outline"
-                            className={categoryStyle || ''}
-                          >
-                            {categoryName}
-                          </Badge>
-                        ) : null;
-                      })}
+                      {supplier.categories && supplier.categories.length > 0 ? (
+                        supplier.categories.map(categoryId => {
+                          const categoryName = getCategoryName(categoryId);
+                          const categoryStyle = getCategoryStyle(categoryName);
+                          
+                          return categoryName ? (
+                            <Badge 
+                              key={categoryId} 
+                              variant="outline"
+                              className={categoryStyle || ''}
+                            >
+                              {categoryName}
+                            </Badge>
+                          ) : null;
+                        })
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Sem categorias</span>
+                      )}
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2 text-sm mb-4">

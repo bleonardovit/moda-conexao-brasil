@@ -1,320 +1,369 @@
 
-import { useState } from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
+import { useState, useEffect, useCallback } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Trash, Plus, Loader2 } from "lucide-react";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
-import { 
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Textarea } from '@/components/ui/textarea';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Edit, Plus, Trash } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import type { Category } from '@/types';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from '@/components/ui/alert-dialog';
-import { updateCategory, deleteCategory, createCategory } from '@/services/categoryService';
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { getCategories, createCategory, updateCategory, deleteCategory } from '@/services/categoryService';
+import { type Category } from '@/types';
 
-// Schema for form validation
-const categorySchema = z.object({
-  name: z.string().min(1, "O nome é obrigatório").max(100, "O nome não pode ter mais de 100 caracteres"),
-  description: z.string().optional(),
-});
-
-type CategoryFormValues = z.infer<typeof categorySchema>;
-
-interface CategoryManagementProps {
-  categories: Category[];
-  setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
-}
-
-export function CategoryManagement({ categories, setCategories }: CategoryManagementProps) {
-  const { toast } = useToast();
+export function CategoryManagement() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryDescription, setNewCategoryDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { toast } = useToast();
 
-  const form = useForm<CategoryFormValues>({
-    resolver: zodResolver(categorySchema),
-    defaultValues: {
-      name: '',
-      description: '',
-    },
-  });
-
-  // Open the dialog for adding a new category
-  const openAddDialog = () => {
-    form.reset({ name: '', description: '' });
-    setIsEditMode(false);
-    setCategoryToEdit(null);
-    setIsAddDialogOpen(true);
-  };
-
-  // Open the dialog for editing a category
-  const openEditDialog = (category: Category) => {
-    form.reset({ 
-      name: category.name,
-      description: category.description || '',
-    });
-    setIsEditMode(true);
-    setCategoryToEdit(category);
-    setIsAddDialogOpen(true);
-  };
-
-  // Confirm deletion of a category
-  const confirmDelete = (category: Category) => {
-    setCategoryToDelete(category);
-    setIsDeleteDialogOpen(true);
-  };
-
-  // Handle form submission
-  const onSubmit = async (values: CategoryFormValues) => {
+  const fetchCategories = useCallback(async () => {
+    setIsLoading(true);
     try {
-      if (isEditMode && categoryToEdit) {
-        // Update existing category
-        const updatedCategory = await updateCategory(categoryToEdit.id, values);
-        
-        // Update local state
-        setCategories(categories.map(c => 
-          c.id === categoryToEdit.id ? updatedCategory : c
-        ));
-
-        toast({
-          title: "Categoria atualizada",
-          description: `A categoria "${values.name}" foi atualizada com sucesso.`,
-        });
-      } else {
-        // Create new category
-        const newCategory = await createCategory(values);
-        
-        // Update local state
-        setCategories([...categories, newCategory]);
-
-        toast({
-          title: "Categoria criada",
-          description: `A categoria "${values.name}" foi criada com sucesso.`,
-        });
-      }
-
-      // Close dialog
-      setIsAddDialogOpen(false);
+      const data = await getCategories();
+      setCategories(data);
     } catch (error) {
-      console.error('Error saving category:', error);
+      console.error("Error fetching categories:", error);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao salvar a categoria.",
+        description: "Não foi possível carregar as categorias.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome da categoria é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Create category with required name field
+      await createCategory({ 
+        name: newCategoryName, 
+        description: newCategoryDescription 
+      });
+      
+      toast({
+        title: "Sucesso",
+        description: "Categoria criada com sucesso.",
+      });
+      
+      setNewCategoryName("");
+      setNewCategoryDescription("");
+      setIsAddDialogOpen(false);
+      fetchCategories();
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar a categoria.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Delete a category
+  const handleUpdateCategory = async () => {
+    if (!currentCategory || !currentCategory.name.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome da categoria é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateCategory(currentCategory.id, {
+        name: currentCategory.name,
+        description: currentCategory.description,
+      });
+      
+      toast({
+        title: "Sucesso",
+        description: "Categoria atualizada com sucesso.",
+      });
+      
+      setIsEditDialogOpen(false);
+      fetchCategories();
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a categoria.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDeleteCategory = async () => {
-    if (categoryToDelete) {
-      try {
-        await deleteCategory(categoryToDelete.id);
-        
-        // Update local state
-        setCategories(categories.filter(c => c.id !== categoryToDelete.id));
+    if (!currentCategory) return;
 
-        toast({
-          title: "Categoria excluída",
-          description: `A categoria "${categoryToDelete.name}" foi excluída com sucesso.`,
-        });
-
-        setIsDeleteDialogOpen(false);
-      } catch (error) {
-        console.error('Error deleting category:', error);
-        toast({
-          title: "Erro",
-          description: "Ocorreu um erro ao excluir a categoria.",
-          variant: "destructive",
-        });
-      }
+    setIsSubmitting(true);
+    try {
+      await deleteCategory(currentCategory.id);
+      
+      toast({
+        title: "Sucesso",
+        description: "Categoria excluída com sucesso.",
+      });
+      
+      setIsDeleteDialogOpen(false);
+      fetchCategories();
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a categoria.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  // Filter categories based on search term
-  const filteredCategories = categories.filter(category => 
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gerenciamento de Categorias</h2>
-        <Button onClick={openAddDialog}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Categoria
+        <h2 className="text-xl font-semibold">Gerenciar Categorias</h2>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" /> Adicionar Categoria
         </Button>
       </div>
-      
-      {/* Search input */}
-      <div className="relative">
-        <Input
-          placeholder="Buscar categorias..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
-        />
-      </div>
-      
-      {/* Categories table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead className="hidden md:table-cell">Descrição</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredCategories.length > 0 ? (
-              filteredCategories.map(category => (
-                <TableRow key={category.id}>
-                  <TableCell className="font-medium">{category.name}</TableCell>
-                  <TableCell className="hidden md:table-cell">{category.description}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(category)}>
-                        <Edit className="h-4 w-4" />
-                        <span className="sr-only">Editar</span>
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => confirmDelete(category)}>
-                        <Trash className="h-4 w-4" />
-                        <span className="sr-only">Excluir</span>
-                      </Button>
-                    </div>
+
+      {isLoading ? (
+        <div className="flex justify-center p-4">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="w-[100px]">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {categories.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center p-4 text-muted-foreground">
+                    Nenhuma categoria encontrada.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
-                  Nenhuma categoria encontrada.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      
-      {/* Add/Edit Category Dialog */}
+              ) : (
+                categories.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell className="font-medium">{category.name}</TableCell>
+                    <TableCell>{category.description || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentCategory(category);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentCategory(category);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Add Category Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
-            <DialogDescription>
-              {isEditMode
-                ? 'Edite os detalhes da categoria existente.'
-                : 'Preencha os detalhes para criar uma nova categoria.'}
-            </DialogDescription>
+            <DialogTitle>Adicionar Categoria</DialogTitle>
           </DialogHeader>
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome da categoria" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome *</Label>
+              <Input
+                id="name"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Nome da categoria"
+                required
               />
-              
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Descrição da categoria"
-                        {...field}
-                        value={field.value || ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={newCategoryDescription}
+                onChange={(e) => setNewCategoryDescription(e.target.value)}
+                placeholder="Descrição da categoria (opcional)"
+                rows={3}
               />
-              
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {isEditMode ? 'Salvar Alterações' : 'Criar Categoria'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddCategory} disabled={isSubmitting || !newCategoryName.trim()}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente a categoria{' '}
-              <span className="font-semibold">{categoryToDelete?.name}</span>{' '}
-              e removerá sua associação com todos os fornecedores.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteCategory}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+
+      {/* Edit Category Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Categoria</DialogTitle>
+          </DialogHeader>
+          {currentCategory && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome *</Label>
+                <Input
+                  id="edit-name"
+                  value={currentCategory.name}
+                  onChange={(e) =>
+                    setCurrentCategory({ ...currentCategory, name: e.target.value })
+                  }
+                  placeholder="Nome da categoria"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Descrição</Label>
+                <Textarea
+                  id="edit-description"
+                  value={currentCategory.description || ""}
+                  onChange={(e) =>
+                    setCurrentCategory({
+                      ...currentCategory,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Descrição da categoria (opcional)"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUpdateCategory} 
+              disabled={isSubmitting || !currentCategory?.name?.trim()}
             >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Category Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Categoria</DialogTitle>
+          </DialogHeader>
+          <p>
+            Tem certeza que deseja excluir a categoria{" "}
+            <strong>{currentCategory?.name}</strong>? Esta ação não poderá ser desfeita.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteCategory}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+export default CategoryManagement;

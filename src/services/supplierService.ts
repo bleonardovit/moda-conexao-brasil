@@ -6,16 +6,23 @@ import { SupplierFormValues } from '@/lib/validators/supplier-form';
 // Get all suppliers
 export const getSuppliers = async (): Promise<Supplier[]> => {
   try {
-    const { data, error } = await supabase
+    // First, get all suppliers
+    const { data: suppliersData, error: suppliersError } = await supabase
       .from('suppliers')
       .select('*');
 
-    if (error) {
-      console.error('Error fetching suppliers:', error);
-      throw error;
+    if (suppliersError) {
+      console.error('Error fetching suppliers:', suppliersError);
+      throw suppliersError;
     }
 
-    return data || [];
+    // For each supplier, get their associated categories
+    const suppliersWithCategories = await Promise.all(suppliersData.map(async (supplier) => {
+      const categories = await getSupplierCategories(supplier.id);
+      return { ...supplier, categories } as Supplier;
+    }));
+
+    return suppliersWithCategories || [];
   } catch (error) {
     console.error('Error in getSuppliers:', error);
     throw error;
@@ -40,7 +47,9 @@ export const getSupplierById = async (id: string): Promise<Supplier | null> => {
       throw error;
     }
 
-    return data;
+    // Get categories for this supplier
+    const categories = await getSupplierCategories(id);
+    return { ...data, categories } as Supplier;
   } catch (error) {
     console.error('Error in getSupplierById:', error);
     throw error;
@@ -50,8 +59,28 @@ export const getSupplierById = async (id: string): Promise<Supplier | null> => {
 // Create a new supplier
 export const createSupplier = async (supplier: SupplierFormValues): Promise<Supplier> => {
   try {
+    // Extract categories for later use
+    const categories = supplier.categories || [];
+    
+    // Create supplier object without categories field
     const newSupplier = {
-      ...supplier,
+      code: supplier.code || `SUP-${Date.now()}`,
+      name: supplier.name || '',
+      description: supplier.description || '',
+      images: supplier.images || [],
+      instagram: supplier.instagram || null,
+      whatsapp: supplier.whatsapp || null,
+      website: supplier.website || null,
+      min_order: supplier.min_order || null,
+      payment_methods: supplier.payment_methods || [],
+      requires_cnpj: supplier.requires_cnpj || false,
+      avg_price: supplier.avg_price || null,
+      shipping_methods: supplier.shipping_methods || [],
+      custom_shipping_method: supplier.custom_shipping_method || null,
+      city: supplier.city || '',
+      state: supplier.state || '',
+      featured: supplier.featured || false,
+      hidden: supplier.hidden || false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -68,11 +97,12 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
     }
 
     // Insert supplier categories relationships
-    if (supplier.categories && supplier.categories.length > 0) {
-      await updateSupplierCategories(data.id, supplier.categories);
+    if (categories.length > 0) {
+      await updateSupplierCategories(data.id, categories);
     }
 
-    return data;
+    // Return complete supplier with categories
+    return { ...data, categories } as Supplier;
   } catch (error) {
     console.error('Error in createSupplier:', error);
     throw error;
@@ -80,10 +110,15 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
 };
 
 // Update an existing supplier
-export const updateSupplier = async (id: string, supplier: SupplierFormValues): Promise<Supplier> => {
+export const updateSupplier = async (id: string, supplier: Partial<SupplierFormValues>): Promise<Supplier> => {
   try {
+    // Extract categories for later use
+    const categories = supplier.categories;
+    
+    // Create supplier object without categories field
     const updatedSupplier = {
       ...supplier,
+      categories: undefined, // Remove categories from the update object
       updated_at: new Date().toISOString(),
     };
 
@@ -99,12 +134,14 @@ export const updateSupplier = async (id: string, supplier: SupplierFormValues): 
       throw error;
     }
 
-    // Update supplier categories
-    if (supplier.categories) {
-      await updateSupplierCategories(id, supplier.categories);
+    // Update supplier categories if provided
+    if (categories && categories.length >= 0) {
+      await updateSupplierCategories(id, categories);
     }
 
-    return data;
+    // Get updated categories for this supplier
+    const updatedCategories = await getSupplierCategories(id);
+    return { ...data, categories: updatedCategories } as Supplier;
   } catch (error) {
     console.error('Error in updateSupplier:', error);
     throw error;

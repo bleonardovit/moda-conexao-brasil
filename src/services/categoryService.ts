@@ -26,7 +26,8 @@ export const getCategories = async (): Promise<Category[]> => {
 export const createCategory = async (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> => {
   try {
     const newCategory = {
-      ...category,
+      name: category.name, // Name is required by our model
+      description: category.description || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

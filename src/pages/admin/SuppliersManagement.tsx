@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -786,6 +785,12 @@ const ImportErrorsDisplay: React.FC<{ errors: ImportError[] }> = ({ errors }) =>
     </div>
   );
 };
+
+interface CategoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreateCategory: (category: Omit<Category, "id" | "created_at" | "updated_at">) => Promise<void>;
+}
 
 export default function SuppliersManagement() {
   const { toast } = useToast();

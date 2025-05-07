@@ -42,7 +42,7 @@ export function HeaderSearch() {
     }
   }, [open, suppliers.length]);
 
-  // Busca dinâmica
+  // Dynamic search
   const filteredSuppliers = useMemo(() => {
     if (!query) return [];
     return suppliers.filter(supplier =>
@@ -53,10 +53,12 @@ export function HeaderSearch() {
 
   const filteredArticles = useMemo(() => {
     if (!query) return [];
-    return getArticles().filter(article =>
+    // Safely get articles and handle potential undefined
+    const articles = getArticles();
+    return articles ? articles.filter(article =>
       article.title.toLowerCase().includes(query.toLowerCase()) ||
       article.summary.toLowerCase().includes(query.toLowerCase())
-    );
+    ) : [];
   }, [query]);
 
   // Handle command selection
@@ -102,7 +104,7 @@ export function HeaderSearch() {
                   ))}
                 </CommandGroup>
               )}
-              {filteredArticles.length > 0 && (
+              {filteredArticles && filteredArticles.length > 0 && (
                 <CommandGroup heading="Artigos">
                   {filteredArticles.map(article => (
                     <CommandItem
