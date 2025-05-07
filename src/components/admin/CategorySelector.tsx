@@ -10,6 +10,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -146,7 +147,7 @@ export function CategorySelector({
             <PopoverContent className="w-full p-0" align="start">
               <Command>
                 <CommandInput placeholder="Buscar categoria..." />
-                <CommandList>
+                <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
                   <CommandEmpty>
                     {isLoading ? (
                       <div className="flex items-center justify-center p-4">
@@ -289,20 +290,5 @@ export function CategorySelector({
     </div>
   );
 }
-
-// Add this component to ensure CommandList is properly defined
-// This is important because CommandList isn't explicitly imported but is used in the JSX
-const CommandList = React.forwardRef<
-  React.ElementRef<typeof Command.List>,
-  React.ComponentPropsWithoutRef<typeof Command.List>
->(({ className, ...props }, ref) => (
-  <Command.List
-    ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
-));
-
-CommandList.displayName = "CommandList";
 
 export default CategorySelector;
