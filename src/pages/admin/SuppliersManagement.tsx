@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -66,7 +67,8 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { supplierFormSchema, type SupplierFormValues } from '@/lib/validators/supplier-form';
-import type { Supplier, Category, CategoryManagementProps } from '@/types';
+import type { Supplier, Category } from '@/types';
+import type { CategoryManagementProps } from '@/types/category'; // Import directly from the category type file
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useAuth } from '@/hooks/useAuth';
 import { 

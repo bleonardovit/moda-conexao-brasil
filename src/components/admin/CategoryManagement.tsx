@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +21,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/services/categoryService';
-import { type Category } from '@/types';
+import { type Category, type CategoryManagementProps } from '@/types/category';
 
-export function CategoryManagement() {
-  const [categories, setCategories] = useState<Category[]>([]);
+export function CategoryManagement({ categories, setCategories }: CategoryManagementProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
