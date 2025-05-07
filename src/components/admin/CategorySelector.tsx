@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown, Plus, Loader2 } from "lucide-react";
@@ -28,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getCategories, createCategory } from '@/services/categoryService';
 import { useToast } from '@/hooks/use-toast';
-import { type Category, type CategorySelectorProps } from '@/types';
+import { type Category, type CategorySelectorProps } from '@/types/category';
 
 export function CategorySelector({
   categories,
