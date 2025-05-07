@@ -20,10 +20,12 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
     if (!suppliersData) return [];
 
     // For each supplier, get their associated categories
-    const suppliersWithCategories = await Promise.all((suppliersData || []).map(async (supplier) => {
-      const categories = await getSupplierCategories(supplier.id);
-      return { ...supplier, categories } as Supplier;
-    }));
+    const suppliersWithCategories = await Promise.all(
+      suppliersData.map(async (supplier) => {
+        const categories = await getSupplierCategories(supplier.id);
+        return { ...supplier, categories } as Supplier;
+      })
+    );
 
     return suppliersWithCategories;
   } catch (error) {
