@@ -30,9 +30,10 @@ export function HeaderSearch() {
         try {
           const data = await getSuppliers();
           // Filter only visible suppliers
-          setSuppliers(data.filter(supplier => !supplier.hidden));
+          setSuppliers(data ? data.filter(supplier => !supplier.hidden) : []);
         } catch (error) {
           console.error('Error fetching suppliers for search:', error);
+          setSuppliers([]); // Set to empty array on error
         } finally {
           setIsLoading(false);
         }
@@ -44,10 +45,11 @@ export function HeaderSearch() {
 
   // Dynamic search
   const filteredSuppliers = useMemo(() => {
-    if (!query) return [];
+    if (!query || !Array.isArray(suppliers)) return [];
+    
     return suppliers.filter(supplier =>
-      supplier.name.toLowerCase().includes(query.toLowerCase()) ||
-      supplier.description.toLowerCase().includes(query.toLowerCase())
+      supplier.name?.toLowerCase().includes(query.toLowerCase()) ||
+      supplier.description?.toLowerCase().includes(query.toLowerCase())
     );
   }, [query, suppliers]);
 
@@ -55,9 +57,10 @@ export function HeaderSearch() {
     if (!query) return [];
     // Safely get articles and handle potential undefined
     const articles = getArticles() || [];
+    
     return articles.filter(article =>
-      article.title.toLowerCase().includes(query.toLowerCase()) ||
-      article.summary.toLowerCase().includes(query.toLowerCase())
+      article.title?.toLowerCase().includes(query.toLowerCase()) ||
+      article.summary?.toLowerCase().includes(query.toLowerCase())
     );
   }, [query]);
 
@@ -90,7 +93,7 @@ export function HeaderSearch() {
           </CommandEmpty>
           {query ? (
             <>
-              {filteredSuppliers.length > 0 && (
+              {filteredSuppliers && filteredSuppliers.length > 0 && (
                 <CommandGroup heading="Fornecedores">
                   {filteredSuppliers.map(supplier => (
                     <CommandItem
