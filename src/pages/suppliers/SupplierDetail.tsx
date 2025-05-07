@@ -34,8 +34,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Input } from '@/components/ui/input';
-import type { Supplier, Review } from '@/types';
+import type { Supplier, Review, Category } from '@/types';
 import { getSupplierById } from '@/services/supplierService';
+import { getCategories } from '@/services/categoryService';
 
 const reviewFormSchema = z.object({
   rating: z.number().min(1).max(5),
@@ -58,6 +59,7 @@ export default function SupplierDetail() {
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
   
   const [reviews, setReviews] = useState<Review[]>([]);
 
@@ -95,6 +97,23 @@ export default function SupplierDetail() {
     }
   }, [id]);
   
+  useEffect(() => {
+    const fetchAllCategories = async () => {
+      try {
+        const categoriesData = await getCategories();
+        setAllCategories(categoriesData);
+      } catch (err) {
+        console.error("Erro ao buscar todas as categorias:", err);
+      }
+    };
+    fetchAllCategories();
+  }, []);
+
+  const getCategoryNameFromId = (categoryId: string): string => {
+    const foundCategory = allCategories.find(cat => cat.id === categoryId);
+    return foundCategory ? foundCategory.name : categoryId;
+  };
+
   const goToPreviousSupplier = () => {
     toast({ title: "Navegação indisponível", description: "A navegação para fornecedor anterior/seguinte está temporariamente desabilitada." });
   };
@@ -436,7 +455,8 @@ export default function SupplierDetail() {
             <div>
               <h3 className="font-medium mb-2">Categorias</h3>
               <div className="flex flex-wrap gap-2">
-                {supplier.categories.map(category => {
+                {supplier.categories.map(categoryId => {
+                  const categoryName = getCategoryNameFromId(categoryId);
                   const categoryColors: Record<string, string> = {
                     'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
                     'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -447,11 +467,11 @@ export default function SupplierDetail() {
                   
                   return (
                     <Badge 
-                      key={category} 
+                      key={categoryId}
                       variant="outline"
-                      className={categoryColors[category] || ''}
+                      className={categoryColors[categoryName] || 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200'}
                     >
-                      {category}
+                      {categoryName}
                     </Badge>
                   );
                 })}
