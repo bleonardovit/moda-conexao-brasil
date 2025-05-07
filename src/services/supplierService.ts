@@ -2,7 +2,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Supplier, Category } from '@/types';
 import { SupplierFormValues } from '@/lib/validators/supplier-form';
-import { useToast } from '@/hooks/use-toast';
 
 // Get all suppliers
 export const getSuppliers = async (): Promise<Supplier[]> => {
@@ -38,26 +37,38 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
 // Get supplier by ID
 export const getSupplierById = async (id: string): Promise<Supplier | null> => {
   try {
+    console.log(`Fetching supplier with ID: ${id}`);
+    
+    if (!id) {
+      console.error('Invalid supplier ID provided');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('suppliers')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single() to handle not found more gracefully
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows found
-        return null;
-      }
-      console.error('Error fetching supplier by ID:', error);
+      console.error(`Error fetching supplier with ID ${id}:`, error);
       throw error;
     }
 
+    if (!data) {
+      console.log(`No supplier found with ID: ${id}`);
+      return null;
+    }
+
+    console.log(`Supplier found:`, data);
+
     // Get categories for this supplier
     const categories = await getSupplierCategories(id);
+    console.log(`Categories for supplier ${id}:`, categories);
+    
     return { ...data, categories } as Supplier;
   } catch (error) {
-    console.error('Error in getSupplierById:', error);
+    console.error(`Error in getSupplierById for ID ${id}:`, error);
     throw error;
   }
 };
