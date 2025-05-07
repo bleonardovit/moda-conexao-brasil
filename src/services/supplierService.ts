@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Supplier, Category } from '@/types';
 import { SupplierFormValues } from '@/lib/validators/supplier-form';
+import { useToast } from '@/hooks/use-toast';
 
 // Get all suppliers
 export const getSuppliers = async (): Promise<Supplier[]> => {
@@ -93,6 +94,7 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
       updated_at: new Date().toISOString(),
     };
 
+    // Insert the supplier in the database
     const { data, error } = await supabase
       .from('suppliers')
       .insert(newSupplier)
@@ -138,6 +140,7 @@ export const updateSupplier = async (id: string, supplier: Partial<SupplierFormV
       updated_at: new Date().toISOString(),
     };
 
+    // Update the supplier in the database
     const { data, error } = await supabase
       .from('suppliers')
       .update(updatedSupplier)
