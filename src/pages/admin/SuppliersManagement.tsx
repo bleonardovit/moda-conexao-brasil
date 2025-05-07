@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Table, 
@@ -68,113 +69,17 @@ import {
 import { supplierFormSchema, type SupplierFormValues } from '@/lib/validators/supplier-form';
 import type { Supplier, Category } from '@/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-
-// Dados de exemplo
-const MOCK_SUPPLIERS: Supplier[] = [
-  {
-    id: '1',
-    code: 'SP001',
-    name: 'Moda Fashion SP',
-    description: 'Atacado de roupas femininas com foco em tendências atuais',
-    images: ['/placeholder.svg'],
-    instagram: '@modafashionsp',
-    whatsapp: '+5511999999999',
-    min_order: 'R$ 300,00',
-    payment_methods: ['pix', 'card', 'bankslip'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'delivery', 'transporter'],
-    city: 'São Paulo',
-    state: 'SP',
-    categories: ['1', '2'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '2',
-    code: 'CE001',
-    name: 'Brindes Fortaleza',
-    description: 'Acessórios e bijuterias para revenda',
-    images: ['/placeholder.svg'],
-    instagram: '@brindesfortaleza',
-    whatsapp: '+5585999999999',
-    min_order: '15 peças',
-    payment_methods: ['pix', 'bankslip'],
-    requires_cnpj: false,
-    avg_price: 'low',
-    shipping_methods: ['correios'],
-    city: 'Fortaleza',
-    state: 'CE',
-    categories: ['4'],
-    featured: false,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '3',
-    code: 'GO001',
-    name: 'Plus Size Goiânia',
-    description: 'Especializada em moda plus size feminina',
-    images: ['/placeholder.svg'],
-    instagram: '@plussizegoiania',
-    whatsapp: '+5562999999999',
-    website: 'https://plussizegoiania.com.br',
-    min_order: 'R$ 500,00',
-    payment_methods: ['pix', 'card'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'Goiânia',
-    state: 'GO',
-    categories: ['3'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  }
-];
-
-// Dados de exemplo para categorias
-const MOCK_CATEGORIES: Category[] = [
-  {
-    id: '1',
-    name: 'Casual',
-    description: 'Roupas para uso diário',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '2',
-    name: 'Fitness',
-    description: 'Roupas esportivas e fitness',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '3',
-    name: 'Plus Size',
-    description: 'Moda em tamanhos maiores',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '4',
-    name: 'Acessórios',
-    description: 'Bolsas, cintos, bijuterias etc',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  },
-  {
-    id: '5',
-    name: 'Praia',
-    description: 'Roupas de praia e verão',
-    created_at: '2025-04-01T10:30:00Z',
-    updated_at: '2025-04-01T10:30:00Z'
-  }
-];
+import { useAuth } from '@/hooks/useAuth';
+import { 
+  getSuppliers, 
+  createSupplier, 
+  updateSupplier, 
+  deleteSupplier,
+  toggleSupplierFeatured,
+  toggleSupplierVisibility,
+  getSupplierCategories
+} from '@/services/supplierService';
+import { getCategories, createCategory } from '@/services/categoryService';
 
 const STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 
@@ -182,7 +87,7 @@ const STATES = [
   'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
-// Interface para erros de importação
+// Interface for erros de importação
 interface ImportError {
   row: number;
   errors: string[];
@@ -884,6 +789,7 @@ const ImportErrorsDisplay: React.FC<{ errors: ImportError[] }> = ({ errors }) =>
 
 export default function SuppliersManagement() {
   const { toast } = useToast();
+  const { user, isInitializing } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
@@ -891,13 +797,63 @@ export default function SuppliersManagement() {
   const [currentSupplier, setCurrentSupplier] = useState<Supplier | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Dados para fornecedores e categorias
-  const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
+  // Data states
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   
   // Tab atual
   const [currentTab, setCurrentTab] = useState<'suppliers' | 'categories'>('suppliers');
+
+  // Fetch suppliers and categories on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      if (isInitializing) return;
+      
+      if (!user || user.role !== 'admin') {
+        toast({
+          title: "Acesso não autorizado",
+          description: "Você não tem permissão para acessar esta página.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const [suppliersData, categoriesData] = await Promise.all([
+          getSuppliers(),
+          getCategories(),
+        ]);
+        
+        // Fetch categories for each supplier
+        const suppliersWithCategories = await Promise.all(
+          suppliersData.map(async (supplier) => {
+            const categoryIds = await getSupplierCategories(supplier.id);
+            return {
+              ...supplier,
+              categories: categoryIds
+            };
+          })
+        );
+        
+        setSuppliers(suppliersWithCategories);
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast({
+          title: "Erro ao carregar dados",
+          description: "Não foi possível carregar os fornecedores e categorias.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, isInitializing, toast]);
   
   // Filtragem de fornecedores
   const filteredSuppliers = suppliers.filter(supplier => {
@@ -913,24 +869,28 @@ export default function SuppliersManagement() {
   });
   
   // Função para adicionar uma categoria
-  const addCategory = (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
-    const newCategory: Category = {
-      id: `${categories.length + 1}`,
-      name: categoryData.name,
-      description: categoryData.description,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    setCategories([...categories, newCategory]);
-    
-    toast({
-      title: "Categoria adicionada",
-      description: `A categoria "${categoryData.name}" foi criada com sucesso.`,
-      variant: "default",
-    });
-    
-    return newCategory.id;
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const newCategory = await createCategory(categoryData);
+      
+      setCategories([...categories, newCategory]);
+      
+      toast({
+        title: "Categoria adicionada",
+        description: `A categoria "${categoryData.name}" foi criada com sucesso.`,
+        variant: "default",
+      });
+      
+      return newCategory.id;
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast({
+        title: "Erro ao adicionar categoria",
+        description: "Não foi possível criar a categoria.",
+        variant: "destructive",
+      });
+      return "";
+    }
   };
   
   // Abrir modal para editar fornecedor
@@ -954,120 +914,160 @@ export default function SuppliersManagement() {
   };
   
   // Excluir fornecedor
-  const deleteSupplier = () => {
+  const handleDeleteSupplier = async () => {
     if (supplierToDelete) {
-      const updatedSuppliers = suppliers.filter(s => s.id !== supplierToDelete.id);
-      setSuppliers(updatedSuppliers);
-      
-      toast({
-        title: "Fornecedor excluído",
-        description: `${supplierToDelete.name} foi removido com sucesso.`,
-        variant: "default",
-      });
-      
-      setIsDeleteDialogOpen(false);
-      setSupplierToDelete(null);
+      try {
+        await deleteSupplier(supplierToDelete.id);
+        
+        // Update local state
+        setSuppliers(suppliers.filter(s => s.id !== supplierToDelete.id));
+        
+        toast({
+          title: "Fornecedor excluído",
+          description: `${supplierToDelete.name} foi removido com sucesso.`,
+          variant: "default",
+        });
+      } catch (error) {
+        console.error('Error deleting supplier:', error);
+        toast({
+          title: "Erro ao excluir fornecedor",
+          description: "Não foi possível excluir o fornecedor.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsDeleteDialogOpen(false);
+        setSupplierToDelete(null);
+      }
     }
   };
   
   // Salvar fornecedor (novo ou editado)
-  const handleSaveSupplier = (data: SupplierFormValues) => {
-    if (isEditMode && currentSupplier) {
-      // Editar fornecedor existente
+  const handleSaveSupplier = async (data: SupplierFormValues) => {
+    try {
+      if (isEditMode && currentSupplier) {
+        // Edit existing supplier
+        const updatedSupplier = await updateSupplier(currentSupplier.id, data);
+        
+        // Update local state
+        setSuppliers(suppliers.map(s => 
+          s.id === currentSupplier.id ? { ...updatedSupplier, categories: data.categories } : s
+        ));
+        
+        toast({
+          title: "Fornecedor atualizado",
+          description: `${data.name} foi atualizado com sucesso.`,
+          variant: "default",
+        });
+      } else {
+        // Add new supplier
+        const newSupplier = await createSupplier(data);
+        
+        // Update local state with categories
+        setSuppliers([...suppliers, { ...newSupplier, categories: data.categories }]);
+        
+        toast({
+          title: "Fornecedor adicionado",
+          description: `${data.name} foi adicionado com sucesso.`,
+          variant: "default",
+        });
+      }
+      
+      // Close modal
+      setIsAddSupplierOpen(false);
+    } catch (error) {
+      console.error('Error saving supplier:', error);
+      toast({
+        title: "Erro ao salvar fornecedor",
+        description: "Não foi possível salvar as informações do fornecedor.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Toggle supplier featured status
+  const handleToggleFeatured = async (supplier: Supplier) => {
+    try {
+      await toggleSupplierFeatured(supplier.id, !supplier.featured);
+      
+      // Update local state
       const updatedSuppliers = suppliers.map(s => 
-        s.id === currentSupplier.id ? { 
-          ...s, 
-          ...data, 
-          updated_at: new Date().toISOString()
-        } : s
+        s.id === supplier.id ? { ...s, featured: !s.featured } : s
       );
       
       setSuppliers(updatedSuppliers);
       
       toast({
-        title: "Fornecedor atualizado",
-        description: `${data.name} foi atualizado com sucesso.`,
+        title: !supplier.featured ? "Fornecedor destacado" : "Destaque removido",
+        description: !supplier.featured 
+          ? `${supplier.name} agora aparecerá como destaque.` 
+          : `${supplier.name} não aparecerá mais como destaque.`,
         variant: "default",
       });
-    } else {
-      // Adicionar novo fornecedor
-      // Ensure all required fields are present
-      const newSupplier: Supplier = {
-        id: `${suppliers.length + 1}`,
-        code: data.code,
-        name: data.name,
-        description: data.description,
-        images: data.images || [],
-        instagram: data.instagram || '',
-        whatsapp: data.whatsapp || '',
-        website: data.website || '',
-        min_order: data.min_order || '',
-        payment_methods: data.payment_methods,
-        requires_cnpj: data.requires_cnpj,
-        avg_price: data.avg_price,
-        shipping_methods: data.shipping_methods,
-        custom_shipping_method: data.custom_shipping_method,
-        city: data.city,
-        state: data.state,
-        categories: data.categories,
-        featured: data.featured,
-        hidden: data.hidden,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      setSuppliers([...suppliers, newSupplier]);
-      
+    } catch (error) {
+      console.error('Error toggling featured status:', error);
       toast({
-        title: "Fornecedor adicionado",
-        description: `${data.name} foi adicionado com sucesso.`,
-        variant: "default",
+        title: "Erro ao atualizar destaque",
+        description: "Não foi possível alterar o status de destaque do fornecedor.",
+        variant: "destructive",
       });
     }
-    
-    // Fechar modal
-    setIsAddSupplierOpen(false);
   };
   
-  // Alternar destaque de fornecedor
-  const toggleFeatured = (supplier: Supplier) => {
-    const updatedSuppliers = suppliers.map(s => 
-      s.id === supplier.id ? { ...s, featured: !s.featured } : s
-    );
-    
-    setSuppliers(updatedSuppliers);
-    
-    toast({
-      title: !supplier.featured ? "Fornecedor destacado" : "Destaque removido",
-      description: !supplier.featured 
-        ? `${supplier.name} agora aparecerá como destaque.` 
-        : `${supplier.name} não aparecerá mais como destaque.`,
-      variant: "default",
-    });
+  // Toggle supplier visibility
+  const handleToggleVisibility = async (supplier: Supplier) => {
+    try {
+      await toggleSupplierVisibility(supplier.id, !supplier.hidden);
+      
+      // Update local state
+      const updatedSuppliers = suppliers.map(s => 
+        s.id === supplier.id ? { ...s, hidden: !s.hidden } : s
+      );
+      
+      setSuppliers(updatedSuppliers);
+      
+      toast({
+        title: supplier.hidden ? "Fornecedor visível" : "Fornecedor oculto",
+        description: supplier.hidden 
+          ? `${supplier.name} agora está visível para usuários.` 
+          : `${supplier.name} foi ocultado dos usuários.`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error toggling visibility:', error);
+      toast({
+        title: "Erro ao atualizar visibilidade",
+        description: "Não foi possível alterar a visibilidade do fornecedor.",
+        variant: "destructive",
+      });
+    }
   };
   
-  // Alternar visibilidade de fornecedor
-  const toggleVisibility = (supplier: Supplier) => {
-    const updatedSuppliers = suppliers.map(s => 
-      s.id === supplier.id ? { ...s, hidden: !s.hidden } : s
-    );
-    
-    setSuppliers(updatedSuppliers);
-    
-    toast({
-      title: supplier.hidden ? "Fornecedor visível" : "Fornecedor oculto",
-      description: supplier.hidden 
-        ? `${supplier.name} agora está visível para usuários.` 
-        : `${supplier.name} foi ocultado dos usuários.`,
-      variant: "default",
-    });
-  };
-  
-  // Obter nome da categoria a partir do ID
+  // Get category name by ID
   const getCategoryName = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     return category ? category.name : categoryId;
   };
+
+  if (isLoading || isInitializing) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!user || user.role !== 'admin') {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+          <p className="text-lg text-destructive">Acesso Restrito</p>
+          <p className="text-muted-foreground">Você não tem permissão para acessar esta página.</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -1185,11 +1185,11 @@ export default function SuppliersManagement() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toggleFeatured(supplier)}>
+                            <DropdownMenuItem onClick={() => handleToggleFeatured(supplier)}>
                               <Star className="mr-2 h-4 w-4" />
                               {supplier.featured ? 'Remover destaque' : 'Destacar'}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toggleVisibility(supplier)}>
+                            <DropdownMenuItem onClick={() => handleToggleVisibility(supplier)}>
                               {supplier.hidden ? (
                                 <>
                                   <Eye className="mr-2 h-4 w-4" />
@@ -1272,7 +1272,7 @@ export default function SuppliersManagement() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={deleteSupplier}
+              onClick={handleDeleteSupplier}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir

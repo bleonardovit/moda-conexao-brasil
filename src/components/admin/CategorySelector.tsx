@@ -1,189 +1,190 @@
 
-import React, { useState } from 'react';
-import { Check, X, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogTrigger, 
+} from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CategoryDialog } from './CategoryManagement';
-import { Category } from '@/types';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Plus } from 'lucide-react';
+import type { Category } from '@/types';
+
+// Schema for form validation
+const categorySchema = z.object({
+  name: z.string().min(1, "O nome é obrigatório").max(100, "O nome não pode ter mais de 100 caracteres"),
+  description: z.string().optional(),
+});
+
+type CategoryFormValues = z.infer<typeof categorySchema>;
 
 interface CategorySelectorProps {
   categories: Category[];
   selectedCategories: string[];
-  onChange: (categories: string[]) => void;
-  onAddCategory?: (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => void;
+  onChange: (categoryIds: string[]) => void;
+  onAddCategory: (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => string;
 }
 
-export const CategorySelector: React.FC<CategorySelectorProps> = ({
+export function CategorySelector({
   categories,
   selectedCategories,
   onChange,
   onAddCategory
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
+}: CategorySelectorProps) {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
-  
-  // Filtrar categorias com base na pesquisa
-  const filteredCategories = categories.filter(category =>
-    category.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Alternar a seleção de uma categoria
+
+  const form = useForm<CategoryFormValues>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: {
+      name: '',
+      description: '',
+    },
+  });
+
+  // Handle form submission
+  const onSubmit = (values: CategoryFormValues) => {
+    const newCategoryId = onAddCategory(values);
+    
+    // Add the new category to the selected list
+    if (newCategoryId) {
+      onChange([...selectedCategories, newCategoryId]);
+    }
+    
+    // Reset form and close dialog
+    form.reset();
+    setIsAddDialogOpen(false);
+  };
+
+  // Toggle selection of a category
   const toggleCategory = (categoryId: string) => {
-    const isSelected = selectedCategories.includes(categoryId);
-    if (isSelected) {
-      onChange(selectedCategories.filter(id => id !== categoryId));
-    } else {
-      onChange([...selectedCategories, categoryId]);
-    }
+    const updatedSelection = selectedCategories.includes(categoryId)
+      ? selectedCategories.filter(id => id !== categoryId)
+      : [...selectedCategories, categoryId];
+    
+    onChange(updatedSelection);
   };
-  
-  // Obter nome da categoria a partir do ID
-  const getCategoryName = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : categoryId;
-  };
-  
-  // Remover uma categoria selecionada
-  const removeCategory = (categoryId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange(selectedCategories.filter(id => id !== categoryId));
-  };
-  
-  // Adicionar nova categoria
-  const handleAddCategory = (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
-    if (onAddCategory) {
-      onAddCategory(categoryData);
-    }
-  };
-  
+
+  // Filter categories based on search term
+  const filteredCategories = categories.filter(category =>
+    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <Label>Categorias</Label>
-        {onAddCategory && (
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setIsAddCategoryOpen(true)}
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Nova
-          </Button>
-        )}
-      </div>
-      
-      <div className="flex flex-wrap gap-2 mb-2">
-        {selectedCategories.length > 0 ? (
-          selectedCategories.map(categoryId => (
-            <Badge key={categoryId} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1">
-              {getCategoryName(categoryId)}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-4 w-4 p-0 hover:bg-transparent"
-                onClick={(e) => removeCategory(categoryId, e)}
-              >
-                <X className="h-3 w-3" />
-                <span className="sr-only">Remover</span>
-              </Button>
-            </Badge>
-          ))
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Nenhuma categoria selecionada
-          </p>
-        )}
-      </div>
-      
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full justify-between"
-          >
-            Selecionar categorias
-            <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
-              {selectedCategories.length}
-            </span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0" align="start">
-          <div className="p-2 border-b">
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="categories">Categorias *</Label>
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-1">
             <Input
-              placeholder="Procurar categoria..."
+              id="category-search"
+              placeholder="Filtrar categorias..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8"
             />
           </div>
-          {filteredCategories.length > 0 ? (
-            <ScrollArea className="h-[300px]">
-              <div className="p-2">
-                {filteredCategories.map((category) => {
-                  const isSelected = selectedCategories.includes(category.id);
-                  return (
-                    <div
-                      key={category.id}
-                      className={`
-                        flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer
-                        ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}
-                      `}
-                      onClick={() => toggleCategory(category.id)}
-                    >
-                      <div>
-                        <div className="font-medium">{category.name}</div>
-                        {category.description && (
-                          <div className="text-xs text-muted-foreground">
-                            {category.description}
-                          </div>
-                        )}
-                      </div>
-                      {isSelected && <Check className="h-4 w-4" />}
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          ) : (
-            <div className="p-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                {searchTerm ? 'Nenhuma categoria encontrada' : 'Nenhuma categoria disponível'}
-              </p>
-              {onAddCategory && searchTerm && (
-                <Button
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => {
-                    setIsAddCategoryOpen(true);
-                    setIsOpen(false);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Adicionar "{searchTerm}"
-                </Button>
-              )}
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button type="button" size="sm" variant="outline">
+                <Plus className="h-4 w-4 mr-1" />
+                Nova
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nova Categoria</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome *</Label>
+                  <Input
+                    id="name"
+                    {...form.register("name")}
+                    placeholder="Nome da categoria"
+                  />
+                  {form.formState.errors.name && (
+                    <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    {...form.register("description")}
+                    placeholder="Descrição da categoria"
+                  />
+                  {form.formState.errors.description && (
+                    <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit">Criar</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
       
-      {/* Dialog para adicionar nova categoria */}
-      {onAddCategory && (
-        <CategoryDialog
-          isOpen={isAddCategoryOpen}
-          onClose={() => setIsAddCategoryOpen(false)}
-          onSave={handleAddCategory}
-          initialCategory={searchTerm ? { id: '', name: searchTerm, created_at: '', updated_at: '' } : undefined}
-        />
+      <div className="max-h-[200px] overflow-y-auto border rounded-md p-2">
+        <div className="space-y-2">
+          {filteredCategories.length > 0 ? (
+            filteredCategories.map((category) => (
+              <div key={category.id} className="flex items-start space-x-2">
+                <Checkbox
+                  id={`category-${category.id}`}
+                  checked={selectedCategories.includes(category.id)}
+                  onCheckedChange={() => toggleCategory(category.id)}
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <label
+                    htmlFor={`category-${category.id}`}
+                    className="text-sm font-medium cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {category.name}
+                  </label>
+                  {category.description && (
+                    <p className="text-xs text-muted-foreground">
+                      {category.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {searchTerm ? "Nenhuma categoria corresponde à sua pesquisa." : "Nenhuma categoria disponível."}
+            </p>
+          )}
+        </div>
+      </div>
+      {filteredCategories.length > 0 && (
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>
+            {selectedCategories.length} {selectedCategories.length === 1 ? "categoria selecionada" : "categorias selecionadas"}
+          </span>
+          <button
+            type="button"
+            className="text-primary hover:underline"
+            onClick={() => onChange([])}
+          >
+            Limpar seleção
+          </button>
+        </div>
       )}
     </div>
   );
-};
+}

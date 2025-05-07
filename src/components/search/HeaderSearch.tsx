@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,22 +11,45 @@ import {
   CommandItem,
   CommandList
 } from '@/components/ui/command';
-import { MOCK_SUPPLIERS } from '@/pages/suppliers/SuppliersList';
+import { getSuppliers } from '@/services/supplierService';
 import { getArticles } from '@/services/articleService';
+import type { Supplier } from '@/types';
 
 export function HeaderSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch suppliers when search is opened
+  useEffect(() => {
+    if (open && suppliers.length === 0) {
+      const fetchSuppliers = async () => {
+        setIsLoading(true);
+        try {
+          const data = await getSuppliers();
+          // Filter only visible suppliers
+          setSuppliers(data.filter(supplier => !supplier.hidden));
+        } catch (error) {
+          console.error('Error fetching suppliers for search:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      fetchSuppliers();
+    }
+  }, [open, suppliers.length]);
 
   // Busca dinâmica
   const filteredSuppliers = useMemo(() => {
     if (!query) return [];
-    return MOCK_SUPPLIERS.filter(supplier =>
+    return suppliers.filter(supplier =>
       supplier.name.toLowerCase().includes(query.toLowerCase()) ||
       supplier.description.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [query, suppliers]);
 
   const filteredArticles = useMemo(() => {
     if (!query) return [];
@@ -59,7 +83,9 @@ export function HeaderSearch() {
           onValueChange={setQuery}
         />
         <CommandList>
-          <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+          <CommandEmpty>
+            {isLoading ? "Carregando..." : "Nenhum resultado encontrado."}
+          </CommandEmpty>
           {query ? (
             <>
               {filteredSuppliers.length > 0 && (
@@ -93,11 +119,11 @@ export function HeaderSearch() {
             </>
           ) : (
             <CommandGroup heading="Sugestões">
-              <CommandItem value="/suppliers" onSelect={handleSelect}>
+              <CommandItem value="/suppliers" onSelect={() => handleSelect("/suppliers")}>
                 <Search className="mr-2 h-4 w-4" />
                 <span>Buscar todos os fornecedores</span>
               </CommandItem>
-              <CommandItem value="/articles" onSelect={handleSelect}>
+              <CommandItem value="/articles" onSelect={() => handleSelect("/articles")}>
                 <Search className="mr-2 h-4 w-4" />
                 <span>Buscar todos os artigos</span>
               </CommandItem>

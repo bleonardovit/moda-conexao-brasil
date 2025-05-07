@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,84 +17,11 @@ import { Input } from '@/components/ui/input';
 import { useFavorites } from '@/hooks/use-favorites';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from "@/hooks/use-toast";
-import type { Supplier } from '@/types';
+import type { Supplier, Category } from '@/types';
+import { getSuppliers } from '@/services/supplierService';
+import { getCategories } from '@/services/categoryService';
 
-const MOCK_SUPPLIERS: Supplier[] = [
-  {
-    id: '1',
-    code: 'SP001',
-    name: 'Moda Fashion SP',
-    description: 'Atacado de roupas femininas com foco em tendências atuais',
-    images: ['https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'],
-    instagram: '@modafashionsp',
-    whatsapp: '+5511999999999',
-    min_order: 'R$ 300,00',
-    payment_methods: ['pix', 'card', 'bankslip'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'São Paulo',
-    state: 'SP',
-    categories: ['Casual', 'Fitness'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '2',
-    code: 'CE001',
-    name: 'Brindes Fortaleza',
-    description: 'Acessórios e bijuterias para revenda',
-    images: ['https://images.unsplash.com/photo-1506744038136-46273834b3fb'],
-    instagram: '@brindesfortaleza',
-    whatsapp: '+5585999999999',
-    min_order: 'R$ 200,00',
-    payment_methods: ['pix', 'bankslip'],
-    requires_cnpj: false,
-    avg_price: 'low',
-    shipping_methods: ['correios'],
-    city: 'Fortaleza',
-    state: 'CE',
-    categories: ['Acessórios'],
-    featured: false,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '3',
-    code: 'GO001',
-    name: 'Plus Size Goiânia',
-    description: 'Especializada em moda plus size feminina',
-    images: ['https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07'],
-    instagram: '@plussizegoiania',
-    whatsapp: '+5562999999999',
-    website: 'https://plussizegoiania.com.br',
-    min_order: 'R$ 500,00',
-    payment_methods: ['pix', 'card'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'Goiânia',
-    state: 'GO',
-    categories: ['Plus Size'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  }
-];
-
-const CATEGORIES = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Casual', value: 'Casual' },
-  { label: 'Fitness', value: 'Fitness' },
-  { label: 'Plus Size', value: 'Plus Size' },
-  { label: 'Praia', value: 'Praia' },
-  { label: 'Acessórios', value: 'Acessórios' }
-];
-
+// Define states array
 const STATES = [
   { label: 'Todos', value: 'all' },
   { label: 'São Paulo', value: 'SP' },
@@ -124,12 +52,11 @@ const CNPJ_OPTIONS = [
   { label: 'Não exige CNPJ', value: 'false' }
 ];
 
-export { MOCK_SUPPLIERS };
 export default function SuppliersList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
-  const [cityFilter, setCityFilter] = useState('all'); // New city filter
+  const [cityFilter, setCityFilter] = useState('all');
   const [priceFilter, setPriceFilter] = useState('all');
   const [cnpjFilter, setCnpjFilter] = useState('all');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
@@ -137,7 +64,50 @@ export default function SuppliersList() {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
 
-  const filteredSuppliers = MOCK_SUPPLIERS.filter(supplier => {
+  // State for loading and data
+  const [isLoading, setIsLoading] = useState(true);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<{label: string, value: string}[]>([
+    { label: 'Todas', value: 'all' }
+  ]);
+
+  // Fetch suppliers and categories on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [suppliersData, categoriesData] = await Promise.all([
+          getSuppliers(),
+          getCategories()
+        ]);
+        
+        // Filter out hidden suppliers for regular users
+        const visibleSuppliers = suppliersData.filter(supplier => !supplier.hidden);
+        setSuppliers(visibleSuppliers);
+        
+        // Create category options
+        setCategories(categoriesData);
+        setCategoryOptions([
+          { label: 'Todas', value: 'all' },
+          ...categoriesData.map(cat => ({ label: cat.name, value: cat.id }))
+        ]);
+      } catch (error) {
+        console.error('Error fetching suppliers:', error);
+        toast({
+          title: "Erro ao carregar fornecedores",
+          description: "Não foi possível carregar a lista de fornecedores. Por favor, tente novamente mais tarde.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast]);
+
+  const filteredSuppliers = suppliers.filter(supplier => {
     const matchesSearch = searchTerm === '' || 
       supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       supplier.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -185,6 +155,35 @@ export default function SuppliersList() {
       duration: 2000,
     });
   };
+
+  // Get category name by ID
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : '';
+  };
+
+  // Generate category styling based on name
+  const getCategoryStyle = (categoryName: string) => {
+    const categoryColors: Record<string, string> = {
+      'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+      'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+      'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+      'Acessórios': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
+      'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
+    };
+    
+    return categoryColors[categoryName] || '';
+  };
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Carregando fornecedores...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -241,7 +240,7 @@ export default function SuppliersList() {
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map(category => (
+                  {categoryOptions.map(category => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
                     </SelectItem>
@@ -269,7 +268,6 @@ export default function SuppliersList() {
               </Select>
             </div>
             
-            {/* New city filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Cidade</label>
               <Select 
@@ -336,7 +334,7 @@ export default function SuppliersList() {
                 <div className="sm:flex">
                   <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
                     <img 
-                      src={supplier.images[0]} 
+                      src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'} 
                       alt={supplier.name}
                       className="w-full h-full object-cover"
                     />
@@ -380,33 +378,28 @@ export default function SuppliersList() {
                     <p className="text-sm mb-4 line-clamp-2">{supplier.description}</p>
                     
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {supplier.categories.map(category => {
-                        const categoryColors: Record<string, string> = {
-                          'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                          'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                          'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-                          'Acessórios': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
-                          'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
-                        };
+                      {supplier.categories.map(categoryId => {
+                        const categoryName = getCategoryName(categoryId);
+                        const categoryStyle = getCategoryStyle(categoryName);
                         
-                        return (
+                        return categoryName ? (
                           <Badge 
-                            key={category} 
+                            key={categoryId} 
                             variant="outline"
-                            className={categoryColors[category] || ''}
+                            className={categoryStyle || ''}
                           >
-                            {category}
+                            {categoryName}
                           </Badge>
-                        );
+                        ) : null;
                       })}
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                       <div>
-                        <span className="font-medium">Pedido mínimo:</span> {supplier.min_order}
+                        <span className="font-medium">Pedido mínimo:</span> {supplier.min_order || "Não informado"}
                       </div>
                       <div>
-                        <span className="font-medium">Preço médio:</span> {formatAvgPrice(supplier.avg_price)}
+                        <span className="font-medium">Preço médio:</span> {formatAvgPrice(supplier.avg_price || '')}
                       </div>
                     </div>
                     
