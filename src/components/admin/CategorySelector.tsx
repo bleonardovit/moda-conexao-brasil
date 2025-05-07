@@ -28,19 +28,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getCategories, createCategory } from '@/services/categoryService';
 import { useToast } from '@/hooks/use-toast';
-import { type Category } from '@/types';
-
-interface CategorySelectorProps {
-  selectedCategories: string[];
-  onCategoriesChange: (categoryIds: string[]) => void;
-}
+import { type Category, type CategorySelectorProps } from '@/types';
 
 export function CategorySelector({
+  categories,
   selectedCategories,
-  onCategoriesChange,
+  onChange: onCategoriesChange,
+  onAddCategory,
 }: CategorySelectorProps) {
   const [open, setOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -53,7 +49,7 @@ export function CategorySelector({
     setIsLoading(true);
     try {
       const data = await getCategories();
-      setCategories(data);
+      // We don't need to set categories here anymore since they're passed as props
     } catch (error) {
       console.error("Error fetching categories:", error);
       toast({
@@ -65,10 +61,6 @@ export function CategorySelector({
       setIsLoading(false);
     }
   }, [toast]);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -82,15 +74,20 @@ export function CategorySelector({
 
     setIsSubmitting(true);
     try {
-      const newCategory = await createCategory({ 
-        name: newCategoryName,
-        description: newCategoryDescription 
-      });
-      
-      setCategories((prev) => [...prev, newCategory]);
-      
-      // Auto-select the newly created category
-      onCategoriesChange([...selectedCategories, newCategory.id]);
+      if (onAddCategory) {
+        await onAddCategory({ 
+          name: newCategoryName,
+          description: newCategoryDescription 
+        });
+      } else {
+        const newCategory = await createCategory({ 
+          name: newCategoryName,
+          description: newCategoryDescription 
+        });
+        
+        // Auto-select the newly created category
+        onCategoriesChange([...selectedCategories, newCategory.id]);
+      }
       
       toast({
         title: "Sucesso",
