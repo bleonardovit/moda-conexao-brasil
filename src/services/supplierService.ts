@@ -16,13 +16,16 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
       throw suppliersError;
     }
 
+    // Safety check - if no data returned, return empty array
+    if (!suppliersData) return [];
+
     // For each supplier, get their associated categories
-    const suppliersWithCategories = await Promise.all(suppliersData.map(async (supplier) => {
+    const suppliersWithCategories = await Promise.all((suppliersData || []).map(async (supplier) => {
       const categories = await getSupplierCategories(supplier.id);
       return { ...supplier, categories } as Supplier;
     }));
 
-    return suppliersWithCategories || [];
+    return suppliersWithCategories;
   } catch (error) {
     console.error('Error in getSuppliers:', error);
     throw error;
@@ -59,6 +62,9 @@ export const getSupplierById = async (id: string): Promise<Supplier | null> => {
 // Create a new supplier
 export const createSupplier = async (supplier: SupplierFormValues): Promise<Supplier> => {
   try {
+    // Log for debugging
+    console.log("Creating supplier with data:", JSON.stringify(supplier));
+    
     // Extract categories for later use
     const categories = supplier.categories || [];
     
@@ -96,6 +102,11 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
       throw error;
     }
 
+    // If no data was returned
+    if (!data) {
+      throw new Error('No data returned from supplier insert');
+    }
+
     // Insert supplier categories relationships
     if (categories.length > 0) {
       await updateSupplierCategories(data.id, categories);
@@ -112,6 +123,9 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
 // Update an existing supplier
 export const updateSupplier = async (id: string, supplier: Partial<SupplierFormValues>): Promise<Supplier> => {
   try {
+    // Log for debugging
+    console.log("Updating supplier with ID:", id, "Data:", JSON.stringify(supplier));
+    
     // Extract categories for later use
     const categories = supplier.categories;
     
@@ -151,6 +165,9 @@ export const updateSupplier = async (id: string, supplier: Partial<SupplierFormV
 // Delete a supplier
 export const deleteSupplier = async (id: string): Promise<void> => {
   try {
+    // Log for debugging
+    console.log("Deleting supplier with ID:", id);
+    
     // Delete supplier categories first (cascade should handle this, but just to be safe)
     await supabase
       .from('suppliers_categories')
@@ -211,13 +228,21 @@ export const toggleSupplierVisibility = async (id: string, hidden: boolean): Pro
 // Helper function to update supplier categories
 export const updateSupplierCategories = async (supplierId: string, categoryIds: string[]): Promise<void> => {
   try {
+    // Log for debugging
+    console.log("Updating categories for supplier ID:", supplierId, "Categories:", categoryIds);
+    
     // First, remove existing relations
-    await supabase
+    const { error: deleteError } = await supabase
       .from('suppliers_categories')
       .delete()
       .eq('supplier_id', supplierId);
+      
+    if (deleteError) {
+      console.error('Error deleting supplier categories:', deleteError);
+      throw deleteError;
+    }
     
-    // Then add new relations
+    // Then add new relations if there are any categories
     if (categoryIds && categoryIds.length > 0) {
       const relations = categoryIds.map(categoryId => ({
         supplier_id: supplierId,
