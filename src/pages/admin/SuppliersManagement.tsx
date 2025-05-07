@@ -66,7 +66,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { supplierFormSchema, type SupplierFormValues } from '@/lib/validators/supplier-form';
-import type { Supplier, Category } from '@/types';
+import type { Supplier, Category, CategoryManagementProps } from '@/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useAuth } from '@/hooks/useAuth';
 import { 
