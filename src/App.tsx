@@ -36,6 +36,7 @@ import SuppliersBulkUpload from "./pages/admin/SuppliersBulkUpload";
 import NotificationsManagement from "./pages/admin/NotificationsManagement";
 import Reports from "./pages/admin/Reports";
 import ArticlesManagement from "./pages/admin/ArticlesManagement";
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -70,7 +71,6 @@ const AppRoutes = () => {
     // Somente atualizar o estado de auth quando a inicialização estiver completa
     if (!isInitializing) {
       if (user) {
-        console.log('Auth state: User is authenticated:', user);
         setAuth({
           isAuthenticated: true,
           isAdmin: user.role === 'admin',
@@ -78,7 +78,6 @@ const AppRoutes = () => {
         });
         console.log('Auth state atualizado: usuário autenticado');
       } else {
-        console.log('Auth state: No user found');
         setAuth({
           isAuthenticated: false,
           isAdmin: false,
@@ -97,7 +96,8 @@ const AppRoutes = () => {
       </div>
     );
   }
-   // Componente para rota protegida que requer autenticação
+
+  // Componente para rota protegida que requer autenticação
   const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (!auth.isAuthenticated) {
       console.log('Redirecionando rota protegida para login');
@@ -133,7 +133,7 @@ const AppRoutes = () => {
   const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     if (auth.isAuthenticated) {
       console.log('Redirecionando rota pública: usuário já está logado');
-      return <Navigate to="/home" replace />;
+      return <Navigate to="/suppliers" replace />;
     }
     return <>{children}</>;
   };
@@ -148,11 +148,11 @@ const AppRoutes = () => {
         path="/home" 
         element={
           auth.isAuthenticated 
-            ? <Home /> 
+            ? <Navigate to="/suppliers" replace /> 
             : <Navigate to="/auth/login" replace />
         } 
       />
-
+      
       {/* Rotas de autenticação - apenas para usuários não autenticados */}
       <Route path="/auth/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
       <Route path="/auth/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
@@ -160,7 +160,15 @@ const AppRoutes = () => {
       <Route path="/auth/reset-confirmation" element={<PublicOnlyRoute><ResetConfirmation /></PublicOnlyRoute>} />
       <Route path="/auth/payment" element={<Payment />} />
       
-      {/* Fornecedores - acessível a todos os usuários autenticados */}
+      {/* Rotas de aplicativo protegidas (requerem assinatura) */}
+      <Route 
+        path="/home" 
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        } 
+      />
       <Route 
         path="/suppliers" 
         element={
@@ -169,22 +177,29 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
-      
       <Route 
         path="/suppliers/:id" 
         element={
-          <ProtectedRoute>
+          <SubscriptionRoute>
             <SupplierDetail />
-          </ProtectedRoute>
+          </SubscriptionRoute>
         } 
       />
-      
-      {/* Página de perfil */}
       <Route 
         path="/profile" 
         element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        } 
+      />
+      
+       {/* Fornecedores */}
+      <Route 
+        path="/suppliers" 
+        element={
+          <ProtectedRoute>
+            <SuppliersList />
           </ProtectedRoute>
         } 
       />
@@ -227,7 +242,7 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Artigos (requerem assinatura) */}
+      {/* Novas rotas para artigos (requerem assinatura) */}
       <Route 
         path="/articles" 
         element={
@@ -242,6 +257,16 @@ const AppRoutes = () => {
           <SubscriptionRoute>
             <ArticleDetailPage />
           </SubscriptionRoute>
+        } 
+      />
+      
+      {/* Configurações */}
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
         } 
       />
       

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Check, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -114,12 +115,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
             </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent 
-          className="w-[300px] p-0" 
-          align="start"
-          sideOffset={4}
-          style={{ zIndex: 1000 }}
-        >
+        <PopoverContent className="w-[300px] p-0" align="start">
           <div className="p-2 border-b">
             <Input
               placeholder="Procurar categoria..."

@@ -1,5 +1,4 @@
-
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,38 +10,22 @@ import {
   CommandItem,
   CommandList
 } from '@/components/ui/command';
-import { fetchSuppliers } from '@/services/supplierService';
+import { MOCK_SUPPLIERS } from '@/pages/suppliers/SuppliersList';
 import { getArticles } from '@/services/articleService';
-import { Supplier } from '@/types/supplier';
 
 export function HeaderSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const navigate = useNavigate();
-
-  // Fetch suppliers on component mount
-  useEffect(() => {
-    const loadSuppliers = async () => {
-      try {
-        const data = await fetchSuppliers();
-        setSuppliers(data);
-      } catch (error) {
-        console.error('Error loading suppliers for search:', error);
-      }
-    };
-    
-    loadSuppliers();
-  }, []);
 
   // Busca dinâmica
   const filteredSuppliers = useMemo(() => {
     if (!query) return [];
-    return suppliers.filter(supplier =>
+    return MOCK_SUPPLIERS.filter(supplier =>
       supplier.name.toLowerCase().includes(query.toLowerCase()) ||
       supplier.description.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query, suppliers]);
+  }, [query]);
 
   const filteredArticles = useMemo(() => {
     if (!query) return [];
