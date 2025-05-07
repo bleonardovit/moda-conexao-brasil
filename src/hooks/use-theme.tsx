@@ -1,5 +1,5 @@
 
-import * as React from 'react';
+import React from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -13,19 +13,25 @@ const ThemeContext = React.createContext<ThemeContextType | undefined>(undefined
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = React.useState<Theme>(() => {
-    // Check for stored preference or system preference
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-      return savedTheme as Theme;
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined') {
+      // Check for stored preference or system preference
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        return savedTheme as Theme;
+      }
+      // Check system preference
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+      }
     }
-    // Check system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light'; // Default to light if no preference
+    return 'light'; // Default to light if no preference or not in browser
   });
 
   React.useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+    
     // Update DOM and localStorage when theme changes
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
