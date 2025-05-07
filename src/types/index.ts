@@ -3,3 +3,5 @@
 export * from './category';
 export * from './notification';
 export * from './article';
+export * from './user';
+export * from './supplier';
