@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Instagram, 
@@ -35,105 +35,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Input } from '@/components/ui/input';
 import type { Supplier, Review } from '@/types';
-
-const MOCK_SUPPLIERS: Supplier[] = [
-  {
-    id: '1',
-    code: 'SP001',
-    name: 'Moda Fashion SP',
-    description: 'Atacado de roupas femininas com foco em tendências atuais. Trabalhamos com moda casual, festa e fitness para lojistas e revendedores. Atuando no mercado há mais de 10 anos, somos referência em qualidade e bom preço.',
-    images: [
-      'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
-      'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
-      'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
-    ],
-    instagram: '@modafashionsp',
-    whatsapp: '+5511999999999',
-    min_order: 'R$ 300,00',
-    payment_methods: ['pix', 'card', 'bankslip'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'São Paulo',
-    state: 'SP',
-    categories: ['Casual', 'Fitness'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '2',
-    code: 'CE001',
-    name: 'Brindes Fortaleza',
-    description: 'Acessórios e bijuterias para revenda com qualidade premium. Trabalhamos com peças banhadas a ouro, prata e ródio, além de semi-joias e acessórios para cabelo.',
-    images: [
-      'https://images.unsplash.com/photo-1576664464364-17d23ce1a732?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=764&q=80',
-      'https://images.unsplash.com/photo-1535632787350-4e68ef0ac584?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80',
-      'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
-    ],
-    instagram: '@brindesfortaleza',
-    whatsapp: '+5585999999999',
-    min_order: 'R$ 200,00',
-    payment_methods: ['pix', 'bankslip'],
-    requires_cnpj: false,
-    avg_price: 'low',
-    shipping_methods: ['correios'],
-    city: 'Fortaleza',
-    state: 'CE',
-    categories: ['Acessórios'],
-    featured: false,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '3',
-    code: 'GO001',
-    name: 'Moda Plus Goiânia',
-    description: 'Especializada em moda plus size feminina com peças do tamanho 46 ao 56. Oferecemos roupas para o dia a dia, eventos e trabalho, com cortes modernos e tecidos de qualidade.',
-    images: [
-      'https://images.unsplash.com/photo-1610030469668-4c2cb4e5a54f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80',
-      'https://images.unsplash.com/photo-1605763240000-7e93b172d1d2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80',
-      'https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=734&q=80'
-    ],
-    instagram: '@modaplusgoiania',
-    whatsapp: '+5562999999999',
-    min_order: 'R$ 500,00',
-    payment_methods: ['pix', 'card'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'Goiânia',
-    state: 'GO',
-    categories: ['Plus Size', 'Casual'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-02-15',
-    updated_at: '2023-02-15'
-  }
-];
-
-const MOCK_REVIEWS: Review[] = [
-  {
-    id: '1',
-    supplier_id: '1',
-    user_id: 'user1',
-    user_name: 'Maria Silva',
-    rating: 5,
-    comment: 'Ótimos produtos, chegaram rápido e com boa qualidade. Preço justo!',
-    created_at: '2023-05-15'
-  },
-  {
-    id: '2',
-    supplier_id: '1',
-    user_id: 'user2',
-    user_name: 'Ana Oliveira',
-    rating: 4,
-    comment: 'Bom atendimento, mas o frete foi um pouco caro.',
-    created_at: '2023-04-20'
-  }
-];
+import { getSupplierById } from '@/services/supplierService';
 
 const reviewFormSchema = z.object({
   rating: z.number().min(1).max(5),
@@ -153,6 +55,12 @@ export default function SupplierDetail() {
   const [selectedRating, setSelectedRating] = useState(0);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   
+  const [supplier, setSupplier] = useState<Supplier | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [reviews, setReviews] = useState<Review[]>([]);
+
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewFormSchema),
     defaultValues: {
@@ -161,29 +69,46 @@ export default function SupplierDetail() {
     },
   });
   
-  const supplier = MOCK_SUPPLIERS.find(s => s.id === id);
-  
-  const currentIndex = MOCK_SUPPLIERS.findIndex(s => s.id === id);
-  
-  const previousSupplier = currentIndex > 0 ? MOCK_SUPPLIERS[currentIndex - 1] : null;
-  const nextSupplier = currentIndex < MOCK_SUPPLIERS.length - 1 ? MOCK_SUPPLIERS[currentIndex + 1] : null;
+  useEffect(() => {
+    if (id) {
+      const fetchSupplierDetails = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const fetchedSupplier = await getSupplierById(id);
+          if (fetchedSupplier) {
+            setSupplier(fetchedSupplier);
+          } else {
+            setError('Fornecedor não encontrado.');
+          }
+        } catch (err) {
+          console.error("Erro ao buscar detalhes do fornecedor:", err);
+          setError('Falha ao carregar dados do fornecedor.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchSupplierDetails();
+    } else {
+      setError('ID do fornecedor não fornecido.');
+      setLoading(false);
+    }
+  }, [id]);
   
   const goToPreviousSupplier = () => {
-    if (previousSupplier) {
-      navigate(`/suppliers/${previousSupplier.id}`);
-    }
+    toast({ title: "Navegação indisponível", description: "A navegação para fornecedor anterior/seguinte está temporariamente desabilitada." });
   };
   
   const goToNextSupplier = () => {
-    if (nextSupplier) {
-      navigate(`/suppliers/${nextSupplier.id}`);
-    }
+    toast({ title: "Navegação indisponível", description: "A navegação para fornecedor anterior/seguinte está temporariamente desabilitada." });
   };
   
-  const [reviews, setReviews] = useState<Review[]>(
-    MOCK_REVIEWS.filter(r => r.supplier_id === id)
-  );
-  
+  useEffect(() => {
+    if (supplier) {
+      setReviews([]);
+    }
+  }, [supplier]);
+
   const averageRating = reviews.length > 0 
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
     : 0;
@@ -261,13 +186,37 @@ export default function SupplierDetail() {
     form.reset();
   };
   
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
+          <p>Carregando detalhes do fornecedor...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-4 py-8 text-center">
+          <h1 className="text-2xl font-bold mb-4 text-red-600">Erro</h1>
+          <p>{error}</p>
+          <Button onClick={() => navigate('/suppliers')} className="mt-4">
+            Voltar para a lista de fornecedores
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!supplier) {
     return (
       <AppLayout>
-        <div className="text-center py-12">
-          <h1 className="text-xl font-bold mb-4">Fornecedor não encontrado</h1>
-          <Button onClick={() => navigate('/suppliers')}>
-            Voltar para lista
+        <div className="container mx-auto px-4 py-8 text-center">
+          <h1 className="text-2xl font-bold mb-4">Fornecedor não encontrado</h1>
+          <Button onClick={() => navigate('/suppliers')} className="mt-4">
+            Voltar para a lista de fornecedores
           </Button>
         </div>
       </AppLayout>
@@ -318,7 +267,7 @@ export default function SupplierDetail() {
               variant="outline"
               size="icon"
               onClick={goToPreviousSupplier}
-              disabled={!previousSupplier}
+              disabled
               className="h-8 w-8"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -328,7 +277,7 @@ export default function SupplierDetail() {
               variant="outline"
               size="icon"
               onClick={goToNextSupplier}
-              disabled={!nextSupplier}
+              disabled
               className="h-8 w-8"
             >
               <ArrowRight className="h-4 w-4" />
@@ -734,7 +683,7 @@ export default function SupplierDetail() {
         <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">Fornecedores similares</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {MOCK_SUPPLIERS.filter(s => 
+            {/* MOCK_SUPPLIERS.filter(s => 
               s.id !== supplier.id && 
               s.categories.some(c => supplier.categories.includes(c))
             ).slice(0, 2).map(similar => (
@@ -770,7 +719,7 @@ export default function SupplierDetail() {
                   </div>
                 </div>
               </Card>
-            ))}
+            )) */}
           </div>
         </div>
       </div>
