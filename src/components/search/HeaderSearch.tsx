@@ -54,11 +54,11 @@ export function HeaderSearch() {
   const filteredArticles = useMemo(() => {
     if (!query) return [];
     // Safely get articles and handle potential undefined
-    const articles = getArticles();
-    return articles ? articles.filter(article =>
+    const articles = getArticles() || [];
+    return articles.filter(article =>
       article.title.toLowerCase().includes(query.toLowerCase()) ||
       article.summary.toLowerCase().includes(query.toLowerCase())
-    ) : [];
+    );
   }, [query]);
 
   // Handle command selection

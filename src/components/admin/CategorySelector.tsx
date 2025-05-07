@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown, Plus, Loader2 } from "lucide-react";
@@ -30,8 +31,8 @@ import { useToast } from '@/hooks/use-toast';
 import { type Category, type CategorySelectorProps } from '@/types/category';
 
 export function CategorySelector({
-  categories,
-  selectedCategories,
+  categories = [], // Provide default empty array
+  selectedCategories = [], // Provide default empty array
   onChange: onCategoriesChange,
   onAddCategory,
 }: CategorySelectorProps) {
@@ -85,7 +86,9 @@ export function CategorySelector({
         });
         
         // Auto-select the newly created category
-        onCategoriesChange([...selectedCategories, newCategory.id]);
+        if (onCategoriesChange) {
+          onCategoriesChange([...selectedCategories, newCategory.id]);
+        }
       }
       
       toast({
@@ -109,10 +112,12 @@ export function CategorySelector({
   };
 
   const handleSelect = (categoryId: string) => {
-    if (selectedCategories.includes(categoryId)) {
-      onCategoriesChange(selectedCategories.filter(id => id !== categoryId));
-    } else {
-      onCategoriesChange([...selectedCategories, categoryId]);
+    if (onCategoriesChange) {
+      if (selectedCategories.includes(categoryId)) {
+        onCategoriesChange(selectedCategories.filter(id => id !== categoryId));
+      } else {
+        onCategoriesChange([...selectedCategories, categoryId]);
+      }
     }
   };
 
