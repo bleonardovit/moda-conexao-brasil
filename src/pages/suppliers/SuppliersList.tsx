@@ -70,6 +70,13 @@ export default function SuppliersList() {
   const [categoryOptions, setCategoryOptions] = useState<{label: string, value: string}[]>([
     { label: 'Todas', value: 'all' }
   ]);
+  // Novos estados para opções de filtro dinâmicas
+  const [stateOptions, setStateOptions] = useState<{label: string, value: string}[]>([
+    { label: 'Todos os Estados', value: 'all' }
+  ]);
+  const [cityOptions, setCityOptions] = useState<{label: string, value: string}[]>([
+    { label: 'Todas as Cidades', value: 'all' }
+  ]);
 
   // Fetch suppliers and categories on component mount
   useEffect(() => {
@@ -88,9 +95,24 @@ export default function SuppliersList() {
         // Create category options
         setCategories(categoriesData);
         setCategoryOptions([
-          { label: 'Todas', value: 'all' },
+          { label: 'Todas as Categorias', value: 'all' }, // Atualizado para consistência
           ...categoriesData.map(cat => ({ label: cat.name, value: cat.id }))
         ]);
+
+        // Extrair e definir opções de estado dinamicamente
+        const uniqueStates = Array.from(new Set(visibleSuppliers.map(s => s.state))).filter(Boolean);
+        setStateOptions([
+          { label: 'Todos os Estados', value: 'all' },
+          ...uniqueStates.map(st => ({ label: st, value: st }))
+        ]);
+
+        // Extrair e definir opções de cidade dinamicamente
+        const uniqueCities = Array.from(new Set(visibleSuppliers.map(s => s.city))).filter(Boolean);
+        setCityOptions([
+          { label: 'Todas as Cidades', value: 'all' },
+          ...uniqueCities.map(city => ({ label: city, value: city }))
+        ]);
+
       } catch (error) {
         console.error('Error fetching suppliers:', error);
         toast({
@@ -114,7 +136,8 @@ export default function SuppliersList() {
     
     const matchesSearch = searchTerm === '' || 
       supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.description.toLowerCase().includes(searchTerm.toLowerCase());
+      supplier.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (supplier.code && supplier.code.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesCategory = categoryFilter === 'all' || 
       supplier.categories.includes(categoryFilter);
@@ -263,7 +286,7 @@ export default function SuppliersList() {
                   <SelectValue placeholder="Selecione um estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATES.map(state => (
+                  {stateOptions.map(state => (
                     <SelectItem key={state.value} value={state.value}>
                       {state.label}
                     </SelectItem>
@@ -282,7 +305,7 @@ export default function SuppliersList() {
                   <SelectValue placeholder="Selecione uma cidade" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CITIES.map(city => (
+                  {cityOptions.map(city => (
                     <SelectItem key={city.value} value={city.value}>
                       {city.label}
                     </SelectItem>
@@ -361,7 +384,8 @@ export default function SuppliersList() {
                             </TooltipProvider>
                           )}
                         </h3>
-                        <p className="text-sm text-muted-foreground mb-2">{supplier.city}, {supplier.state}</p>
+                        <p className="text-sm text-muted-foreground mb-1">{supplier.city}, {supplier.state}</p>
+                        <p className="text-xs text-muted-foreground mb-2">Código: {supplier.code}</p>
                       </div>
                       <Button
                         variant="ghost"

@@ -335,10 +335,13 @@ export default function SupplierDetail() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold">{supplier.name}</h1>
-            <div className="flex items-center text-muted-foreground gap-2">
+            <div className="flex items-center text-muted-foreground gap-2 mb-1">
               <MapPin className="h-4 w-4" />
               <p>{supplier.city}, {supplier.state}</p>
             </div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              Código: {supplier.code}
+            </p>
             
             {isNew() && (
               <Badge className="mt-2 bg-green-500 hover:bg-green-600">Novo</Badge>
@@ -465,8 +468,7 @@ export default function SupplierDetail() {
             <TabsTrigger value="info">Informações</TabsTrigger>
             <TabsTrigger value="conditions">Condições</TabsTrigger>
             <TabsTrigger value="reviews">
-              Avaliações
-              {loading ? 'Carregando...' : (loadingReviews ? 'Carregando avaliações...' : `${reviews.length} avaliações`)}
+              {reviews.length > 0 ? `(${reviews.length}) Avaliações` : 'Avaliações'}
             </TabsTrigger>
           </TabsList>
           
