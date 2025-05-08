@@ -37,6 +37,12 @@ import { Input } from '@/components/ui/input';
 import type { Supplier, Review, Category } from '@/types';
 import { getSupplierById } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
+import { 
+  getReviewsBySupplierId, 
+  createReview, 
+  type CreateReviewData 
+} from '@/services/reviewService';
+import { useAuth } from '@/hooks/useAuth';
 
 const reviewFormSchema = z.object({
   rating: z.number().min(1).max(5),
@@ -48,8 +54,10 @@ const reviewFormSchema = z.object({
 type ReviewFormValues = z.infer<typeof reviewFormSchema>;
 
 export default function SupplierDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id: supplierId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
@@ -60,8 +68,8 @@ export default function SupplierDetail() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
-  
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState<boolean>(false);
 
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewFormSchema),
@@ -72,14 +80,25 @@ export default function SupplierDetail() {
   });
   
   useEffect(() => {
-    if (id) {
-      const fetchSupplierDetails = async () => {
+    if (supplierId) {
+      const fetchSupplierDetailsAndReviews = async () => {
         setLoading(true);
         setError(null);
+        setReviews([]);
         try {
-          const fetchedSupplier = await getSupplierById(id);
+          const fetchedSupplier = await getSupplierById(supplierId);
           if (fetchedSupplier) {
             setSupplier(fetchedSupplier);
+            setLoadingReviews(true);
+            try {
+              const fetchedReviews = await getReviewsBySupplierId(supplierId);
+              setReviews(fetchedReviews);
+            } catch (reviewError) {
+              console.error("Erro ao buscar reviews:", reviewError);
+              toast({ title: "Erro ao carregar avaliações", variant: "destructive" });
+            } finally {
+              setLoadingReviews(false);
+            }
           } else {
             setError('Fornecedor não encontrado.');
           }
@@ -90,12 +109,13 @@ export default function SupplierDetail() {
           setLoading(false);
         }
       };
-      fetchSupplierDetails();
+      fetchSupplierDetailsAndReviews();
     } else {
       setError('ID do fornecedor não fornecido.');
       setLoading(false);
+      setReviews([]);
     }
-  }, [id]);
+  }, [supplierId, toast]);
   
   useEffect(() => {
     const fetchAllCategories = async () => {
@@ -122,12 +142,6 @@ export default function SupplierDetail() {
     toast({ title: "Navegação indisponível", description: "A navegação para fornecedor anterior/seguinte está temporariamente desabilitada." });
   };
   
-  useEffect(() => {
-    if (supplier) {
-      setReviews([]);
-    }
-  }, [supplier]);
-
   const averageRating = reviews.length > 0 
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
     : 0;
@@ -182,27 +196,41 @@ export default function SupplierDetail() {
     }
   };
   
-  const onSubmitReview = (data: ReviewFormValues) => {
-    const newReview: Review = {
-      id: `review-${Date.now()}`,
-      supplier_id: id || '',
-      user_id: 'current-user',
-      user_name: 'Você',
+  const onSubmitReview = async (data: ReviewFormValues) => {
+    if (!isAuthenticated || !user?.id) {
+      toast({ title: "Não autenticado", description: "Você precisa estar logado para enviar uma avaliação.", variant: "destructive" });
+      return;
+    }
+    if (!supplierId) {
+      toast({ title: "Erro", description: "ID do fornecedor não encontrado para enviar avaliação.", variant: "destructive" });
+      return;
+    }
+
+    const reviewDataToSave: CreateReviewData = {
+      supplier_id: supplierId,
       rating: data.rating,
       comment: data.comment,
-      created_at: new Date().toISOString().split('T')[0],
     };
-    
-    setReviews([newReview, ...reviews]);
-    setIsReviewDialogOpen(false);
-    
-    toast({
-      title: "Avaliação enviada",
-      description: "Obrigado por compartilhar sua opinião!",
-      duration: 2000,
-    });
-    
-    form.reset();
+
+    try {
+      const newReviewFromDb = await createReview(reviewDataToSave, user.id);
+      setReviews(prevReviews => [newReviewFromDb, ...prevReviews]);
+      setIsReviewDialogOpen(false);
+      toast({
+        title: "Avaliação enviada",
+        description: "Obrigado por compartilhar sua opinião!",
+        duration: 2000,
+      });
+      form.reset();
+      setSelectedRating(0);
+    } catch (err: any) {
+      console.error("Erro ao salvar review:", err);
+      toast({ 
+        title: "Erro ao enviar avaliação", 
+        description: err.message || "Ocorreu um problema.", 
+        variant: "destructive" 
+      });
+    }
   };
   
   if (loading) {
@@ -438,7 +466,7 @@ export default function SupplierDetail() {
             <TabsTrigger value="conditions">Condições</TabsTrigger>
             <TabsTrigger value="reviews">
               Avaliações
-              {reviews.length > 0 && <span className="ml-1 text-xs">({reviews.length})</span>}
+              {loading ? 'Carregando...' : (loadingReviews ? 'Carregando avaliações...' : `${reviews.length} avaliações`)}
             </TabsTrigger>
           </TabsList>
           
@@ -552,13 +580,13 @@ export default function SupplierDetail() {
                     ))}
                   </div>
                   <div className="text-sm text-muted-foreground mb-4">
-                    {reviews.length} avaliações
+                    {loading ? 'Carregando...' : (loadingReviews ? 'Carregando avaliações...' : `${reviews.length} avaliações`)}
                   </div>
                   
                   <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button className="w-full mb-4">
-                        Avalie {supplier.name}
+                      <Button className="w-full mb-4" disabled={!isAuthenticated || !supplier}>
+                        {isAuthenticated ? (supplier ? `Avalie ${supplier.name}`: 'Carregando...') : 'Faça login para avaliar'}
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
@@ -661,7 +689,18 @@ export default function SupplierDetail() {
               </div>
               
               <div className="flex-1">
-                {reviews.length > 0 ? (
+                {loadingReviews && <div className="text-center py-8"><p>Carregando avaliações...</p></div>}
+                {!loadingReviews && reviews.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-2">
+                      Ainda não há avaliações para este fornecedor.
+                    </p>
+                    <Button onClick={() => setIsReviewDialogOpen(true)} disabled={!isAuthenticated || !supplier}>
+                      {isAuthenticated ? (supplier ? 'Seja o primeiro a avaliar' : 'Carregando...') : 'Faça login para avaliar'}
+                    </Button>
+                  </div>
+                )}
+                {reviews.length > 0 && (
                   <div className="space-y-4">
                     {reviews.map(review => (
                       <div key={review.id} className="border-b pb-4">
@@ -686,13 +725,6 @@ export default function SupplierDetail() {
                         </div>
                       </div>
                     ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-2">
-                      Ainda não há avaliações para este fornecedor.
-                    </p>
-                    <Button onClick={() => setIsReviewDialogOpen(true)}>Seja o primeiro a avaliar</Button>
                   </div>
                 )}
               </div>
