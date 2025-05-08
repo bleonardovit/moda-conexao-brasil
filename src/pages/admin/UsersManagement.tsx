@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { 
   Table, 
@@ -86,7 +87,7 @@ import { useForm } from 'react-hook-form';
 import type { User, Payment } from '@/types';
 import { 
   getAllUsers, 
-  getUserPayments as serviceGetUserPayments,
+  getUserPayments,
   updateUser, 
   updateSubscription, 
   deactivateUser as serviceDeactivateUser
@@ -410,7 +411,7 @@ export default function UsersManagement() {
       const fetchPayments = async () => {
         setIsLoadingPayments(true);
         try {
-          const payments = await serviceGetUserPayments(selectedUser.id);
+          const payments = await getUserPayments(selectedUser.id);
           setUserPayments(payments);
         } catch (error) {
           console.error("Erro ao buscar pagamentos do usuário:", error);
