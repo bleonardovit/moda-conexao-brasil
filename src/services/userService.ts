@@ -26,7 +26,7 @@ export const getAllUsers = async (): Promise<User[]> => {
     // Mapear os dados do perfil para o formato de User
     return data.map(profile => ({
       id: profile.id,
-      email: profile.email || '',
+      email: profile.id, // Usar o ID como email temporariamente, já que a tabela profiles não tem email
       full_name: profile.full_name || 'Sem nome',
       phone: profile.phone || undefined,
       subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive',
@@ -66,7 +66,6 @@ export const updateUser = async (user: User): Promise<User> => {
       .from('profiles')
       .update({
         full_name: user.full_name,
-        email: user.email,
         phone: user.phone,
         updated_at: new Date().toISOString()
       })
