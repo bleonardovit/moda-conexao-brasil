@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Table, 
@@ -85,7 +84,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import type { User, Payment } from '@/types';
-import { getAllUsers, getUserPayments, updateUser, updateSubscription, deactivateUser } from '@/services/userService';
+import { 
+  getAllUsers, 
+  getUserPayments as serviceGetUserPayments,
+  updateUser, 
+  updateSubscription, 
+  deactivateUser as serviceDeactivateUser
+} from '@/services/userService';
 import { useQuery } from '@tanstack/react-query';
 
 // Interfaces para os formulários
@@ -112,6 +117,8 @@ export default function UsersManagement() {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [userPayments, setUserPayments] = useState<Payment[]>([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
   
   // Novo estado para edição de assinatura
   const [subscriptionEditData, setSubscriptionEditData] = useState({
@@ -318,7 +325,7 @@ export default function UsersManagement() {
   const deactivateUser = async () => {
     if (selectedUser) {
       try {
-        await deactivateUser(selectedUser.id);
+        await serviceDeactivateUser(selectedUser.id);
         
         toast({
           title: "Usuário desativado",
@@ -397,10 +404,29 @@ export default function UsersManagement() {
     }
   };
 
-  // Obter histórico de pagamentos para o usuário selecionado
-  const getUserPaymentsForUser = (userId: string) => {
-    return getUserPayments(userId);
-  };
+  // Obter histórico de pagamentos para o usuário selecionado quando o modal abrir ou o usuário mudar
+  useEffect(() => {
+    if (selectedUser && isUserDetailsOpen) {
+      const fetchPayments = async () => {
+        setIsLoadingPayments(true);
+        try {
+          const payments = await serviceGetUserPayments(selectedUser.id);
+          setUserPayments(payments);
+        } catch (error) {
+          console.error("Erro ao buscar pagamentos do usuário:", error);
+          toast({
+            title: "Erro ao buscar pagamentos",
+            description: "Não foi possível carregar o histórico de pagamentos.",
+            variant: "destructive",
+          });
+          setUserPayments([]);
+        } finally {
+          setIsLoadingPayments(false);
+        }
+      };
+      fetchPayments();
+    }
+  }, [selectedUser, isUserDetailsOpen, toast]);
 
   return (
     <AdminLayout>
@@ -709,42 +735,51 @@ export default function UsersManagement() {
                     <CardDescription>Registro de pagamentos e renovações</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Data</TableHead>
-                          <TableHead>Valor</TableHead>
-                          <TableHead>Método</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {getUserPaymentsForUser(selectedUser.id).length > 0 ? (
-                          getUserPaymentsForUser(selectedUser.id).map((payment) => (
-                            <TableRow key={payment.id}>
-                              <TableCell>{payment.date}</TableCell>
-                              <TableCell>{payment.amount}</TableCell>
-                              <TableCell>
-                                {payment.method === 'card' ? 'Cartão de crédito' : 'PIX'}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={payment.status === 'success' ? 'bg-green-500' : 'bg-red-500'}>
-                                  {payment.status === 'success' ? 'Sucesso' : 'Falha'}
-                                </Badge>
+                    {isLoadingPayments ? (
+                      <p className="text-center text-muted-foreground py-4">Carregando pagamentos...</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Valor</TableHead>
+                            <TableHead>Método</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {userPayments.length > 0 ? (
+                            userPayments.map((payment) => (
+                              <TableRow key={payment.id}>
+                                <TableCell>{formatDate(payment.date)}</TableCell>
+                                <TableCell>{payment.amount}</TableCell>
+                                <TableCell>
+                                  {payment.method === 'card' ? 'Cartão de crédito' : 
+                                   payment.method === 'pix' ? 'PIX' : 
+                                   payment.method || 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={payment.status === 'success' ? 'bg-green-500' : payment.status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'}>
+                                    {payment.status === 'success' ? 'Sucesso' : 
+                                     payment.status === 'failed' ? 'Falha' : 
+                                     payment.status === 'pending' ? 'Pendente' :
+                                     'N/A'}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={4} className="h-16 text-center">
+                                Nenhum pagamento encontrado.
                               </TableCell>
                             </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="h-16 text-center">
-                              Nenhum pagamento encontrado.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                          )}
+                        </TableBody>
+                      </Table>
+                    )}
                   </CardContent>
-                  {selectedUser.subscription_status === 'pending' && (
+                  {selectedUser && selectedUser.subscription_status === 'pending' && (
                     <CardFooter className="flex justify-end">
                       <Button onClick={() => sendPaymentLink(selectedUser.id, selectedUser.full_name)}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
