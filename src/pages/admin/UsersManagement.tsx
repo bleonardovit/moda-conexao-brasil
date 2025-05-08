@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -85,70 +85,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import type { User, Payment } from '@/types';
-
-// Exemplo de dados mockados
-const MOCK_USERS: User[] = [
-  {
-    id: 'user1',
-    email: 'maria@example.com',
-    full_name: 'Maria Silva',
-    phone: '(11) 98765-4321',
-    subscription_status: 'active',
-    subscription_type: 'monthly',
-    subscription_start_date: '2023-05-10',
-    last_login: '2023-08-02T14:22:10Z',
-    role: 'user'
-  },
-  {
-    id: 'user2',
-    email: 'joana@example.com',
-    full_name: 'Joana Oliveira',
-    phone: '(21) 99876-5432',
-    subscription_status: 'active',
-    subscription_type: 'yearly',
-    subscription_start_date: '2023-04-15',
-    last_login: '2023-08-03T09:11:24Z',
-    role: 'user'
-  },
-  {
-    id: 'user3',
-    email: 'carlos@example.com',
-    full_name: 'Carlos Santos',
-    phone: '(31) 97654-3210',
-    subscription_status: 'inactive',
-    subscription_type: 'monthly',
-    subscription_start_date: '2023-03-20',
-    last_login: '2023-07-15T18:05:47Z',
-    role: 'user'
-  },
-  {
-    id: 'user4',
-    email: 'patricia@example.com',
-    full_name: 'Patricia Lima',
-    phone: '(41) 99887-6655',
-    subscription_status: 'pending',
-    subscription_type: 'monthly',
-    last_login: '2023-08-01T10:12:45Z',
-    role: 'user'
-  },
-  {
-    id: 'admin1',
-    email: 'admin@example.com',
-    full_name: 'Administrador',
-    subscription_status: 'active',
-    role: 'admin'
-  }
-];
-
-// Dados de pagamentos de exemplo
-const MOCK_PAYMENTS = [
-  { id: 'pay1', user_id: 'user1', amount: 'R$ 29,90', date: '2023-07-10', status: 'success', method: 'card' },
-  { id: 'pay2', user_id: 'user1', amount: 'R$ 29,90', date: '2023-06-10', status: 'success', method: 'card' },
-  { id: 'pay3', user_id: 'user1', amount: 'R$ 29,90', date: '2023-05-10', status: 'success', method: 'card' },
-  { id: 'pay4', user_id: 'user2', amount: 'R$ 299,00', date: '2023-04-15', status: 'success', method: 'pix' },
-  { id: 'pay5', user_id: 'user3', amount: 'R$ 29,90', date: '2023-03-20', status: 'success', method: 'card' },
-  { id: 'pay6', user_id: 'user3', amount: 'R$ 29,90', date: '2023-04-20', status: 'failed', method: 'card' },
-];
+import { getAllUsers, getUserPayments, updateUser, updateSubscription, deactivateUser } from '@/services/userService';
+import { useQuery } from '@tanstack/react-query';
 
 // Interfaces para os formulários
 interface EmailFormValues {
@@ -181,6 +119,23 @@ export default function UsersManagement() {
     status: ''
   });
   
+  // Buscar dados de usuários do Supabase
+  const { data: users = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['users'],
+    queryFn: getAllUsers
+  });
+
+  useEffect(() => {
+    if (error) {
+      console.error('Erro ao buscar usuários:', error);
+      toast({
+        title: "Erro ao carregar usuários",
+        description: "Não foi possível buscar a lista de usuários.",
+        variant: "destructive"
+      });
+    }
+  }, [error, toast]);
+  
   // Formulário para email
   const emailForm = useForm<EmailFormValues>({
     defaultValues: {
@@ -199,7 +154,7 @@ export default function UsersManagement() {
   });
   
   // Filtrar usuários com base nos critérios de pesquisa
-  const filteredUsers = MOCK_USERS.filter(user => {
+  const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' || 
       user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -260,47 +215,78 @@ export default function UsersManagement() {
   };
 
   // Salvar alterações na assinatura
-  const saveSubscriptionChanges = () => {
+  const saveSubscriptionChanges = async () => {
     if (selectedUser) {
-      // Simular uma atualização no backend
-      const updatedUser = {
-        ...selectedUser,
-        subscription_status: subscriptionEditData.status as 'active' | 'inactive' | 'pending',
-        subscription_type: subscriptionEditData.type as 'monthly' | 'yearly' | undefined
-      };
+      try {
+        await updateSubscription(
+          selectedUser.id, 
+          subscriptionEditData.type, 
+          subscriptionEditData.status
+        );
 
-      // Atualizar o usuário selecionado com os novos dados
-      setSelectedUser(updatedUser);
-      
-      toast({
-        title: "Assinatura atualizada",
-        description: `Detalhes da assinatura de ${selectedUser.full_name} foram atualizados com sucesso.`,
-      });
+        // Atualizar o usuário selecionado com os novos dados
+        const updatedUser = {
+          ...selectedUser,
+          subscription_status: subscriptionEditData.status as 'active' | 'inactive' | 'pending',
+          subscription_type: subscriptionEditData.type as 'monthly' | 'yearly' | undefined
+        };
+        
+        setSelectedUser(updatedUser);
+        
+        toast({
+          title: "Assinatura atualizada",
+          description: `Detalhes da assinatura de ${selectedUser.full_name} foram atualizados com sucesso.`,
+        });
 
-      setIsEditSubscriptionOpen(false);
+        // Recarregar a lista de usuários
+        refetch();
+        
+        setIsEditSubscriptionOpen(false);
+      } catch (error) {
+        console.error("Erro ao salvar alterações na assinatura:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao atualizar assinatura",
+          description: "Ocorreu um erro ao salvar as alterações na assinatura.",
+        });
+      }
     }
   };
 
   // Salvar alterações no usuário
-  const saveUserChanges = (data: UserFormValues) => {
+  const saveUserChanges = async (data: UserFormValues) => {
     if (selectedUser) {
-      // Simular uma atualização no backend
-      const updatedUser = {
-        ...selectedUser,
-        full_name: data.full_name,
-        email: data.email,
-        phone: data.phone
-      };
+      try {
+        // Atualizar o usuário no banco de dados
+        const updatedUser = {
+          ...selectedUser,
+          full_name: data.full_name,
+          email: data.email,
+          phone: data.phone
+        };
+        
+        await updateUser(updatedUser);
 
-      // Atualizar o usuário selecionado com os novos dados
-      setSelectedUser(updatedUser);
-      
-      toast({
-        title: "Usuário atualizado",
-        description: `Dados do usuário ${data.full_name} foram atualizados com sucesso.`,
-      });
+        // Atualizar o usuário selecionado com os novos dados
+        setSelectedUser(updatedUser);
+        
+        toast({
+          title: "Usuário atualizado",
+          description: `Dados do usuário ${data.full_name} foram atualizados com sucesso.`,
+        });
 
-      setIsEditUserDialogOpen(false);
+        // Recarregar a lista de usuários
+        refetch();
+        
+        setIsEditUserDialogOpen(false);
+      } catch (error) {
+        console.error("Erro ao salvar alterações no usuário:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao atualizar usuário",
+          description: "Ocorreu um erro ao salvar as alterações no usuário.",
+        });
+      }
     }
   };
 
@@ -329,18 +315,29 @@ export default function UsersManagement() {
   };
 
   // Desativar usuário
-  const deactivateUser = () => {
+  const deactivateUser = async () => {
     if (selectedUser) {
-      // Aqui seria implementada a lógica para desativar no backend
-      console.log('Desativando usuário:', selectedUser.id);
+      try {
+        await deactivateUser(selectedUser.id);
+        
+        toast({
+          title: "Usuário desativado",
+          description: `Conta de ${selectedUser.full_name} foi desativada com sucesso.`,
+        });
 
-      toast({
-        title: "Usuário desativado",
-        description: `Conta de ${selectedUser.full_name} foi desativada com sucesso.`,
-      });
-
-      setIsDeactivateDialogOpen(false);
-      setIsUserDetailsOpen(false);
+        // Recarregar a lista de usuários
+        refetch();
+        
+        setIsDeactivateDialogOpen(false);
+        setIsUserDetailsOpen(false);
+      } catch (error) {
+        console.error("Erro ao desativar usuário:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao desativar usuário",
+          description: "Ocorreu um erro ao desativar o usuário.",
+        });
+      }
     }
   };
 
@@ -401,8 +398,8 @@ export default function UsersManagement() {
   };
 
   // Obter histórico de pagamentos para o usuário selecionado
-  const getUserPayments = (userId: string) => {
-    return MOCK_PAYMENTS.filter(payment => payment.user_id === userId);
+  const getUserPaymentsForUser = (userId: string) => {
+    return getUserPayments(userId);
   };
 
   return (
@@ -483,7 +480,13 @@ export default function UsersManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length > 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center">
+                    Carregando usuários...
+                  </TableCell>
+                </TableRow>
+              ) : filteredUsers.length > 0 ? (
                 filteredUsers.map(user => (
                   <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openUserDetails(user)}>
                     <TableCell className="font-medium">
@@ -716,8 +719,8 @@ export default function UsersManagement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {getUserPayments(selectedUser.id).length > 0 ? (
-                          getUserPayments(selectedUser.id).map((payment) => (
+                        {getUserPaymentsForUser(selectedUser.id).length > 0 ? (
+                          getUserPaymentsForUser(selectedUser.id).map((payment) => (
                             <TableRow key={payment.id}>
                               <TableCell>{payment.date}</TableCell>
                               <TableCell>{payment.amount}</TableCell>
