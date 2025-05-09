@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -26,36 +25,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Heart, Instagram, Link as LinkIcon, Star } from 'lucide-react';
 import { useFavorites } from '@/hooks/use-favorites';
 import { Link } from 'react-router-dom';
-import type { Supplier } from '@/types';
-import { searchSuppliers } from '@/services/supplierService';
+import type { Supplier, Category } from '@/types';
+import { searchSuppliers, getSuppliers } from '@/services/supplierService';
 import { useQuery } from '@tanstack/react-query';
+import { getCategories } from '@/services/categoryService';
 
 // Filter options
-const CATEGORIES = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Casual', value: 'Casual' },
-  { label: 'Fitness', value: 'Fitness' },
-  { label: 'Plus Size', value: 'Plus Size' },
-  { label: 'Praia', value: 'Praia' },
-  { label: 'Acessórios', value: 'Acessórios' }
-];
-
-const STATES = [
-  { label: 'Todos', value: 'all' },
-  { label: 'São Paulo', value: 'SP' },
-  { label: 'Ceará', value: 'CE' },
-  { label: 'Goiás', value: 'GO' },
-  { label: 'Pernambuco', value: 'PE' }
-];
-
-const CITIES = [
-  { label: 'Todas', value: 'all' },
-  { label: 'São Paulo', value: 'São Paulo' },
-  { label: 'Fortaleza', value: 'Fortaleza' },
-  { label: 'Goiânia', value: 'Goiânia' },
-  { label: 'Recife', value: 'Recife' }
-];
-
 const PAYMENT_METHODS = [
   { label: 'PIX', value: 'pix' },
   { label: 'Cartão', value: 'card' },
@@ -71,7 +46,16 @@ const SHIPPING_METHODS = [
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  
+  // State for categories
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<{ label: string; value: string }[]>([{ label: 'Todas as Categorias', value: 'all' }]);
+  const [categoryFilter, setCategoryFilter] = useState('all'); // Stores category ID or 'all'
+  
+  // Estados para opções dinâmicas de estado e cidade
+  const [stateOptions, setStateOptions] = useState<{ label: string; value: string }[]>([{ label: 'Todos os Estados', value: 'all' }]);
+  const [cityOptions, setCityOptions] = useState<{ label: string; value: string }[]>([{ label: 'Todas as Cidades', value: 'all' }]);
+  
   const [stateFilter, setStateFilter] = useState('all');
   const [cityFilter, setCityFilter] = useState('all');
   // Fix: explicitly type minOrderRange as a tuple with two numbers
@@ -86,16 +70,66 @@ export default function SearchPage() {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
 
+  // Fetch categories, states, and cities for filter options on component mount
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        // Fetch categories
+        const categoriesData = await getCategories();
+        setAllCategories(categoriesData);
+        const catOptions = [
+          { label: 'Todas as Categorias', value: 'all' },
+          ...categoriesData.map(cat => ({ label: cat.name, value: cat.id }))
+        ];
+        setCategoryOptions(catOptions);
+
+        // Fetch all suppliers to derive states and cities
+        // Consider fetching only state and city fields if performance becomes an issue
+        const allSuppliersData = await getSuppliers(); 
+        
+        // Filter out hidden suppliers before generating options
+        const visibleSuppliers = allSuppliersData.filter(s => !s.hidden);
+
+        // Populate state options
+        const uniqueStates = Array.from(new Set(visibleSuppliers.map(s => s.state).filter(Boolean)));
+        const stOptions = [
+          { label: 'Todos os Estados', value: 'all' },
+          ...uniqueStates.sort().map(st => ({ label: st, value: st }))
+        ];
+        setStateOptions(stOptions);
+
+        // Populate city options
+        // TODO: Consider making city options dependent on selected state for better UX
+        const uniqueCities = Array.from(new Set(visibleSuppliers.map(s => s.city).filter(Boolean)));
+        const cOptions = [
+          { label: 'Todas as Cidades', value: 'all' },
+          ...uniqueCities.sort().map(city => ({ label: city, value: city }))
+        ];
+        setCityOptions(cOptions);
+
+      } catch (error) {
+        console.error("Error fetching filter options:", error);
+        toast({
+          title: "Erro ao carregar opções de filtro",
+          description: "Não foi possível buscar dados para os filtros.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchFilterOptions();
+  }, [toast]);
+
   // Query suppliers from the database with filters
   const { data: suppliers = [], isLoading, error } = useQuery({
     queryKey: ['suppliers', searchTerm, categoryFilter, stateFilter, cityFilter, 
                minOrderRange, selectedPaymentMethods, requiresCnpj, 
-               selectedShippingMethods, hasWebsite],
+               selectedShippingMethods, hasWebsite], // categoryFilter é ID aqui
     queryFn: async () => {
       try {
+        // Pass categoryFilter (ID) como categoryId para searchSuppliers
         return await searchSuppliers({
           searchTerm,
-          category: categoryFilter !== 'all' ? categoryFilter : undefined,
+          categoryId: categoryFilter !== 'all' ? categoryFilter : undefined, // Mudou para categoryId
           state: stateFilter !== 'all' ? stateFilter : undefined,
           city: cityFilter !== 'all' ? cityFilter : undefined,
           minOrderRange,
@@ -254,12 +288,12 @@ export default function SearchPage() {
                       onValueChange={setCategoryFilter}
                     >
                       <SelectTrigger id="category">
-                        <SelectValue placeholder="Selecione uma categoria" />
+                        <SelectValue placeholder="Selecionar categoria" />
                       </SelectTrigger>
                       <SelectContent>
-                        {CATEGORIES.map(category => (
-                          <SelectItem key={category.value} value={category.value}>
-                            {category.label}
+                        {categoryOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -277,7 +311,7 @@ export default function SearchPage() {
                         <SelectValue placeholder="Selecione um estado" />
                       </SelectTrigger>
                       <SelectContent>
-                        {STATES.map(state => (
+                        {stateOptions.map(state => (
                           <SelectItem key={state.value} value={state.value}>
                             {state.label}
                           </SelectItem>
@@ -297,7 +331,7 @@ export default function SearchPage() {
                         <SelectValue placeholder="Selecione uma cidade" />
                       </SelectTrigger>
                       <SelectContent>
-                        {CITIES.map(city => (
+                        {cityOptions.map(city => (
                           <SelectItem key={city.value} value={city.value}>
                             {city.label}
                           </SelectItem>
@@ -457,21 +491,21 @@ export default function SearchPage() {
                     <div className="flex flex-wrap gap-2">
                       {categoryFilter !== 'all' && (
                         <Badge variant="secondary" className="flex items-center gap-1">
-                          Categoria: {categoryFilter}
+                          Categoria: {allCategories.find(c => c.id === categoryFilter)?.name || categoryFilter}
                           <X className="h-3 w-3 cursor-pointer" onClick={() => setCategoryFilter('all')} />
                         </Badge>
                       )}
                       
                       {stateFilter !== 'all' && (
                         <Badge variant="secondary" className="flex items-center gap-1">
-                          Estado: {stateFilter}
+                          Estado: {stateOptions.find(s => s.value === stateFilter)?.label || stateFilter}
                           <X className="h-3 w-3 cursor-pointer" onClick={() => setStateFilter('all')} />
                         </Badge>
                       )}
 
                       {cityFilter !== 'all' && (
                         <Badge variant="secondary" className="flex items-center gap-1">
-                          Cidade: {cityFilter}
+                          Cidade: {cityOptions.find(c => c.value === cityFilter)?.label || cityFilter}
                           <X className="h-3 w-3 cursor-pointer" onClick={() => setCityFilter('all')} />
                         </Badge>
                       )}

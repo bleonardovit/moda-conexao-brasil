@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Supplier, Category } from '@/types';
 import { SupplierFormValues } from '@/lib/validators/supplier-form';
@@ -6,26 +5,47 @@ import { SupplierFormValues } from '@/lib/validators/supplier-form';
 // Get all suppliers
 export const getSuppliers = async (): Promise<Supplier[]> => {
   try {
-    // First, get all suppliers
+    // 1. Fetch all suppliers
     const { data: suppliersData, error: suppliersError } = await supabase
       .from('suppliers')
-      .select('*');
+      .select('*'); // Presume-se que avg_rating e num_reviews não estão mais aqui
 
     if (suppliersError) {
       console.error('Error fetching suppliers:', suppliersError);
       throw suppliersError;
     }
-
-    // Safety check - if no data returned, return empty array
     if (!suppliersData) return [];
 
-    // For each supplier, get their associated categories
-    const suppliersWithCategories = await Promise.all(
-      suppliersData.map(async (supplier) => {
-        const categories = await getSupplierCategories(supplier.id);
-        return { ...supplier, categories } as Supplier;
-      })
-    );
+    // 2. Fetch all supplier-category relationships
+    const { data: supplierCategoryRelations, error: relationsError } = await supabase
+      .from('suppliers_categories') // Usando o nome correto da tabela de junção
+      .select('supplier_id, category_id');
+
+    if (relationsError) {
+      console.error('Error fetching supplier_categories relations:', relationsError);
+      // Continuar sem categorias se houver erro, ou lançar o erro dependendo da política
+      // Por ora, vamos continuar e os fornecedores não terão categorias se isso falhar.
+    }
+
+    // 3. Create a map for easy lookup of categories per supplier
+    const categoriesMap = new Map<string, string[]>();
+    if (supplierCategoryRelations) {
+      for (const relation of supplierCategoryRelations) {
+        if (relation.supplier_id && relation.category_id) { // Checagem de nulidade
+            const currentCategories = categoriesMap.get(relation.supplier_id) || [];
+            currentCategories.push(relation.category_id);
+            categoriesMap.set(relation.supplier_id, currentCategories);
+        }
+      }
+    }
+
+    // 4. Combine suppliers with their categories
+    const suppliersWithCategories = suppliersData.map(supplier => {
+      return {
+        ...supplier,
+        categories: categoriesMap.get(supplier.id) || [], // Garante que categories seja sempre um array
+      } as Supplier; // Fazendo cast para Supplier, que espera categories: string[]
+    });
 
     return suppliersWithCategories;
   } catch (error) {
@@ -38,7 +58,7 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
 export const searchSuppliers = async (
   filters: {
     searchTerm?: string;
-    category?: string;
+    categoryId?: string;
     state?: string;
     city?: string;
     minOrderRange?: [number, number];
@@ -49,35 +69,25 @@ export const searchSuppliers = async (
   }
 ): Promise<Supplier[]> => {
   try {
-    console.log('Searching suppliers with filters:', filters);
+    // console.log('Searching suppliers with filters:', filters);
     
-    // Start building the query
     let query = supabase
       .from('suppliers')
       .select('*');
 
-    // Apply filters
-    // Filter by name or description
+    // Apply other filters first
     if (filters.searchTerm) {
       query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
     }
-
-    // Filter by state
     if (filters.state && filters.state !== 'all') {
       query = query.eq('state', filters.state);
     }
-
-    // Filter by city
     if (filters.city && filters.city !== 'all') {
       query = query.eq('city', filters.city);
     }
-
-    // Filter by requires CNPJ
     if (filters.requiresCnpj !== null) {
       query = query.eq('requires_cnpj', filters.requiresCnpj);
     }
-
-    // Filter by hasWebsite (website is not null)
     if (filters.hasWebsite !== null) {
       if (filters.hasWebsite) {
         query = query.not('website', 'is', null);
@@ -85,62 +95,69 @@ export const searchSuppliers = async (
         query = query.is('website', null);
       }
     }
-
-    // Filter by payment methods (array contains)
     if (filters.paymentMethods && filters.paymentMethods.length > 0) {
-      // Use overlap to find if any of the selected methods are in the payment_methods array
       query = query.overlaps('payment_methods', filters.paymentMethods);
     }
-
-    // Filter by shipping methods (array contains)
     if (filters.shippingMethods && filters.shippingMethods.length > 0) {
-      // Use overlap to find if any of the selected methods are in the shipping_methods array
       query = query.overlaps('shipping_methods', filters.shippingMethods);
     }
 
-    // Don't show hidden suppliers
+    // Filter by Category ID using the join table 'suppliers_categories'
+    if (filters.categoryId && filters.categoryId !== 'all') {
+      const { data: scData, error: scError } = await supabase
+        .from('suppliers_categories') // CORRIGIDO: Nome da tabela de junção
+        .select('supplier_id')
+        .eq('category_id', filters.categoryId);
+
+      if (scError) {
+        console.error('Error fetching supplier_ids for category filter:', scError);
+        throw scError; 
+      }
+      
+      if (scData && scData.length > 0) {
+        // Certifique-se de que o tipo de scData está correto ou faça um cast se necessário
+        const supplierIdsFromCategoryFilter = scData.map((item: { supplier_id: string }) => item.supplier_id);
+        if (supplierIdsFromCategoryFilter.length > 0) {
+            query = query.in('id', supplierIdsFromCategoryFilter);
+        } else {
+            // Category filter is active but no suppliers match it
+            return [];
+        }
+      } else {
+        // Category filter is active but no suppliers_categories entries match
+        return []; 
+      }
+    }
+    
     query = query.eq('hidden', false);
 
-    // Execute the query
-    const { data: suppliersData, error: suppliersError } = await query;
+    const { data: filteredSuppliersData, error: suppliersErrorAfterFilters } = await query;
 
-    if (suppliersError) {
-      console.error('Error searching suppliers:', suppliersError);
-      throw suppliersError;
+    if (suppliersErrorAfterFilters) {
+      console.error('Error searching suppliers after filters:', suppliersErrorAfterFilters);
+      throw suppliersErrorAfterFilters;
     }
 
-    // Safety check - if no data returned, return empty array
-    if (!suppliersData) return [];
+    if (!filteredSuppliersData) return [];
 
-    // For each supplier, get their associated categories
-    let suppliersWithCategories = await Promise.all(
-      suppliersData.map(async (supplier) => {
+    let result = await Promise.all(
+      filteredSuppliersData.map(async (supplier) => {
         const categories = await getSupplierCategories(supplier.id);
         return { ...supplier, categories } as Supplier;
       })
     );
 
-    // Filter by category (need to fetch categories first)
-    if (filters.category && filters.category !== 'all') {
-      suppliersWithCategories = suppliersWithCategories.filter(
-        supplier => supplier.categories.includes(filters.category!)
-      );
-    }
-
-    // Filter by min order range
+    // Filter by min order range (client-side)
     if (filters.minOrderRange) {
       const [min, max] = filters.minOrderRange;
-      
-      // Parse min_order to number (remove currency symbol, spaces, commas)
-      suppliersWithCategories = suppliersWithCategories.filter(supplier => {
-        if (!supplier.min_order) return true; // If no min_order, include it
-        
+      result = result.filter(supplier => {
+        if (!supplier.min_order) return true; 
         const minOrderValue = parseInt(supplier.min_order.replace(/\D/g, ''), 10) || 0;
         return minOrderValue >= min && minOrderValue <= max;
       });
     }
 
-    return suppliersWithCategories;
+    return result;
   } catch (error) {
     console.error('Error in searchSuppliers:', error);
     throw error;
