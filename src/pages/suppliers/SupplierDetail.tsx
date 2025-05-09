@@ -363,7 +363,7 @@ export default function SupplierDetail() {
             <img
               src={supplier.images[activeImageIndex]}
               alt={`${supplier.name} - Imagem ${activeImageIndex + 1}`}
-              className="h-full w-full object-cover transition-all"
+              className="h-full w-full object-contain transition-all"
             />
             
             {supplier.images.length > 1 && (
