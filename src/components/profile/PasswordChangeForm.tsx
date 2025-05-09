@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export function PasswordChangeForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -48,8 +49,14 @@ export function PasswordChangeForm() {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Atualizar senha com Supabase
+      const { error } = await supabase.auth.updateUser({
+        password: formData.newPassword
+      });
+      
+      if (error) {
+        throw error;
+      }
       
       toast({
         title: 'Sucesso',
@@ -62,10 +69,11 @@ export function PasswordChangeForm() {
         newPassword: '',
         confirmPassword: '',
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao alterar senha:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível alterar sua senha. Tente novamente mais tarde.',
+        description: error.message || 'Não foi possível alterar sua senha. Tente novamente mais tarde.',
         variant: 'destructive'
       });
     } finally {

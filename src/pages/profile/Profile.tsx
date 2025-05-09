@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,28 +18,34 @@ import { LogOut } from 'lucide-react';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { SubscriptionManager } from '@/components/profile/SubscriptionManager';
 import type { User } from '@/types';
-
-// Dados de exemplo
-const MOCK_USER: User = {
-  id: 'user123',
-  email: 'maria@example.com',
-  full_name: 'Maria Oliveira',
-  phone: '(11) 98765-4321',
-  subscription_status: 'active',
-  subscription_type: 'monthly',
-  subscription_start_date: '2023-06-15',
-  last_login: '2023-08-01T10:30:00Z',
-  role: 'user'
-};
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
-  const [user, setUser] = useState<User>(MOCK_USER);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: user.full_name,
-    email: user.email,
-    phone: user.phone || ''
+    full_name: '',
+    email: '',
+    phone: ''
   });
+  
+  // Efeito para carregar os dados do usuário quando o componente montar
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        full_name: user.full_name || '',
+        email: user.email || '',
+        phone: user.phone || ''
+      });
+    } else {
+      // Redirecionar para login se não estiver autenticado
+      navigate('/auth/login');
+    }
+  }, [user, navigate]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -49,32 +55,54 @@ export default function Profile() {
     }));
   };
   
-  const handleSave = () => {
-    // Aqui seria implementada a lógica para salvar os dados do usuário
-    setUser(prev => ({
-      ...prev,
-      full_name: formData.full_name,
-      email: formData.email,
-      phone: formData.phone
-    }));
+  const handleSave = async () => {
+    if (!user) return;
     
-    toast({
-      title: "Sucesso!",
-      description: "Suas informações foram atualizadas."
-    });
-    
-    setIsEditing(false);
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          phone: formData.phone,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Atualizar os dados do usuário no contexto
+      // (Observe que não estamos atualizando o email aqui,
+      // pois isso geralmente requer um fluxo separado com verificação)
+      
+      toast({
+        title: "Sucesso!",
+        description: "Suas informações foram atualizadas."
+      });
+      
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao salvar",
+        description: "Não foi possível atualizar suas informações. Tente novamente."
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  const handleLogout = () => {
-    // Lógica para sair da conta
-    toast({
-      title: "Saindo...",
-      description: "Você foi desconectado da sua conta."
-    });
-    
-    // Redirecionaria para a página de login
+  const handleLogout = async () => {
+    await logout();
+    // O redirecionamento é tratado no hook useAuth
   };
+  
+  if (!user) {
+    return null; // Ou algum componente de carregamento
+  }
   
   return (
     <AppLayout>
@@ -103,6 +131,7 @@ export default function Profile() {
                         name="full_name"
                         value={formData.full_name}
                         onChange={handleInputChange}
+                        disabled={isLoading}
                       />
                     </div>
                     
@@ -114,7 +143,11 @@ export default function Profile() {
                         type="email"
                         value={formData.email}
                         onChange={handleInputChange}
+                        disabled={true} // Email não pode ser alterado aqui
                       />
+                      <p className="text-sm text-muted-foreground">
+                        O email não pode ser alterado nesta seção.
+                      </p>
                     </div>
                     
                     <div className="space-y-2">
@@ -125,6 +158,7 @@ export default function Profile() {
                         value={formData.phone}
                         onChange={handleInputChange}
                         placeholder="(99) 99999-9999"
+                        disabled={isLoading}
                       />
                     </div>
                   </>
@@ -158,11 +192,11 @@ export default function Profile() {
               <CardFooter>
                 {isEditing ? (
                   <div className="flex space-x-2 w-full">
-                    <Button variant="outline" onClick={() => setIsEditing(false)}>
+                    <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isLoading}>
                       Cancelar
                     </Button>
-                    <Button onClick={handleSave}>
-                      Salvar alterações
+                    <Button onClick={handleSave} disabled={isLoading}>
+                      {isLoading ? 'Salvando...' : 'Salvar alterações'}
                     </Button>
                   </div>
                 ) : (
