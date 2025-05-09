@@ -27,74 +27,8 @@ import { Heart, Instagram, Link as LinkIcon, Star } from 'lucide-react';
 import { useFavorites } from '@/hooks/use-favorites';
 import { Link } from 'react-router-dom';
 import type { Supplier } from '@/types';
-
-// Mock suppliers data - using the same as SuppliersList for consistency
-const MOCK_SUPPLIERS: Supplier[] = [
-  {
-    id: '1',
-    code: 'SP001',
-    name: 'Moda Fashion SP',
-    description: 'Atacado de roupas femininas com foco em tendências atuais',
-    images: ['https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'],
-    instagram: '@modafashionsp',
-    whatsapp: '+5511999999999',
-    min_order: 'R$ 300,00',
-    payment_methods: ['pix', 'card', 'bankslip'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'São Paulo',
-    state: 'SP',
-    categories: ['Casual', 'Fitness'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '2',
-    code: 'CE001',
-    name: 'Brindes Fortaleza',
-    description: 'Acessórios e bijuterias para revenda',
-    images: ['https://images.unsplash.com/photo-1506744038136-46273834b3fb'],
-    instagram: '@brindesfortaleza',
-    whatsapp: '+5585999999999',
-    min_order: 'R$ 200,00',
-    payment_methods: ['pix', 'bankslip'],
-    requires_cnpj: false,
-    avg_price: 'low',
-    shipping_methods: ['correios'],
-    city: 'Fortaleza',
-    state: 'CE',
-    categories: ['Acessórios'],
-    featured: false,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  },
-  {
-    id: '3',
-    code: 'GO001',
-    name: 'Plus Size Goiânia',
-    description: 'Especializada em moda plus size feminina',
-    images: ['https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07'],
-    instagram: '@plussizegoiania',
-    whatsapp: '+5562999999999',
-    website: 'https://plussizegoiania.com.br',
-    min_order: 'R$ 500,00',
-    payment_methods: ['pix', 'card'],
-    requires_cnpj: true,
-    avg_price: 'medium',
-    shipping_methods: ['correios', 'transporter'],
-    city: 'Goiânia',
-    state: 'GO',
-    categories: ['Plus Size'],
-    featured: true,
-    hidden: false,
-    created_at: '2023-01-01',
-    updated_at: '2023-01-01'
-  }
-];
+import { searchSuppliers } from '@/services/supplierService';
+import { useQuery } from '@tanstack/react-query';
 
 // Filter options
 const CATEGORIES = [
@@ -151,50 +85,35 @@ export default function SearchPage() {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
 
-  // Filter logic
-  const filteredSuppliers = MOCK_SUPPLIERS.filter(supplier => {
-    // Search term filter
-    const matchesSearch = searchTerm === '' || 
-      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Category filter
-    const matchesCategory = categoryFilter === 'all' || 
-      supplier.categories.includes(categoryFilter);
-    
-    // State filter
-    const matchesState = stateFilter === 'all' || 
-      supplier.state === stateFilter;
-    
-    // City filter
-    const matchesCity = cityFilter === 'all' || 
-      supplier.city === cityFilter;
-    
-    // Min order filter - extract numeric value from string (e.g., "R$ 300,00" -> 300)
-    const minOrderValue = parseInt(supplier.min_order.replace(/\D/g, ''), 10) || 0;
-    const matchesMinOrder = minOrderValue >= minOrderRange[0] && minOrderValue <= minOrderRange[1];
-    
-    // Payment methods filter
-    const matchesPaymentMethod = selectedPaymentMethods.length === 0 || 
-      selectedPaymentMethods.some(method => supplier.payment_methods.includes(method as any));
-    
-    // CNPJ filter
-    const matchesCnpj = requiresCnpj === null || 
-      supplier.requires_cnpj === (requiresCnpj === 'true');
-    
-    // Shipping methods filter
-    const matchesShippingMethod = selectedShippingMethods.length === 0 || 
-      selectedShippingMethods.some(method => supplier.shipping_methods.includes(method as any));
-    
-    // Website filter
-    const matchesWebsite = hasWebsite === null || 
-      (hasWebsite === 'true' ? !!supplier.website : !supplier.website);
-    
-    // Combine all filters
-    return matchesSearch && matchesCategory && matchesState && matchesCity && 
-           matchesMinOrder && matchesPaymentMethod && matchesCnpj && 
-           matchesShippingMethod && matchesWebsite;
+  // Query suppliers from the database with filters
+  const { data: suppliers = [], isLoading, error } = useQuery({
+    queryKey: ['suppliers', searchTerm, categoryFilter, stateFilter, cityFilter, 
+               minOrderRange, selectedPaymentMethods, requiresCnpj, 
+               selectedShippingMethods, hasWebsite],
+    queryFn: async () => {
+      try {
+        return await searchSuppliers({
+          searchTerm,
+          category: categoryFilter !== 'all' ? categoryFilter : undefined,
+          state: stateFilter !== 'all' ? stateFilter : undefined,
+          city: cityFilter !== 'all' ? cityFilter : undefined,
+          minOrderRange,
+          paymentMethods: selectedPaymentMethods,
+          requiresCnpj: requiresCnpj !== null ? requiresCnpj === 'true' : null,
+          shippingMethods: selectedShippingMethods,
+          hasWebsite: hasWebsite !== null ? hasWebsite === 'true' : null
+        });
+      } catch (error) {
+        console.error("Error fetching suppliers:", error);
+        throw error;
+      }
+    }
   });
+
+  // Log filtered suppliers
+  useEffect(() => {
+    console.log("Filtered suppliers:", suppliers);
+  }, [suppliers]);
 
   // Update active filters state whenever filters change
   useEffect(() => {
@@ -311,7 +230,7 @@ export default function SearchPage() {
             </Button>
             
             <span className="text-sm text-muted-foreground">
-              {filteredSuppliers.length} resultados encontrados
+              {isLoading ? "Carregando..." : `${suppliers.length} resultados encontrados`}
             </span>
           </div>
 
@@ -607,14 +526,24 @@ export default function SearchPage() {
                 </p>
               )}
               
-              {filteredSuppliers.length > 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <p>Carregando fornecedores...</p>
+                </div>
+              ) : error ? (
+                <div className="mt-4 rounded-md border border-border p-8 text-center">
+                  <p className="text-red-500">Erro ao carregar fornecedores. Tente novamente.</p>
+                </div>
+              ) : suppliers.length > 0 ? (
                 <div className="space-y-4">
-                  {filteredSuppliers.map(supplier => (
+                  {suppliers.map(supplier => (
                     <Card key={supplier.id} className="overflow-hidden card-hover">
                       <div className="sm:flex">
                         <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
                           <img 
-                            src={supplier.images[0]} 
+                            src={supplier.images && supplier.images.length > 0 
+                              ? supplier.images[0] 
+                              : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'}
                             alt={supplier.name}
                             className="w-full h-full object-cover"
                           />
@@ -668,7 +597,7 @@ export default function SearchPage() {
                           
                           <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                             <div>
-                              <span className="font-medium">Pedido mínimo:</span> {supplier.min_order}
+                              <span className="font-medium">Pedido mínimo:</span> {supplier.min_order || 'Não informado'}
                             </div>
                             <div>
                               <span className="font-medium">

@@ -34,6 +34,119 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
   }
 };
 
+// Search suppliers with filters
+export const searchSuppliers = async (
+  filters: {
+    searchTerm?: string;
+    category?: string;
+    state?: string;
+    city?: string;
+    minOrderRange?: [number, number];
+    paymentMethods?: string[];
+    requiresCnpj?: boolean | null;
+    shippingMethods?: string[];
+    hasWebsite?: boolean | null;
+  }
+): Promise<Supplier[]> => {
+  try {
+    console.log('Searching suppliers with filters:', filters);
+    
+    // Start building the query
+    let query = supabase
+      .from('suppliers')
+      .select('*');
+
+    // Apply filters
+    // Filter by name or description
+    if (filters.searchTerm) {
+      query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
+    }
+
+    // Filter by state
+    if (filters.state && filters.state !== 'all') {
+      query = query.eq('state', filters.state);
+    }
+
+    // Filter by city
+    if (filters.city && filters.city !== 'all') {
+      query = query.eq('city', filters.city);
+    }
+
+    // Filter by requires CNPJ
+    if (filters.requiresCnpj !== null) {
+      query = query.eq('requires_cnpj', filters.requiresCnpj);
+    }
+
+    // Filter by hasWebsite (website is not null)
+    if (filters.hasWebsite !== null) {
+      if (filters.hasWebsite) {
+        query = query.not('website', 'is', null);
+      } else {
+        query = query.is('website', null);
+      }
+    }
+
+    // Filter by payment methods (array contains)
+    if (filters.paymentMethods && filters.paymentMethods.length > 0) {
+      // Use overlap to find if any of the selected methods are in the payment_methods array
+      query = query.overlaps('payment_methods', filters.paymentMethods);
+    }
+
+    // Filter by shipping methods (array contains)
+    if (filters.shippingMethods && filters.shippingMethods.length > 0) {
+      // Use overlap to find if any of the selected methods are in the shipping_methods array
+      query = query.overlaps('shipping_methods', filters.shippingMethods);
+    }
+
+    // Don't show hidden suppliers
+    query = query.eq('hidden', false);
+
+    // Execute the query
+    const { data: suppliersData, error: suppliersError } = await query;
+
+    if (suppliersError) {
+      console.error('Error searching suppliers:', suppliersError);
+      throw suppliersError;
+    }
+
+    // Safety check - if no data returned, return empty array
+    if (!suppliersData) return [];
+
+    // For each supplier, get their associated categories
+    let suppliersWithCategories = await Promise.all(
+      suppliersData.map(async (supplier) => {
+        const categories = await getSupplierCategories(supplier.id);
+        return { ...supplier, categories } as Supplier;
+      })
+    );
+
+    // Filter by category (need to fetch categories first)
+    if (filters.category && filters.category !== 'all') {
+      suppliersWithCategories = suppliersWithCategories.filter(
+        supplier => supplier.categories.includes(filters.category!)
+      );
+    }
+
+    // Filter by min order range
+    if (filters.minOrderRange) {
+      const [min, max] = filters.minOrderRange;
+      
+      // Parse min_order to number (remove currency symbol, spaces, commas)
+      suppliersWithCategories = suppliersWithCategories.filter(supplier => {
+        if (!supplier.min_order) return true; // If no min_order, include it
+        
+        const minOrderValue = parseInt(supplier.min_order.replace(/\D/g, ''), 10) || 0;
+        return minOrderValue >= min && minOrderValue <= max;
+      });
+    }
+
+    return suppliersWithCategories;
+  } catch (error) {
+    console.error('Error in searchSuppliers:', error);
+    throw error;
+  }
+};
+
 // Get supplier by ID
 export const getSupplierById = async (id: string): Promise<Supplier | null> => {
   try {
