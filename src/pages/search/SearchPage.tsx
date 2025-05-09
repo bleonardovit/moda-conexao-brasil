@@ -74,11 +74,12 @@ export default function SearchPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
   const [cityFilter, setCityFilter] = useState('all');
-  const [minOrderRange, setMinOrderRange] = useState([0, 1000]);
+  // Fix: explicitly type minOrderRange as a tuple with two numbers
+  const [minOrderRange, setMinOrderRange] = useState<[number, number]>([0, 1000]);
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
   const [requiresCnpj, setRequiresCnpj] = useState<string | null>(null);
   const [selectedShippingMethods, setSelectedShippingMethods] = useState<string[]>([]);
-  const [ratingRange, setRatingRange] = useState([0, 5]);
+  const [ratingRange, setRatingRange] = useState<[number, number]>([0, 5]);
   const [hasWebsite, setHasWebsite] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<{[key: string]: boolean}>({});
 
@@ -319,7 +320,7 @@ export default function SearchPage() {
                       max={1000} 
                       step={50}
                       value={minOrderRange}
-                      onValueChange={setMinOrderRange} 
+                      onValueChange={(value) => setMinOrderRange(value as [number, number])} 
                       className="py-4"
                     />
                   </div>
