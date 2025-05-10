@@ -3,15 +3,15 @@ import { Article, ArticleCategory } from '@/types/article';
 import { supabase } from "@/integrations/supabase/client";
 
 // Função para buscar todos os artigos
-export const getArticles = async (category?: ArticleCategory): Promise<Article[]> => {
+export const getArticles = async (categoryId?: string): Promise<Article[]> => {
   try {
     let query = supabase
       .from('articles')
       .select('*');
     
     // Filtra por categoria se fornecida
-    if (category) {
-      query = query.eq('category', category);
+    if (categoryId) {
+      query = query.eq('category', categoryId);
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });

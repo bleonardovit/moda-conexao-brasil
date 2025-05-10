@@ -14,36 +14,47 @@ import {
 import { getSuppliers } from '@/services/supplierService';
 import { getArticles } from '@/services/articleService';
 import type { Supplier } from '@/types';
+import type { Article } from '@/types/article';
 
 export function HeaderSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch suppliers when search is opened
+  // Fetch suppliers and articles when search is opened
   useEffect(() => {
-    if (open && suppliers.length === 0) {
-      const fetchSuppliers = async () => {
+    if (open) {
+      const fetchData = async () => {
         setIsLoading(true);
         try {
-          const data = await getSuppliers();
-          // Filter only visible suppliers
-          setSuppliers(data ? data.filter(supplier => !supplier.hidden) : []);
+          // Fetch suppliers
+          if (suppliers.length === 0) {
+            const suppliersData = await getSuppliers();
+            // Filter only visible suppliers
+            setSuppliers(suppliersData ? suppliersData.filter(supplier => !supplier.hidden) : []);
+          }
+          
+          // Fetch articles
+          if (articles.length === 0) {
+            const articlesData = await getArticles();
+            // Filter only published articles
+            setArticles(articlesData.filter(article => article.published));
+          }
         } catch (error) {
-          console.error('Error fetching suppliers for search:', error);
-          setSuppliers([]); // Set to empty array on error
+          console.error('Error fetching data for search:', error);
         } finally {
           setIsLoading(false);
         }
       };
       
-      fetchSuppliers();
+      fetchData();
     }
-  }, [open, suppliers.length]);
+  }, [open, suppliers.length, articles.length]);
 
-  // Dynamic search
+  // Dynamic search for suppliers
   const filteredSuppliers = useMemo(() => {
     if (!query || !Array.isArray(suppliers)) return [];
     
@@ -53,16 +64,15 @@ export function HeaderSearch() {
     );
   }, [query, suppliers]);
 
+  // Dynamic search for articles
   const filteredArticles = useMemo(() => {
-    if (!query) return [];
-    // Safely get articles and handle potential undefined
-    const articles = getArticles() || [];
+    if (!query || !Array.isArray(articles)) return [];
     
     return articles.filter(article =>
       article.title?.toLowerCase().includes(query.toLowerCase()) ||
       article.summary?.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [query, articles]);
 
   // Handle command selection
   const handleSelect = (value: string) => {
