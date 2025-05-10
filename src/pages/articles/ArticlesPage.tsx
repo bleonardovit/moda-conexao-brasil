@@ -1,15 +1,52 @@
 
-import { useState } from 'react';
-import { getArticles } from '@/services/articleService';
+import { useState, useEffect } from 'react';
+import { getArticles, getCategories } from '@/services/articleService';
 import { ArticleCard } from '@/components/articles/ArticleCard';
 import { CategoryFilter } from '@/components/articles/CategoryFilter';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { ArticleCategory, DEFAULT_CATEGORIES } from '@/types/article';
+import { Article, ArticleCategory } from '@/types/article';
+import { Loader2 } from 'lucide-react';
 
 export default function ArticlesPage() {
-  const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | undefined>(undefined);
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<ArticleCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const articles = getArticles(selectedCategory);
+  useEffect(() => {
+    // Carregar categorias ao iniciar
+    async function loadData() {
+      try {
+        setIsLoading(true);
+        const categoriesData = await getCategories();
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error("Erro ao carregar categorias:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    loadData();
+  }, []);
+  
+  useEffect(() => {
+    // Carregar artigos quando a categoria for alterada
+    async function loadArticles() {
+      try {
+        setIsLoading(true);
+        const articlesData = await getArticles(selectedCategory);
+        // Filtrar apenas artigos publicados (para usuários normais)
+        setArticles(articlesData.filter(article => article.published));
+      } catch (error) {
+        console.error("Erro ao carregar artigos:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    loadArticles();
+  }, [selectedCategory]);
 
   return (
     <AppLayout>
@@ -25,25 +62,35 @@ export default function ArticlesPage() {
         </div>
 
         {/* Filter section */}
-        <div className="mb-6">
-          <CategoryFilter 
-            categories={DEFAULT_CATEGORIES}
-            selectedCategory={selectedCategory} 
-            onSelectCategory={setSelectedCategory} 
-          />
-        </div>
+        {!isLoading && (
+          <div className="mb-6">
+            <CategoryFilter 
+              categories={categories}
+              selectedCategory={selectedCategory} 
+              onSelectCategory={setSelectedCategory} 
+            />
+          </div>
+        )}
 
         {/* Articles grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {articles.map(article => (
-            <ArticleCard key={article.id} article={article} categories={DEFAULT_CATEGORIES} />
-          ))}
-        </div>
-
-        {articles.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-lg text-muted-foreground">Nenhum artigo encontrado nesta categoria.</p>
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {articles.map(article => (
+                <ArticleCard key={article.id} article={article} categories={categories} />
+              ))}
+            </div>
+
+            {articles.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-lg text-muted-foreground">Nenhum artigo encontrado nesta categoria.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </AppLayout>

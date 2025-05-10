@@ -1,5 +1,5 @@
 
-import { Article, CategoryDefinition, getCategoryLabel, getCategoryColors } from '@/types/article';
+import { Article, ArticleCategory, getCategoryLabel, getCategoryColors } from '@/types/article';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Eye, EyeOff } from 'lucide-react';
@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 
 interface ArticleCardProps {
   article: Article;
-  categories: CategoryDefinition[];
+  categories: ArticleCategory[];
   showPublishStatus?: boolean;
 }
 

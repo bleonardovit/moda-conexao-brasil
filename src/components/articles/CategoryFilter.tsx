@@ -1,11 +1,11 @@
 
-import { CategoryDefinition, ArticleCategory, getCategoryLabel } from '@/types/article';
+import { ArticleCategory } from '@/types/article';
 import { Button } from '@/components/ui/button';
 
 interface CategoryFilterProps {
-  categories: CategoryDefinition[];
-  selectedCategory: ArticleCategory | undefined;
-  onSelectCategory: (category: ArticleCategory | undefined) => void;
+  categories: ArticleCategory[];
+  selectedCategory: string | undefined;
+  onSelectCategory: (category: string | undefined) => void;
 }
 
 export function CategoryFilter({ categories, selectedCategory, onSelectCategory }: CategoryFilterProps) {
@@ -28,7 +28,7 @@ export function CategoryFilter({ categories, selectedCategory, onSelectCategory 
           onClick={() => onSelectCategory(category.id)}
           className={selectedCategory === category.id 
             ? "bg-brand-purple text-white" 
-            : `hover:${category.color}`
+            : `hover:${category.color.split(' ')[0]}`
           }
         >
           {category.label}

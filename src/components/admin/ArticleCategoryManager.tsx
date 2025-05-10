@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { CategoryDefinition } from '@/types/article';
+import { useState, useEffect } from 'react';
+import { ArticleCategory } from '@/types/article';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Check, Edit, Plus, Trash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { createCategory, updateCategory, deleteCategory } from '@/services/articleService';
 
 export interface CategoryColorOption {
   id: string;
@@ -55,8 +56,8 @@ const COLOR_OPTIONS: CategoryColorOption[] = [
 interface CategoryEditDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (category: CategoryDefinition) => void;
-  initialCategory?: CategoryDefinition;
+  onSave: (category: ArticleCategory) => void;
+  initialCategory?: ArticleCategory;
 }
 
 function CategoryEditDialog({ open, onClose, onSave, initialCategory }: CategoryEditDialogProps) {
@@ -196,77 +197,114 @@ function CategoryEditDialog({ open, onClose, onSave, initialCategory }: Category
 }
 
 interface CategoryManagerProps {
-  categories: CategoryDefinition[];
-  onCategoriesChange: (categories: CategoryDefinition[]) => void;
+  categories: ArticleCategory[];
+  onCategoriesChange: (categories: ArticleCategory[]) => void;
   onClose?: () => void;
 }
 
 export function ArticleCategoryManager({ categories, onCategoriesChange, onClose }: CategoryManagerProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState<CategoryDefinition | undefined>(undefined);
+  const [currentCategory, setCurrentCategory] = useState<ArticleCategory | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleOpenEditDialog = (category?: CategoryDefinition) => {
+  const handleOpenEditDialog = (category?: ArticleCategory) => {
     setCurrentCategory(category);
     setEditDialogOpen(true);
   };
 
-  const handleOpenDeleteDialog = (category: CategoryDefinition) => {
+  const handleOpenDeleteDialog = (category: ArticleCategory) => {
     setCurrentCategory(category);
     setDeleteDialogOpen(true);
   };
 
-  const handleSaveCategory = (category: CategoryDefinition) => {
-    // Verifica se é uma edição ou uma nova categoria
-    if (currentCategory && categories.some(c => c.id === currentCategory.id)) {
-      // Atualiza categoria existente
-      const updatedCategories = categories.map(c => 
-        c.id === currentCategory.id ? category : c
-      );
-      onCategoriesChange(updatedCategories);
-      
-      toast({
-        title: "Sucesso",
-        description: "Categoria atualizada com sucesso"
-      });
-    } else {
-      // Verifica se já existe uma categoria com o mesmo ID
-      if (categories.some(c => c.id === category.id)) {
-        toast({
-          title: "Erro",
-          description: "Já existe uma categoria com esse ID",
-          variant: "destructive"
-        });
-        return;
+  const handleSaveCategory = async (category: ArticleCategory) => {
+    setLoading(true);
+    try {
+      // Verifica se é uma edição ou uma nova categoria
+      if (currentCategory && categories.some(c => c.id === currentCategory.id)) {
+        // Atualiza categoria existente
+        const updatedCategory = await updateCategory(currentCategory.id, category);
+        if (updatedCategory) {
+          const updatedCategories = categories.map(c => 
+            c.id === currentCategory.id ? updatedCategory : c
+          );
+          onCategoriesChange(updatedCategories);
+          
+          toast({
+            title: "Sucesso",
+            description: "Categoria atualizada com sucesso"
+          });
+        }
+      } else {
+        // Verifica se já existe uma categoria com o mesmo ID
+        if (categories.some(c => c.id === category.id)) {
+          toast({
+            title: "Erro",
+            description: "Já existe uma categoria com esse ID",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Adiciona nova categoria
+        const newCategory = await createCategory(category);
+        if (newCategory) {
+          onCategoriesChange([...categories, newCategory]);
+          
+          toast({
+            title: "Sucesso",
+            description: "Categoria criada com sucesso"
+          });
+        }
       }
-      
-      // Adiciona nova categoria
-      onCategoriesChange([...categories, category]);
-      
+    } catch (error) {
       toast({
-        title: "Sucesso",
-        description: "Categoria criada com sucesso"
+        title: "Erro",
+        description: "Ocorreu um erro ao salvar a categoria",
+        variant: "destructive"
       });
+    } finally {
+      setLoading(false);
+      setEditDialogOpen(false);
+      setCurrentCategory(undefined);
     }
-    
-    setEditDialogOpen(false);
-    setCurrentCategory(undefined);
   };
 
-  const handleDeleteCategory = () => {
+  const handleDeleteCategory = async () => {
     if (!currentCategory) return;
     
-    const updatedCategories = categories.filter(c => c.id !== currentCategory.id);
-    onCategoriesChange(updatedCategories);
-    
-    toast({
-      title: "Sucesso",
-      description: "Categoria excluída com sucesso"
-    });
-    
-    setDeleteDialogOpen(false);
-    setCurrentCategory(undefined);
+    setLoading(true);
+    try {
+      const success = await deleteCategory(currentCategory.id);
+      if (success) {
+        const updatedCategories = categories.filter(c => c.id !== currentCategory.id);
+        onCategoriesChange(updatedCategories);
+        
+        toast({
+          title: "Sucesso",
+          description: "Categoria excluída com sucesso"
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir a categoria",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao excluir a categoria",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+      setDeleteDialogOpen(false);
+      setCurrentCategory(undefined);
+    }
   };
 
   return (
@@ -279,6 +317,7 @@ export function ArticleCategoryManager({ categories, onCategoriesChange, onClose
             variant="default"
             size="sm"
             className="bg-brand-purple hover:bg-brand-purple/90"
+            disabled={loading}
           >
             <Plus className="mr-2 h-4 w-4" /> Nova categoria
           </Button>
@@ -287,6 +326,7 @@ export function ArticleCategoryManager({ categories, onCategoriesChange, onClose
               onClick={onClose}
               variant="outline"
               size="sm"
+              disabled={loading}
             >
               Fechar
             </Button>
@@ -322,6 +362,7 @@ export function ArticleCategoryManager({ categories, onCategoriesChange, onClose
                         variant="ghost" 
                         className="h-8 w-8 p-0"
                         onClick={() => handleOpenEditDialog(category)}
+                        disabled={loading}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -332,6 +373,7 @@ export function ArticleCategoryManager({ categories, onCategoriesChange, onClose
                             variant="ghost" 
                             className="h-8 w-8 p-0 text-red-600"
                             onClick={() => handleOpenDeleteDialog(category)}
+                            disabled={loading}
                           >
                             <Trash className="h-4 w-4" />
                           </Button>
@@ -346,8 +388,12 @@ export function ArticleCategoryManager({ categories, onCategoriesChange, onClose
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteCategory} className="bg-red-600 hover:bg-red-700">
+                            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleDeleteCategory} 
+                              className="bg-red-600 hover:bg-red-700"
+                              disabled={loading}
+                            >
                               Excluir
                             </AlertDialogAction>
                           </AlertDialogFooter>
@@ -367,6 +413,7 @@ export function ArticleCategoryManager({ categories, onCategoriesChange, onClose
             onClick={() => handleOpenEditDialog()} 
             variant="default"
             className="bg-brand-purple hover:bg-brand-purple/90"
+            disabled={loading}
           >
             <Plus className="mr-2 h-4 w-4" /> Adicionar categoria
           </Button>

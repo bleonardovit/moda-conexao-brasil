@@ -6,8 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getArticles, createArticle, deleteArticle, updateArticle, publishArticle, unpublishArticle } from '@/services/articleService';
-import { Article, ArticleCategory, DEFAULT_CATEGORIES, CategoryDefinition, getCategoryLabel, getCategoryColors } from '@/types/article';
+import { 
+  getArticles, 
+  getCategories,
+  createArticle, 
+  deleteArticle, 
+  updateArticle, 
+  publishArticle, 
+  unpublishArticle 
+} from '@/services/articleService';
+import { Article, ArticleCategory, getCategoryLabel, getCategoryColors } from '@/types/article';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -20,35 +28,62 @@ import { Switch } from '@/components/ui/switch';
 
 export default function ArticlesManagement() {
   const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<ArticleCategory[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<ArticleCategory | undefined>(undefined);
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [imageUploaderOpen, setImageUploaderOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const { toast } = useToast();
 
-  // Categories state
-  const [categories, setCategories] = useState<CategoryDefinition[]>(DEFAULT_CATEGORIES);
-  
   // Form state
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState<ArticleCategory>('entrepreneurship');
+  const [category, setCategory] = useState<string>('entrepreneurship');
   const [author, setAuthor] = useState('');
   const [imageUrl, setImageUrl] = useState<string>('');
   const [publishImmediately, setPublishImmediately] = useState(true);
   
+  // Carregar categorias ao iniciar
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  // Carregar artigos ao iniciar ou quando a categoria selecionada mudar
   useEffect(() => {
     loadArticles();
-  }, []);
+  }, [selectedCategory]);
   
-  const loadArticles = () => {
+  // Carregar categorias
+  const loadCategories = async () => {
     setIsLoading(true);
     try {
-      const loadedArticles = getArticles(selectedCategory);
+      const loadedCategories = await getCategories();
+      setCategories(loadedCategories);
+      
+      // Se não houver categorias, definir categoria padrão
+      if (loadedCategories.length > 0) {
+        setCategory(loadedCategories[0].id);
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar categorias",
+        description: "Não foi possível carregar as categorias",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Carregar artigos
+  const loadArticles = async () => {
+    setIsLoading(true);
+    try {
+      const loadedArticles = await getArticles(selectedCategory);
       setArticles(loadedArticles);
     } catch (error) {
       toast({
@@ -61,15 +96,12 @@ export default function ArticlesManagement() {
     }
   };
   
-  useEffect(() => {
-    loadArticles();
-  }, [selectedCategory]);
-  
+  // Reset do formulário
   const resetForm = () => {
     setTitle('');
     setSummary('');
     setContent('');
-    setCategory(categories[0]?.id || 'entrepreneurship');
+    setCategory(categories.length > 0 ? categories[0].id : 'entrepreneurship');
     setAuthor('');
     setImageUrl('');
     setPublishImmediately(true);
@@ -77,6 +109,7 @@ export default function ArticlesManagement() {
     setShowPreview(false);
   };
   
+  // Abrir dialog para editar artigo
   const handleOpenEditDialog = (article: Article) => {
     setEditingArticle(article);
     setTitle(article.title);
@@ -89,7 +122,8 @@ export default function ArticlesManagement() {
     setOpenDialog(true);
   };
   
-  const handleSaveArticle = () => {
+  // Salvar artigo
+  const handleSaveArticle = async () => {
     if (!title || !summary || !content || !category || !author) {
       toast({
         title: "Campos obrigatórios",
@@ -102,20 +136,25 @@ export default function ArticlesManagement() {
     setIsLoading(true);
     
     try {
+      const articleData = {
+        title,
+        summary,
+        content,
+        category,
+        author,
+        image_url: imageUrl,
+        published: publishImmediately
+      };
+
+      let updatedArticle;
+      
       if (editingArticle) {
         // Atualizar artigo existente
-        const updatedArticle = updateArticle(editingArticle.id, {
-          title,
-          summary,
-          content,
-          category,
-          author,
-          image_url: imageUrl,
-          published: publishImmediately
-        });
+        updatedArticle = await updateArticle(editingArticle.id, articleData);
         
         if (updatedArticle) {
-          setArticles(articles.map(a => a.id === updatedArticle.id ? updatedArticle : a));
+          // Atualizar lista local
+          setArticles(articles.map(a => a.id === updatedArticle!.id ? updatedArticle! : a));
           
           toast({
             title: updatedArticle.published ? "Artigo atualizado e publicado" : "Rascunho atualizado",
@@ -126,24 +165,19 @@ export default function ArticlesManagement() {
         }
       } else {
         // Criar novo artigo
-        const newArticle = createArticle({
-          title,
-          summary,
-          content,
-          category,
-          author,
-          image_url: imageUrl,
-          published: publishImmediately
-        });
+        const newArticle = await createArticle(articleData);
         
-        setArticles([...articles, newArticle]);
-        
-        toast({
-          title: newArticle.published ? "Artigo publicado" : "Rascunho salvo",
-          description: newArticle.published 
-            ? "O artigo foi criado e está visível para os usuários" 
-            : "O rascunho foi salvo mas não está visível para os usuários"
-        });
+        if (newArticle) {
+          // Adicionar à lista local
+          setArticles([...articles, newArticle]);
+          
+          toast({
+            title: newArticle.published ? "Artigo publicado" : "Rascunho salvo",
+            description: newArticle.published 
+              ? "O artigo foi criado e está visível para os usuários" 
+              : "O rascunho foi salvo mas não está visível para os usuários"
+          });
+        }
       }
       
       setOpenDialog(false);
@@ -159,12 +193,14 @@ export default function ArticlesManagement() {
     }
   };
   
-  const handleDeleteArticle = (id: string) => {
+  // Excluir artigo
+  const handleDeleteArticle = async (id: string) => {
     setIsLoading(true);
     try {
-      const success = deleteArticle(id);
+      const success = await deleteArticle(id);
       
       if (success) {
+        // Atualizar lista local
         setArticles(articles.filter(article => article.id !== id));
         
         toast({
@@ -189,13 +225,14 @@ export default function ArticlesManagement() {
     }
   };
   
-  const handleTogglePublish = (article: Article) => {
+  // Alternar publicação do artigo
+  const handleTogglePublish = async (article: Article) => {
     setIsLoading(true);
     try {
       let updatedArticle;
       
       if (article.published) {
-        updatedArticle = unpublishArticle(article.id);
+        updatedArticle = await unpublishArticle(article.id);
         if (updatedArticle) {
           toast({
             title: "Artigo despublicado",
@@ -203,7 +240,7 @@ export default function ArticlesManagement() {
           });
         }
       } else {
-        updatedArticle = publishArticle(article.id);
+        updatedArticle = await publishArticle(article.id);
         if (updatedArticle) {
           toast({
             title: "Artigo publicado",
@@ -213,6 +250,7 @@ export default function ArticlesManagement() {
       }
       
       if (updatedArticle) {
+        // Atualizar lista local
         setArticles(articles.map(a => a.id === updatedArticle!.id ? updatedArticle! : a));
       }
     } catch (error) {
@@ -226,6 +264,7 @@ export default function ArticlesManagement() {
     }
   };
   
+  // Filtrar artigos pela categoria selecionada
   const getFilteredArticles = () => {
     if (!selectedCategory) return articles;
     return articles.filter(article => article.category === selectedCategory);
@@ -238,8 +277,10 @@ export default function ArticlesManagement() {
   };
 
   // Handler para quando as categorias são atualizadas
-  const handleCategoriesUpdate = (updatedCategories: CategoryDefinition[]) => {
+  const handleCategoriesUpdate = async (updatedCategories: ArticleCategory[]) => {
     setCategories(updatedCategories);
+    // Recarregar artigos após atualização de categorias
+    await loadArticles();
   };
   
   return (

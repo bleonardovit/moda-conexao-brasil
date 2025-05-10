@@ -1,25 +1,41 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getArticleById } from '@/services/articleService';
+import { getArticleById, getCategories } from '@/services/articleService';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Article, getCategoryLabel, DEFAULT_CATEGORIES } from '@/types/article';
-import { ArrowLeft, Calendar, User } from 'lucide-react';
+import { Article, ArticleCategory, getCategoryLabel } from '@/types/article';
+import { ArrowLeft, Calendar, Loader2, User } from 'lucide-react';
 
 export default function ArticleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [article, setArticle] = useState<Article | null>(null);
+  const [categories, setCategories] = useState<ArticleCategory[]>([]);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    if (id) {
-      const foundArticle = getArticleById(id);
-      if (foundArticle) {
-        setArticle(foundArticle);
+    async function loadData() {
+      setLoading(true);
+      try {
+        // Carregar categorias
+        const categoriesData = await getCategories();
+        setCategories(categoriesData);
+        
+        // Carregar artigo
+        if (id) {
+          const foundArticle = await getArticleById(id);
+          if (foundArticle && foundArticle.published) {
+            setArticle(foundArticle);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar artigo:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
+    
+    loadData();
   }, [id]);
 
   const formattedDate = article ? new Date(article.created_at).toLocaleDateString('pt-BR', {
@@ -32,7 +48,7 @@ export default function ArticleDetailPage() {
     return (
       <AppLayout>
         <div className="flex justify-center items-center h-64">
-          <div className="animate-pulse h-6 w-24 bg-muted rounded"></div>
+          <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
         </div>
       </AppLayout>
     );
@@ -71,7 +87,7 @@ export default function ArticleDetailPage() {
 
         <div className="glass-morphism rounded-lg border-white/10 p-6 mb-6">
           <div className="inline-block px-3 py-1 text-sm font-medium rounded-full bg-brand-purple/20 text-brand-purple mb-4">
-            {getCategoryLabel(article.category, DEFAULT_CATEGORIES)}
+            {getCategoryLabel(article.category, categories)}
           </div>
           
           <h1 className="text-3xl font-bold mb-4">{article.title}</h1>
@@ -86,6 +102,16 @@ export default function ArticleDetailPage() {
               <span>{formattedDate}</span>
             </div>
           </div>
+          
+          {article.image_url && (
+            <div className="w-full overflow-hidden rounded-lg mb-8">
+              <img 
+                src={article.image_url}
+                alt={article.title}
+                className="w-full h-auto max-h-[400px] object-cover"
+              />
+            </div>
+          )}
         </div>
 
         <div className="prose prose-lg max-w-none dark:prose-invert">
