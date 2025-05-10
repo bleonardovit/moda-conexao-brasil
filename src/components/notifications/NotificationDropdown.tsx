@@ -21,38 +21,29 @@ import { getUserNotifications } from '@/services/notificationService';
 import type { Notification } from '@/types/notification';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
 
 export function NotificationDropdown() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
-
+  const { user } = useAuth();
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['notifications-dropdown'],
+    queryFn: async () => {
+      if (!user?.id) throw new Error('Usuário não autenticado');
+      return getUserNotifications(user.id);
+    },
+    enabled: !!user?.id,
+    refetchInterval: 60000, // Atualizar a cada minuto
+  });
+  
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        // Em um aplicativo real, 'current-user' seria o ID do usuário logado
-        const userId = 'current-user';
-        const { notifications, unreadCount } = await getUserNotifications(userId);
-        setNotifications(notifications);
-        setUnreadCount(unreadCount);
-      } catch (error) {
-        console.error('Failed to fetch notifications:', error);
-        toast.error('Não foi possível carregar suas notificações');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNotifications();
-    
-    // Simular atualização periódica de notificações
-    const interval = setInterval(fetchNotifications, 60000); // A cada minuto
-    
-    return () => clearInterval(interval);
-  }, []);
+    if (error) {
+      console.error('Erro ao buscar notificações:', error);
+    }
+  }, [error]);
 
   // Formatar a data relativa (ex: "há 2 horas")
   const formatRelativeDate = (dateString: string) => {
@@ -85,6 +76,9 @@ export function NotificationDropdown() {
     </DropdownMenuItem>
   );
 
+  const notifications = data?.notifications || [];
+  const unreadCount = data?.unreadCount || 0;
+
   // Usando Popover em vez de DropdownMenu para mobile, para UX melhor
   if (isMobile) {
     return (
@@ -114,7 +108,7 @@ export function NotificationDropdown() {
           </div>
           
           <ScrollArea className="max-h-[300px]" type="always">
-            {loading ? (
+            {isLoading ? (
               <div className="p-4 text-center text-muted-foreground">Carregando...</div>
             ) : notifications.length > 0 ? (
               <div className="py-2">
@@ -191,7 +185,7 @@ export function NotificationDropdown() {
         <DropdownMenuSeparator />
         <ScrollArea className="max-h-[300px]">
           <DropdownMenuGroup>
-            {loading ? (
+            {isLoading ? (
               <div className="p-4 text-center text-muted-foreground">Carregando...</div>
             ) : notifications.length > 0 ? (
               notifications.map(notification => renderNotificationItem(notification))
@@ -218,4 +212,3 @@ export function NotificationDropdown() {
     </DropdownMenu>
   );
 }
-

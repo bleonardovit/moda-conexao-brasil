@@ -62,6 +62,36 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          target_roles: string[] | null
+          target_subscription_types: string[] | null
+          title: string
+          views_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          target_roles?: string[] | null
+          target_subscription_types?: string[] | null
+          title: string
+          views_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          target_roles?: string[] | null
+          target_subscription_types?: string[] | null
+          title?: string
+          views_count?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -237,6 +267,41 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          notification_id: string
+          read: boolean
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notification_id: string
+          read?: boolean
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notification_id?: string
+          read?: boolean
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
             referencedColumns: ["id"]
           },
         ]

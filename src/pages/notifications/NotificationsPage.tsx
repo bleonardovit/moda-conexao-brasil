@@ -15,15 +15,28 @@ import { Badge } from '@/components/ui/badge';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getUserNotifications } from '@/services/notificationService';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 export default function NotificationsPage() {
-  const { data, isLoading } = useQuery({
+  const { user } = useAuth();
+  
+  const { data, isLoading, error } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      // Em um aplicativo real, 'current-user' seria o ID do usuário logado
-      return getUserNotifications('current-user');
-    }
+      if (!user?.id) throw new Error('Usuário não autenticado');
+      return getUserNotifications(user.id);
+    },
+    enabled: !!user?.id
   });
+
+  // Mostrar erro se houver
+  useEffect(() => {
+    if (error) {
+      console.error('Erro ao buscar notificações:', error);
+      toast.error('Não foi possível carregar suas notificações');
+    }
+  }, [error]);
 
   // Formatar a data relativa (ex: "há 2 horas")
   const formatRelativeDate = (dateString: string) => {

@@ -7,8 +7,6 @@ import {
   Plus, 
   Trash, 
   Pencil, 
-  Check, 
-  X, 
   Users,
   UserCog,
   UserCheck
@@ -104,10 +102,16 @@ export default function NotificationsManagement() {
   });
   
   // Buscar todas as notificações
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: notifications = [], isLoading, error } = useQuery({
     queryKey: ['admin-notifications'],
     queryFn: getAllNotifications,
   });
+  
+  // Verificar erro
+  if (error) {
+    console.error('Error fetching notifications:', error);
+    toast.error('Erro ao carregar notificações');
+  }
   
   // Criar nova notificação
   const createMutation = useMutation({
@@ -123,7 +127,8 @@ export default function NotificationsManagement() {
       form.reset();
       toast.success('Notificação criada com sucesso!');
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error creating notification:', error);
       toast.error('Erro ao criar notificação');
     },
   });
@@ -137,7 +142,8 @@ export default function NotificationsManagement() {
       setIsEditDialogOpen(false);
       toast.success('Notificação atualizada com sucesso!');
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error updating notification:', error);
       toast.error('Erro ao atualizar notificação');
     },
   });
@@ -151,7 +157,8 @@ export default function NotificationsManagement() {
       setSelectedNotification(null);
       toast.success('Notificação excluída com sucesso!');
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error deleting notification:', error);
       toast.error('Erro ao excluir notificação');
     },
   });

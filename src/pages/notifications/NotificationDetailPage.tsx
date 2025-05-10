@@ -21,14 +21,16 @@ import {
   getNotification,
   markNotificationAsRead
 } from '@/services/notificationService';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function NotificationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   
   // Buscar detalhes da notificação
-  const { data: notification, isLoading } = useQuery({
+  const { data: notification, isLoading, error } = useQuery({
     queryKey: ['notification', id],
     queryFn: async () => {
       if (!id) return null;
@@ -37,29 +39,37 @@ export default function NotificationDetailPage() {
     enabled: !!id
   });
   
+  // Verificar erro
+  useEffect(() => {
+    if (error) {
+      toast.error('Erro ao carregar detalhes da notificação');
+      console.error('Error fetching notification:', error);
+    }
+  }, [error]);
+  
   // Marcar como lida
   const markAsReadMutation = useMutation({
     mutationFn: async () => {
-      if (!id) return false;
-      // Em um aplicativo real, 'current-user' seria o ID do usuário logado
-      return markNotificationAsRead('current-user', id);
+      if (!id || !user?.id) return false;
+      return markNotificationAsRead(user.id, id);
     },
     onSuccess: () => {
       // Invalidar a cache para atualizar contadores
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Notificação marcada como lida');
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error marking notification as read:', error);
       toast.error('Erro ao marcar notificação como lida');
     }
   });
   
   // Marcar como lida automaticamente ao visualizar
   useEffect(() => {
-    if (notification && id) {
+    if (notification && id && user?.id) {
       markAsReadMutation.mutate();
     }
-  }, [notification, id]);
+  }, [notification, id, user]);
   
   // Formatar data
   const formatDate = (dateString?: string) => {
