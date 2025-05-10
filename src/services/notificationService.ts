@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Notification, UserNotification } from "@/types/notification";
 
@@ -176,6 +175,32 @@ export const deleteNotification = async (notificationId: string): Promise<boolea
     return true;
   } catch (error) {
     console.error("Error deleting notification:", error);
+    throw error;
+  }
+};
+
+// Usuário: Excluir uma notificação de usuário
+export const deleteUserNotification = async (userId: string, notificationId: string): Promise<boolean> => {
+  try {
+    // Primeiro, precisamos encontrar o ID da entrada em user_notifications
+    // com base no userId e no notificationId (que é o ID da notificação original).
+    // Isso é necessário se a tabela user_notifications tem seu próprio ID primário e você não o tem diretamente na UI.
+    // No entanto, o Supabase permite deletar com base em múltiplas colunas.
+
+    const { error } = await supabase
+      .from('user_notifications')
+      .delete()
+      .eq('user_id', userId)
+      .eq('notification_id', notificationId);
+
+    if (error) {
+      console.error("Error deleting user notification:", error);
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error in deleteUserNotification:", error);
     throw error;
   }
 };

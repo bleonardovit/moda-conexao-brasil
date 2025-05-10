@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, BellDot } from 'lucide-react';
+import { Bell, BellDot, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,17 +16,18 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { getUserNotifications } from '@/services/notificationService';
+import { getUserNotifications, deleteUserNotification } from '@/services/notificationService';
 import type { Notification } from '@/types/notification';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   const { data, isLoading, error } = useQuery({
     queryKey: ['notifications-dropdown'],
@@ -45,6 +45,36 @@ export function NotificationDropdown() {
     }
   }, [error]);
 
+  // Mutação para excluir notificação do usuário
+  const deleteUserNotificationMutation = useMutation({
+    mutationFn: (notificationId: string) => {
+      if (!user?.id) {
+        toast.error('Usuário não autenticado.');
+        throw new Error('Usuário não autenticado para exclusão');
+      }
+      return deleteUserNotification(user.id, notificationId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('Notificação excluída com sucesso.');
+    },
+    onError: (error) => {
+      console.error('Erro ao excluir notificação:', error);
+      toast.error('Erro ao excluir notificação.');
+    },
+  });
+
+  const handleDeleteNotification = (event: React.MouseEvent, notificationId: string) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (user?.id) {
+      deleteUserNotificationMutation.mutate(notificationId);
+    } else {
+      toast.error('Usuário não autenticado.');
+    }
+  };
+
   // Formatar a data relativa (ex: "há 2 horas")
   const formatRelativeDate = (dateString: string) => {
     return formatDistanceToNow(new Date(dateString), {
@@ -55,24 +85,36 @@ export function NotificationDropdown() {
 
   // Renderização de notificação para versão desktop
   const renderNotificationItem = (notification: Notification) => (
-    <DropdownMenuItem key={notification.id} asChild>
-      <Link 
-        to={`/notifications/${notification.id}`}
-        className="flex flex-col gap-1 py-3 cursor-pointer hover:bg-accent rounded-md px-2"
-        onClick={() => setIsOpen(false)}
-      >
-        <div className="flex justify-between items-start w-full">
-          <span className="font-medium">{notification.title}</span>
-          {notification.read === false && (
-            <Badge variant="outline" className="bg-primary/20 text-primary text-xs ml-2">
-              Nova
-            </Badge>
-          )}
-        </div>
-        <span className="text-muted-foreground text-xs">
-          {formatRelativeDate(notification.created_at)}
-        </span>
-      </Link>
+    <DropdownMenuItem key={notification.id} asChild className="p-0 focus:bg-transparent">
+      <div className="flex items-center justify-between w-full hover:bg-accent rounded-md px-2 py-3">
+        <Link
+          to={`/notifications/${notification.id}`}
+          className="flex flex-col gap-1 cursor-pointer flex-grow"
+          onClick={() => setIsOpen(false)}
+        >
+          <div className="flex justify-between items-start w-full">
+            <span className="font-medium text-sm leading-tight">{notification.title}</span>
+            {notification.read === false && (
+              <Badge variant="outline" className="bg-primary/20 text-primary text-xs ml-2 self-start">
+                Nova
+              </Badge>
+            )}
+          </div>
+          <span className="text-muted-foreground text-xs">
+            {formatRelativeDate(notification.created_at)}
+          </span>
+        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 ml-2 text-muted-foreground hover:text-destructive shrink-0"
+          onClick={(e) => handleDeleteNotification(e, notification.id)}
+          disabled={deleteUserNotificationMutation.isPending && deleteUserNotificationMutation.variables === notification.id}
+          title="Excluir notificação"
+        >
+          <Trash className="h-4 w-4" />
+        </Button>
+      </div>
     </DropdownMenuItem>
   );
 
@@ -112,26 +154,39 @@ export function NotificationDropdown() {
               <div className="p-4 text-center text-muted-foreground">Carregando...</div>
             ) : notifications.length > 0 ? (
               <div className="py-2">
-                {notifications.map(notification => (
-                  <Link 
-                    key={notification.id}
-                    to={`/notifications/${notification.id}`}
-                    className="flex flex-col gap-1 py-3 cursor-pointer hover:bg-accent px-4"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <div className="flex justify-between items-start w-full">
-                      <span className="font-medium">{notification.title}</span>
-                      {notification.read === false && (
-                        <Badge variant="outline" className="bg-primary/20 text-primary text-xs ml-2">
-                          Nova
-                        </Badge>
-                      )}
+                {notifications.map(notification => {
+                  return (
+                    <div key={notification.id} className="flex items-center justify-between w-full hover:bg-accent px-4 py-3">
+                      <Link
+                        to={`/notifications/${notification.id}`}
+                        className="flex flex-col gap-1 cursor-pointer flex-grow"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <div className="flex justify-between items-start w-full">
+                          <span className="font-medium text-sm leading-tight">{notification.title}</span>
+                          {notification.read === false && (
+                            <Badge variant="outline" className="bg-primary/20 text-primary text-xs ml-2 self-start">
+                              Nova
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-muted-foreground text-xs">
+                          {formatRelativeDate(notification.created_at)}
+                        </span>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 ml-2 text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={(e) => handleDeleteNotification(e, notification.id)}
+                        disabled={deleteUserNotificationMutation.isPending && deleteUserNotificationMutation.variables === notification.id}
+                        title="Excluir notificação"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <span className="text-muted-foreground text-xs">
-                      {formatRelativeDate(notification.created_at)}
-                    </span>
-                  </Link>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-4 text-center text-muted-foreground">
