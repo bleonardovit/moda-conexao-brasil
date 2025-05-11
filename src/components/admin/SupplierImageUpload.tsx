@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, Image } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface SupplierImageUploadProps {
   initialImages?: string[];
@@ -11,29 +13,81 @@ interface SupplierImageUploadProps {
 export function SupplierImageUpload({ initialImages = [], onChange }: SupplierImageUploadProps) {
   const [images, setImages] = useState<string[]>(initialImages);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      // Validate file size (5MB limit)
+      const fileSizeInMB = file.size / 1024 / 1024;
+      if (fileSizeInMB > 5) {
+        toast({
+          title: "Arquivo muito grande",
+          description: `O arquivo excede o limite de 5MB: ${file.name} (${fileSizeInMB.toFixed(2)}MB)`,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      // Generate a unique filename to avoid conflicts
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+      
+      // Upload the file to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('supplier-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (error) {
+        console.error('Error uploading image:', error);
+        toast({
+          title: "Erro ao fazer upload",
+          description: `Não foi possível fazer upload de ${file.name}: ${error.message}`,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      // Get public URL for the uploaded file
+      const { data: { publicUrl } } = supabase.storage
+        .from('supplier-images')
+        .getPublicUrl(data?.path || '');
+      
+      return publicUrl;
+    } catch (error) {
+      console.error('Error in file upload:', error);
+      toast({
+        title: "Erro no upload",
+        description: "Ocorreu um erro ao processar o arquivo.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setIsUploading(true);
       const newFiles = Array.from(e.target.files);
       
-      // Convert files to data URLs
-      const promises = newFiles.map(file => {
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            if (e.target?.result) {
-              resolve(e.target.result as string);
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-
-      Promise.all(promises).then(newImages => {
-        const updatedImages = [...images, ...newImages];
+      // Upload each file and get public URLs
+      const uploadPromises = newFiles.map(file => uploadImage(file));
+      const results = await Promise.all(uploadPromises);
+      
+      // Filter out failed uploads
+      const uploadedUrls = results.filter(url => url !== null) as string[];
+      
+      if (uploadedUrls.length > 0) {
+        const updatedImages = [...images, ...uploadedUrls];
         setImages(updatedImages);
         onChange(updatedImages);
-      });
+      }
+      
+      setIsUploading(false);
     }
   };
 
@@ -46,39 +100,59 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
 
-    if (e.dataTransfer.files) {
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setIsUploading(true);
       const newFiles = Array.from(e.dataTransfer.files);
       
-      // Convert files to data URLs
-      const promises = newFiles.map(file => {
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            if (e.target?.result) {
-              resolve(e.target.result as string);
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-
-      Promise.all(promises).then(newImages => {
-        const updatedImages = [...images, ...newImages];
+      // Upload each file and get public URLs
+      const uploadPromises = newFiles.map(file => uploadImage(file));
+      const results = await Promise.all(uploadPromises);
+      
+      // Filter out failed uploads
+      const uploadedUrls = results.filter(url => url !== null) as string[];
+      
+      if (uploadedUrls.length > 0) {
+        const updatedImages = [...images, ...uploadedUrls];
         setImages(updatedImages);
         onChange(updatedImages);
-      });
+      }
+      
+      setIsUploading(false);
     }
   };
 
-  const removeImage = (index: number) => {
-    const updatedImages = [...images];
-    updatedImages.splice(index, 1);
-    setImages(updatedImages);
-    onChange(updatedImages);
+  const removeImage = async (index: number, imageUrl: string) => {
+    try {
+      // Extract the file path from the URL
+      const url = new URL(imageUrl);
+      const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/supplier-images\/(.*)/);
+      
+      if (pathMatch && pathMatch[1]) {
+        // Try to delete the file from storage
+        await supabase.storage
+          .from('supplier-images')
+          .remove([pathMatch[1]]);
+      }
+      
+      // Update local state regardless of whether the delete was successful
+      const updatedImages = [...images];
+      updatedImages.splice(index, 1);
+      setImages(updatedImages);
+      onChange(updatedImages);
+      
+    } catch (error) {
+      console.error('Error removing image:', error);
+      
+      // Still remove from the UI even if storage delete fails
+      const updatedImages = [...images];
+      updatedImages.splice(index, 1);
+      setImages(updatedImages);
+      onChange(updatedImages);
+    }
   };
 
   return (
@@ -97,8 +171,13 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
           <p className="text-sm text-muted-foreground">
             Formatos suportados: JPG, PNG, GIF (máx. 5MB)
           </p>
-          <Button variant="outline" className="mt-2" onClick={() => document.getElementById('fileUpload')?.click()}>
-            Selecionar imagens
+          <Button 
+            variant="outline" 
+            className="mt-2" 
+            onClick={() => document.getElementById('fileUpload')?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? 'Enviando...' : 'Selecionar imagens'}
           </Button>
           <input
             id="fileUpload"
@@ -107,6 +186,7 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
             accept="image/*"
             className="hidden"
             onChange={handleFileChange}
+            disabled={isUploading}
           />
         </div>
       </div>
@@ -128,7 +208,7 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
                   variant="destructive"
                   size="icon"
                   className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => removeImage(index)}
+                  onClick={() => removeImage(index, image)}
                 >
                   <X className="h-3 w-3" />
                 </Button>
