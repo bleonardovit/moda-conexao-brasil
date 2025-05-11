@@ -6,7 +6,7 @@ export const defaultQueryOptions: DefaultOptions = {
   queries: {
     // Otimizações globais para todas as queries
     staleTime: 3 * 60 * 1000, // 3 minutos por padrão
-    cacheTime: 10 * 60 * 1000, // 10 minutos de cache
+    gcTime: 10 * 60 * 1000, // 10 minutos de cache (atualizado de cacheTime para gcTime)
     refetchOnWindowFocus: true, // Recarregar ao voltar para a janela
     refetchOnReconnect: true, // Recarregar quando reconectar à internet
     retry: 1, // Limitar retentativas para reduzir requisições extras

@@ -19,7 +19,8 @@ export const getUserNotifications = async (userId: string): Promise<{notificatio
           message, 
           created_at, 
           target_roles, 
-          target_subscription_types
+          target_subscription_types,
+          views_count
         )
       `)
       .eq('user_id', userId)
@@ -45,7 +46,7 @@ export const getUserNotifications = async (userId: string): Promise<{notificatio
         read_at: un.read_at,
         target_roles: notification.target_roles,
         target_subscription_types: notification.target_subscription_types,
-        // Não incluímos views_count para reduzir payload
+        views_count: notification.views_count || 0, // Garantir que views_count sempre exista
       };
     });
     

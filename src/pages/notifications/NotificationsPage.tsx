@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Notification } from '@/types/notification';
 
 export default function NotificationsPage() {
   const { user } = useAuth();
@@ -49,7 +51,7 @@ export default function NotificationsPage() {
     staleTime: 2 * 60 * 1000, // 2 minutos
     // Reusando dados do dropdown quando disponíveis e recentes
     initialData: () => {
-      const dropdownData = queryClient.getQueryData(['notifications-dropdown']);
+      const dropdownData = queryClient.getQueryData<{notifications: Notification[], unreadCount: number}>(['notifications-dropdown']);
       if (dropdownData) {
         return dropdownData;
       }

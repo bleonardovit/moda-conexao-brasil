@@ -22,6 +22,7 @@ import {
   markNotificationAsRead
 } from '@/services/notificationService';
 import { useAuth } from '@/hooks/useAuth';
+import { Notification } from '@/types/notification';
 
 export default function NotificationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,14 +41,14 @@ export default function NotificationDetailPage() {
     staleTime: 5 * 60 * 1000, // 5 minutos
     initialData: () => {
       // Tenta usar dados do cache de listagens, se o ID corresponder
-      const notificationsData = queryClient.getQueryData(['notifications']);
-      if (notificationsData && notificationsData.notifications) {
+      const notificationsData = queryClient.getQueryData<{notifications: Notification[]}>(['notifications']);
+      if (notificationsData?.notifications) {
         const foundNotification = notificationsData.notifications.find(n => n.id === id);
         if (foundNotification) return foundNotification;
       }
       
-      const dropdownData = queryClient.getQueryData(['notifications-dropdown']);
-      if (dropdownData && dropdownData.notifications) {
+      const dropdownData = queryClient.getQueryData<{notifications: Notification[]}>(['notifications-dropdown']);
+      if (dropdownData?.notifications) {
         const foundNotification = dropdownData.notifications.find(n => n.id === id);
         if (foundNotification) return foundNotification;
       }
