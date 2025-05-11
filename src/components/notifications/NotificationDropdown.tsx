@@ -29,6 +29,8 @@ export function NotificationDropdown() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
+  // Otimizado: refetchInterval aumentado de 60000 (1 min) para 5 minutos
+  // Adicionado staleTime para reduzir fetches desnecessários
   const { data, isLoading, error } = useQuery({
     queryKey: ['notifications-dropdown'],
     queryFn: async () => {
@@ -36,8 +38,17 @@ export function NotificationDropdown() {
       return getUserNotifications(user.id);
     },
     enabled: !!user?.id,
-    refetchInterval: 60000, // Atualizar a cada minuto
+    refetchInterval: 5 * 60 * 1000, // Atualizado para 5 minutos em vez de 1 minuto
+    staleTime: 4.5 * 60 * 1000,     // Dados consideram-se "fresh" por 4.5 minutos
+    refetchOnWindowFocus: true,      // Atualiza quando o usuário volta à janela
   });
+  
+  // Refetching manual quando o dropdown é aberto
+  useEffect(() => {
+    if (isOpen) {
+      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
+    }
+  }, [isOpen, queryClient]);
   
   useEffect(() => {
     if (error) {
@@ -56,7 +67,7 @@ export function NotificationDropdown() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      // Otimização: Não invalidamos 'notifications' aqui, apenas quando realmente necessário
       toast.success('Notificação excluída com sucesso.');
     },
     onError: (error) => {

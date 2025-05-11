@@ -29,14 +29,31 @@ export default function NotificationDetailPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   
-  // Buscar detalhes da notificação
+  // Otimizado: Adicionado staleTime e reutilização de dados do cache
   const { data: notification, isLoading, error } = useQuery({
     queryKey: ['notification', id],
     queryFn: async () => {
       if (!id) return null;
       return getNotification(id);
     },
-    enabled: !!id
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    initialData: () => {
+      // Tenta usar dados do cache de listagens, se o ID corresponder
+      const notificationsData = queryClient.getQueryData(['notifications']);
+      if (notificationsData && notificationsData.notifications) {
+        const foundNotification = notificationsData.notifications.find(n => n.id === id);
+        if (foundNotification) return foundNotification;
+      }
+      
+      const dropdownData = queryClient.getQueryData(['notifications-dropdown']);
+      if (dropdownData && dropdownData.notifications) {
+        const foundNotification = dropdownData.notifications.find(n => n.id === id);
+        if (foundNotification) return foundNotification;
+      }
+      
+      return undefined;
+    }
   });
   
   // Verificar erro
@@ -47,16 +64,17 @@ export default function NotificationDetailPage() {
     }
   }, [error]);
   
-  // Marcar como lida
+  // Otimizado: Adicionado limitação para não marcar como lida repetidamente
   const markAsReadMutation = useMutation({
     mutationFn: async () => {
       if (!id || !user?.id) return false;
       return markNotificationAsRead(user.id, id);
     },
     onSuccess: () => {
-      // Invalidar a cache para atualizar contadores
+      // Invalidar ambas as queries para manter consistência
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      toast.success('Notificação marcada como lida');
+      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
+      // Não exibimos o toast aqui para não interromper a experiência do usuário
     },
     onError: (error) => {
       console.error('Error marking notification as read:', error);
@@ -64,9 +82,9 @@ export default function NotificationDetailPage() {
     }
   });
   
-  // Marcar como lida automaticamente ao visualizar
+  // Marcar como lida automaticamente ao visualizar, apenas se ainda não estiver lida
   useEffect(() => {
-    if (notification && id && user?.id) {
+    if (notification && id && user?.id && notification.read === false) {
       markAsReadMutation.mutate();
     }
   }, [notification, id, user]);

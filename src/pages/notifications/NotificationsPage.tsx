@@ -35,6 +35,7 @@ export default function NotificationsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
 
+  // Otimizado: Adicionado staleTime e reuso do cache do dropdown quando possível
   const { data, isLoading, error } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
@@ -44,7 +45,16 @@ export default function NotificationsPage() {
       const result = await getUserNotifications(user.id);
       return result;
     },
-    enabled: !!user?.id
+    enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000, // 2 minutos
+    // Reusando dados do dropdown quando disponíveis e recentes
+    initialData: () => {
+      const dropdownData = queryClient.getQueryData(['notifications-dropdown']);
+      if (dropdownData) {
+        return dropdownData;
+      }
+      return undefined;
+    }
   });
 
   useEffect(() => {
@@ -58,7 +68,9 @@ export default function NotificationsPage() {
     mutationFn: ({ userId, notificationId }: { userId: string; notificationId: string }) =>
       markNotificationAsRead(userId, notificationId),
     onSuccess: () => {
+      // Invalidar ambas as queries para manter consistência
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
       toast.success('Notificação marcada como lida.');
     },
     onError: (error) => {
@@ -76,7 +88,9 @@ export default function NotificationsPage() {
       return deleteUserNotification(user.id, notificationId);
     },
     onSuccess: () => {
+      // Invalidar ambas as queries para manter consistência
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
       toast.success('Notificação excluída com sucesso.');
       setIsDeleteDialogOpen(false);
       setNotificationToDelete(null);
@@ -236,7 +250,6 @@ export default function NotificationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </AppLayout>
   );
 }

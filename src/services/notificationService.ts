@@ -1,13 +1,27 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Notification, UserNotification } from "@/types/notification";
 
 // Obter todas as notificações para um usuário
 export const getUserNotifications = async (userId: string): Promise<{notifications: Notification[], unreadCount: number}> => {
   try {
-    // Buscar as notificações do usuário no Supabase
+    // Otimizado: Selecionamos somente os campos necessários
+    // Utilizamos select explícito ao invés de select(*) para reduzir o volume de dados
     const { data: userNotifications, error: userNotificationsError } = await supabase
       .from('user_notifications')
-      .select('*, notification:notification_id(*)')
+      .select(`
+        read,
+        read_at,
+        notification_id,
+        notification:notification_id(
+          id, 
+          title, 
+          message, 
+          created_at, 
+          target_roles, 
+          target_subscription_types
+        )
+      `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
       
@@ -31,7 +45,7 @@ export const getUserNotifications = async (userId: string): Promise<{notificatio
         read_at: un.read_at,
         target_roles: notification.target_roles,
         target_subscription_types: notification.target_subscription_types,
-        views_count: notification.views_count
+        // Não incluímos views_count para reduzir payload
       };
     });
     
@@ -47,9 +61,10 @@ export const getUserNotifications = async (userId: string): Promise<{notificatio
 // Obter uma notificação específica
 export const getNotification = async (notificationId: string): Promise<Notification | null> => {
   try {
+    // Otimizado: Selecionamos somente os campos necessários
     const { data, error } = await supabase
       .from('notifications')
-      .select('*')
+      .select('id, title, message, created_at, target_roles, target_subscription_types')
       .eq('id', notificationId)
       .single();
       
@@ -93,9 +108,10 @@ export const markNotificationAsRead = async (userId: string, notificationId: str
 // Admin: Obter todas as notificações
 export const getAllNotifications = async (): Promise<Notification[]> => {
   try {
+    // Otimizado: Selecionamos somente os campos necessários
     const { data, error } = await supabase
       .from('notifications')
-      .select('*')
+      .select('id, title, message, created_at, target_roles, target_subscription_types, views_count')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -182,11 +198,6 @@ export const deleteNotification = async (notificationId: string): Promise<boolea
 // Usuário: Excluir uma notificação de usuário
 export const deleteUserNotification = async (userId: string, notificationId: string): Promise<boolean> => {
   try {
-    // Primeiro, precisamos encontrar o ID da entrada em user_notifications
-    // com base no userId e no notificationId (que é o ID da notificação original).
-    // Isso é necessário se a tabela user_notifications tem seu próprio ID primário e você não o tem diretamente na UI.
-    // No entanto, o Supabase permite deletar com base em múltiplas colunas.
-
     const { error } = await supabase
       .from('user_notifications')
       .delete()
