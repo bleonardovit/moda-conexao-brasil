@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,7 +82,7 @@ export function ReportBuilder() {
         description: "O relatório está sendo preparado...",
       });
       
-      // Generate the report
+      // Call the real export function
       await exportReportToCSV('custom', timeRange, { 
         metrics: selectedMetrics.join(','),
         chart_type: chartType

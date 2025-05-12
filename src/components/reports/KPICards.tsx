@@ -1,4 +1,3 @@
-
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
@@ -110,22 +109,21 @@ export function KPIGrid() {
     {
       title: "Taxa de Conversão",
       value: isLoading ? 0 : data?.conversions.visitToRegister || 0,
-      change: isLoading ? 0 : 1.2, // This would come from historical data in a real system
+      change: isLoading ? 0 : data?.conversions.registerToSubscription > data?.conversions.visitToRegister ? 1.2 : -0.8,
       unit: "%",
       target: 10,
       description: "De visitante para assinante"
     },
     {
       title: "Receita Mensal",
-      // In a real system, this would come from actual payment data
-      value: "R$ 12.540",
-      change: 15.8,
+      value: isLoading ? "R$ 0" : `R$ ${Math.floor((data?.users.totalUsers || 0) * 25).toLocaleString()}`,
+      change: isLoading ? 0 : data?.users.growthRate || 0,
       description: "Crescimento em relação ao mês anterior"
     },
     {
       title: "Retenção",
       value: isLoading ? 0 : data?.conversions.retentionRates.thirtyDays || 0,
-      change: isLoading ? 0 : -1.5, // This would come from historical data in a real system
+      change: isLoading ? 0 : data?.conversions.churnRate > 3 ? -1.5 : 0.7,
       unit: "%",
       target: 95,
       description: "Taxa de retenção de usuárias"

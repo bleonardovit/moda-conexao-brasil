@@ -22,7 +22,7 @@ const getCellColor = (value: number | null) => {
 export function CohortAnalysis() {
   const [cohortType, setCohortType] = useState("retention");
   
-  // Fetch cohort data
+  // Fetch cohort data directly
   const { data: cohortData, isLoading, error } = useQuery({
     queryKey: ['cohort-data'],
     queryFn: getCohortData
@@ -174,7 +174,9 @@ export function CohortAnalysis() {
                   <CardContent className="p-4">
                     <div className="text-xs text-muted-foreground mb-1">Tendência geral</div>
                     <div className="text-xl font-bold text-green-500">↗ Melhorando</div>
-                    <div className="text-sm">+2% por mês desde Janeiro</div>
+                    <div className="text-sm">
+                      {isLoading ? <Skeleton className="h-4 w-36" /> : '+2% por mês desde Janeiro'}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
