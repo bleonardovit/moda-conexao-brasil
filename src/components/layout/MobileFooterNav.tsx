@@ -1,6 +1,6 @@
 
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Heart, User, LayoutDashboard, Book, LogIn, UserPlus } from 'lucide-react';
+import { Home, Search, Heart, User, LayoutDashboard, Book, LogIn, UserPlus, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function MobileFooterNav() {
