@@ -73,9 +73,9 @@ export function MobileFooterNav() {
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around px-2 z-50 bg-gradient-to-r from-[#9b87f5] to-[#D946EF] bg-opacity-95 shadow-xl">
       <Link 
-        to="/suppliers" 
+        to="/home" 
         className={`flex flex-col items-center justify-center transition-colors ${
-          isActive('/suppliers') ? 'text-[#9b87f5]' : 'text-muted-foreground hover:text-foreground'
+          isActive('/home') ? 'text-white' : 'text-white/80 hover:text-white'
         }`}
       >
         <Home size={24} />
@@ -83,9 +83,19 @@ export function MobileFooterNav() {
       </Link>
       
       <Link 
+        to="/suppliers" 
+        className={`flex flex-col items-center justify-center transition-colors ${
+          isActive('/suppliers') ? 'text-white' : 'text-white/80 hover:text-white'
+        }`}
+      >
+        <Users size={24} className="h-6 w-6" />
+        <span className="text-xs mt-0.5">Fornecedores</span>
+      </Link>
+      
+      <Link 
         to="/search" 
         className={`flex flex-col items-center justify-center transition-colors ${
-          isActive('/search') ? 'text-[#9b87f5]' : 'text-muted-foreground hover:text-foreground'
+          isActive('/search') ? 'text-white' : 'text-white/80 hover:text-white'
         }`}
       >
         <Search size={24} />
@@ -95,39 +105,39 @@ export function MobileFooterNav() {
       <Link 
         to="/articles" 
         className={`flex flex-col items-center justify-center transition-colors ${
-          isActive('/articles') ? 'text-[#9b87f5]' : 'text-muted-foreground hover:text-foreground'
+          isActive('/articles') ? 'text-white' : 'text-white/80 hover:text-white'
         }`}
       >
         <Book size={24} />
         <span className="text-xs mt-0.5">Conteúdo</span>
       </Link>
       
-      <Link 
-        to="/favorites" 
-        className={`flex flex-col items-center justify-center transition-colors ${
-          isActive('/favorites') ? 'text-[#9b87f5]' : 'text-muted-foreground hover:text-foreground'
-        }`}
-      >
-        <Heart size={24} />
-        <span className="text-xs mt-0.5">Favoritos</span>
-      </Link>
-      
-      {isAdmin && (
+      {isAdmin ? (
         <Link 
           to="/admin" 
           className={`flex flex-col items-center justify-center transition-colors ${
-            isActive('/admin') ? 'text-[#9b87f5]' : 'text-muted-foreground hover:text-foreground'
+            isActive('/admin') ? 'text-white' : 'text-white/80 hover:text-white'
           }`}
         >
           <LayoutDashboard size={24} />
           <span className="text-xs mt-0.5">Admin</span>
+        </Link>
+      ) : (
+        <Link 
+          to="/favorites" 
+          className={`flex flex-col items-center justify-center transition-colors ${
+            isActive('/favorites') ? 'text-white' : 'text-white/80 hover:text-white'
+          }`}
+        >
+          <Heart size={24} />
+          <span className="text-xs mt-0.5">Favoritos</span>
         </Link>
       )}
       
       <Link 
         to="/profile" 
         className={`flex flex-col items-center justify-center transition-colors ${
-          isActive('/profile') ? 'text-[#9b87f5]' : 'text-muted-foreground hover:text-foreground'
+          isActive('/profile') ? 'text-white' : 'text-white/80 hover:text-white'
         }`}
       >
         <User size={24} />

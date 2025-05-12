@@ -37,7 +37,12 @@ import NotificationsManagement from "./pages/admin/NotificationsManagement";
 import Reports from "./pages/admin/Reports";
 import ArticlesManagement from "./pages/admin/ArticlesManagement";
 
-const queryClient = new QueryClient();
+// Configuração do React Query
+import { defaultQueryOptions } from "./lib/react-query-config";
+
+const queryClient = new QueryClient({
+  defaultOptions: defaultQueryOptions,
+});
 
 const App = () => {
   return (
@@ -133,7 +138,7 @@ const AppRoutes = () => {
   const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     if (auth.isAuthenticated) {
       console.log('Redirecionando rota pública: usuário já está logado');
-      return <Navigate to="/suppliers" replace />;
+      return <Navigate to="/home" replace />;
     }
     return <>{children}</>;
   };
@@ -143,13 +148,13 @@ const AppRoutes = () => {
       {/* Landing page como rota principal */}
       <Route path="/" element={<LandingPage />} />
       
-      {/* Home page redirects to suppliers when authenticated */}
+      {/* Home page ao logar */}
       <Route 
         path="/home" 
         element={
-          auth.isAuthenticated 
-            ? <Navigate to="/suppliers" replace /> 
-            : <Navigate to="/auth/login" replace />
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
         } 
       />
       
@@ -160,15 +165,7 @@ const AppRoutes = () => {
       <Route path="/auth/reset-confirmation" element={<PublicOnlyRoute><ResetConfirmation /></PublicOnlyRoute>} />
       <Route path="/auth/payment" element={<Payment />} />
       
-      {/* Rotas de aplicativo protegidas (requerem assinatura) */}
-      <Route 
-        path="/home" 
-        element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        } 
-      />
+      {/* Fornecedores */}
       <Route 
         path="/suppliers" 
         element={
@@ -183,24 +180,6 @@ const AppRoutes = () => {
           <SubscriptionRoute>
             <SupplierDetail />
           </SubscriptionRoute>
-        } 
-      />
-      <Route 
-        path="/profile" 
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        } 
-      />
-      
-       {/* Fornecedores */}
-      <Route 
-        path="/suppliers" 
-        element={
-          <ProtectedRoute>
-            <SuppliersList />
-          </ProtectedRoute>
         } 
       />
       
@@ -224,6 +203,16 @@ const AppRoutes = () => {
         } 
       />
       
+      {/* Perfil */}
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } 
+      />
+      
       {/* Notificações */}
       <Route 
         path="/notifications" 
@@ -242,7 +231,7 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Novas rotas para artigos (requerem assinatura) */}
+      {/* Artigos (requerem assinatura) */}
       <Route 
         path="/articles" 
         element={
@@ -265,7 +254,7 @@ const AppRoutes = () => {
         path="/settings" 
         element={
           <ProtectedRoute>
-            <Home />
+            <Profile />
           </ProtectedRoute>
         } 
       />
