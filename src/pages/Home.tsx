@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -12,15 +11,22 @@ import { useFavorites } from '@/hooks/use-favorites';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Supplier } from '@/types';
 import { Article } from '@/types/article';
+import { Category } from '@/types';
 import { getSuppliers, searchSuppliers } from '@/services/supplierService';
 import { getArticles } from '@/services/articleService';
+import { getCategories } from '@/services/categoryService';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Component for supplier card - optimized for mobile
-const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
+const SupplierCard = ({ supplier, allCategories }: { supplier: Supplier, allCategories: Category[] }) => {
   const { toggleFavorite, isFavorite } = useFavorites();
   const [isHovering, setIsHovering] = useState(false);
   const isMobile = useIsMobile();
+  
+  const getCategoryNameFromId = (categoryId: string): string => {
+    const foundCategory = allCategories.find(cat => cat.id === categoryId);
+    return foundCategory ? foundCategory.name : categoryId;
+  };
   
   return (
     <Card 
@@ -62,9 +68,9 @@ const SupplierCard = ({ supplier }: { supplier: Supplier }) => {
           <h3 className="font-medium truncate">{supplier.name}</h3>
         </div>
         <div className="flex gap-2 mb-2 flex-wrap">
-          {supplier.categories && supplier.categories.slice(0, 2).map(category => (
-            <Badge key={category} variant="secondary" className="bg-white/10">
-              {category}
+          {supplier.categories && supplier.categories.slice(0, 2).map(categoryId => (
+            <Badge key={categoryId} variant="secondary" className="bg-white/10">
+              {getCategoryNameFromId(categoryId)}
             </Badge>
           ))}
         </div>
@@ -147,6 +153,7 @@ const SkeletonCard = () => {
 
 export default function Home() {
   const isMobile = useIsMobile();
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
   
   // Fetch recent suppliers
   const { data: allSuppliers, isLoading: loadingSuppliers } = useQuery({
@@ -159,6 +166,20 @@ export default function Home() {
     queryKey: ['articles'],
     queryFn: () => getArticles()
   });
+
+  // Fetch all categories
+  useEffect(() => {
+    const fetchAllCategories = async () => {
+      try {
+        const categoriesData = await getCategories();
+        setAllCategories(categoriesData);
+      } catch (err) {
+        console.error("Erro ao buscar todas as categorias:", err);
+        // Optionally, set an error state here to inform the user
+      }
+    };
+    fetchAllCategories();
+  }, []);
 
   // Get recent suppliers (sorted by creation date)
   const recentSuppliers = allSuppliers 
@@ -201,7 +222,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-x-auto">
             {recentSuppliers.map(supplier => (
               <div key={supplier.id} className="animate-fade-in w-full max-w-full">
-                <SupplierCard supplier={supplier} />
+                <SupplierCard supplier={supplier} allCategories={allCategories} />
               </div>
             ))}
           </div>
@@ -238,7 +259,7 @@ export default function Home() {
               <CarouselContent className="-ml-2 md:-ml-4">
                 {popularSuppliers.map(supplier => (
                   <CarouselItem key={supplier.id} className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3 w-full max-w-full">
-                    <SupplierCard supplier={supplier} />
+                    <SupplierCard supplier={supplier} allCategories={allCategories} />
                   </CarouselItem>
                 ))}
               </CarouselContent>
