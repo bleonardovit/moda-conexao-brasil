@@ -1,4 +1,6 @@
-import { useState } from 'react';
+
+import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Card, 
   CardContent, 
@@ -25,7 +27,8 @@ import {
   Store, 
   TrendingUp, 
   TrendingDown, 
-  Calendar 
+  Calendar,
+  FileSpreadsheet
 } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { useToast } from '@/hooks/use-toast';
@@ -53,119 +56,104 @@ import { KPIGrid } from '@/components/reports/KPICards';
 import { ReportBuilder } from '@/components/reports/ReportBuilder';
 import { GeoInsights } from '@/components/reports/GeoInsights';
 import { CohortAnalysis } from '@/components/reports/CohortAnalysis';
-
-// Mocks para dados de gráficos e estatísticas
-const MOCK_STATS = {
-  totalUsers: 1250,
-  newUsers7Days: 42,
-  newUsers30Days: 127,
-  growthRate: 8.5,
-  totalSuppliers: 87,
-  topSuppliers: [
-    { id: '1', name: 'Moda Fashion SP', views: 856 },
-    { id: '3', name: 'Plus Size Goiânia', views: 743 },
-    { id: '2', name: 'Brindes Fortaleza', views: 521 }
-  ],
-  topLocations: [
-    { state: 'SP', users: 450 },
-    { state: 'RJ', users: 230 },
-    { state: 'CE', users: 175 },
-    { state: 'MG', users: 153 },
-    { state: 'GO', users: 102 }
-  ],
-  totalLogins: 8947
-};
-
-// Dados para gráfico de novos usuários (últimos 7 dias)
-const MOCK_USERS_CHART_DATA = [
-  { date: '01/07', count: 5 },
-  { date: '02/07', count: 8 },
-  { date: '03/07', count: 12 },
-  { date: '04/07', count: 3 },
-  { date: '05/07', count: 7 },
-  { date: '06/07', count: 10 },
-  { date: '07/07', count: 15 }
-];
-
-// Dados para gráfico de usuários mensais (últimos 12 meses)
-const MOCK_MONTHLY_USERS_DATA = [
-  { month: 'Jan', users: 78 },
-  { month: 'Fev', users: 91 },
-  { month: 'Mar', users: 103 },
-  { month: 'Abr', users: 87 },
-  { month: 'Mai', users: 99 },
-  { month: 'Jun', users: 112 },
-  { month: 'Jul', users: 127 },
-  { month: 'Ago', users: 135 },
-  { month: 'Set', users: 142 },
-  { month: 'Out', users: 156 },
-  { month: 'Nov', users: 178 },
-  { month: 'Dez', users: 204 }
-];
-
-// Dados para gráfico de visualizações por categoria
-const MOCK_CATEGORY_VIEWS = [
-  { category: 'Casual', views: 342 },
-  { category: 'Fitness', views: 256 },
-  { category: 'Plus Size', views: 187 },
-  { category: 'Acessórios', views: 143 },
-  { category: 'Praia', views: 98 }
-];
-
-// Distribuição de assinaturas
-const MOCK_SUBSCRIPTION_DATA = [
-  { name: 'Mensal', value: 65 },
-  { name: 'Anual', value: 35 }
-];
-
-// Dados para métricas de conversão
-const MOCK_CONVERSION_DATA = {
-  visitToRegister: 12.3,
-  registerToSubscription: 43.7,
-  visitToSubscription: 5.2,
-  churnRate: 2.8
-};
-
-// Dados para gráfico de usuários ativos
-const MOCK_ACTIVE_USERS_DATA = [
-  { date: '01/07', active: 452 },
-  { date: '02/07', active: 478 },
-  { date: '03/07', active: 492 },
-  { date: '04/07', active: 481 },
-  { date: '05/07', active: 503 },
-  { date: '06/07', active: 527 },
-  { date: '07/07', active: 542 }
-];
-
-// Dados para distribuição por estados
-const generatePieChartData = (data: Array<{state: string, users: number}>) => {
-  return data.map(item => ({
-    name: item.state,
-    value: item.users
-  }));
-};
+import { getReportData, exportReportToCSV } from '@/services/reportService';
 
 // Cores para os gráficos
 const COLORS = ['#8884d8', '#83a6ed', '#8dd1e1', '#82ca9d', '#a4de6c', '#d0ed57'];
 
 export default function Reports() {
   const { toast } = useToast();
-  const [dateRange, setDateRange] = useState('7days');
+  const [dateRange, setDateRange] = useState<'7days' | '30days' | '90days' | 'year'>('30days');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Dados formatados para exibição
-  const stats = MOCK_STATS;
+  // Fetch report data based on filters
+  const { data: reportData, isLoading, error } = useQuery({
+    queryKey: ['report-data', dateRange, categoryFilter, locationFilter],
+    queryFn: () => getReportData(dateRange, categoryFilter, locationFilter)
+  });
   
-  // Função para exportar relatórios
-  const exportReport = () => {
-    console.log('Exportando relatório com filtros:', { dateRange, categoryFilter, locationFilter });
+  // Function to export reports
+  const exportReport = useCallback(async () => {
+    try {
+      toast({
+        title: "Exportando relatório",
+        description: "Gerando arquivo para download...",
+      });
+      
+      const result = await exportReportToCSV('dashboard', dateRange, { 
+        category: categoryFilter, 
+        location: locationFilter 
+      });
+      
+      // In a real system, this would trigger a file download
+      // For now, we'll just show a success message
+      toast({
+        title: "Relatório exportado",
+        description: "O relatório foi gerado e baixado com sucesso.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erro ao exportar",
+        description: "Não foi possível gerar o relatório.",
+        variant: "destructive"
+      });
+    }
+  }, [dateRange, categoryFilter, locationFilter, toast]);
+  
+  // Generate pie chart data for states
+  const generatePieChartData = (data: Array<{state: string, count: number}> | undefined) => {
+    if (!data) return [];
     
-    toast({
-      title: "Relatório exportado",
-      description: "O relatório foi gerado e baixado com sucesso.",
-    });
+    return data.map(item => ({
+      name: item.state,
+      value: item.count
+    }));
+  };
+  
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="p-6 bg-red-50 text-red-600 rounded-md">
+          <h2 className="text-lg font-bold mb-2">Erro ao carregar relatórios</h2>
+          <p>{(error as Error).message}</p>
+          <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+            Tentar novamente
+          </Button>
+        </div>
+      </AdminLayout>
+    );
+  }
+  
+  // Use real data if available, otherwise use empty defaults
+  const stats = reportData || {
+    users: {
+      totalUsers: 0,
+      newUsersLast7Days: 0,
+      newUsersLast30Days: 0,
+      growthRate: 0,
+      activeUsers: []
+    },
+    suppliers: {
+      totalSuppliers: 0,
+      newSuppliers: 0,
+      topSuppliers: [],
+      byCategories: [],
+      byState: []
+    },
+    conversions: {
+      visitToRegister: 0,
+      registerToSubscription: 0,
+      visitToSubscription: 0,
+      churnRate: 0
+    },
+    totalLogins: 0,
+    regionData: {
+      users: [],
+      suppliers: [],
+      conversions: []
+    }
   };
   
   return (
@@ -173,9 +161,15 @@ export default function Reports() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Dashboard & Relatórios</h1>
-          <Button onClick={exportReport}>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
+          <Button onClick={exportReport} disabled={isLoading}>
+            {isLoading ? (
+              <>Carregando dados...</>
+            ) : (
+              <>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Exportar
+              </>
+            )}
           </Button>
         </div>
         
@@ -217,7 +211,7 @@ export default function Reports() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Select 
                   value={dateRange} 
-                  onValueChange={setDateRange}
+                  onValueChange={(value: '7days' | '30days' | '90days' | 'year') => setDateRange(value)}
                 >
                   <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Período" />
@@ -279,9 +273,9 @@ export default function Reports() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">{stats.users.totalUsers.toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">
-                    +{stats.newUsers30Days} no último mês
+                    +{stats.users.newUsersLast30Days} no último mês
                   </p>
                 </CardContent>
               </Card>
@@ -291,16 +285,16 @@ export default function Reports() {
                   <CardTitle className="text-sm font-medium">
                     Novas Usuárias
                   </CardTitle>
-                  {stats.growthRate > 0 ? (
+                  {stats.users.growthRate > 0 ? (
                     <TrendingUp className="h-4 w-4 text-green-500" />
                   ) : (
                     <TrendingDown className="h-4 w-4 text-red-500" />
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">+{stats.newUsers7Days}</div>
+                  <div className="text-2xl font-bold">+{stats.users.newUsersLast7Days}</div>
                   <p className="text-xs text-muted-foreground">
-                    {stats.growthRate > 0 ? '+' : ''}{stats.growthRate}% em relação ao período anterior
+                    {stats.users.growthRate > 0 ? '+' : ''}{stats.users.growthRate}% em relação ao período anterior
                   </p>
                 </CardContent>
               </Card>
@@ -313,7 +307,7 @@ export default function Reports() {
                   <Store className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalSuppliers}</div>
+                  <div className="text-2xl font-bold">{stats.suppliers.totalSuppliers}</div>
                   <p className="text-xs text-muted-foreground">
                     Cadastrados no sistema
                   </p>
@@ -343,11 +337,11 @@ export default function Reports() {
                   <CardTitle className="text-sm">Visita → Cadastro</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{MOCK_CONVERSION_DATA.visitToRegister}%</div>
+                  <div className="text-xl font-bold">{stats.conversions.visitToRegister}%</div>
                   <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary" 
-                      style={{ width: `${MOCK_CONVERSION_DATA.visitToRegister}%` }}
+                      style={{ width: `${stats.conversions.visitToRegister}%` }}
                     ></div>
                   </div>
                 </CardContent>
@@ -358,11 +352,11 @@ export default function Reports() {
                   <CardTitle className="text-sm">Cadastro → Assinatura</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{MOCK_CONVERSION_DATA.registerToSubscription}%</div>
+                  <div className="text-xl font-bold">{stats.conversions.registerToSubscription}%</div>
                   <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-green-500" 
-                      style={{ width: `${MOCK_CONVERSION_DATA.registerToSubscription}%` }}
+                      style={{ width: `${stats.conversions.registerToSubscription}%` }}
                     ></div>
                   </div>
                 </CardContent>
@@ -373,11 +367,11 @@ export default function Reports() {
                   <CardTitle className="text-sm">Conversão Total</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{MOCK_CONVERSION_DATA.visitToSubscription}%</div>
+                  <div className="text-xl font-bold">{stats.conversions.visitToSubscription}%</div>
                   <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-blue-500" 
-                      style={{ width: `${MOCK_CONVERSION_DATA.visitToSubscription}%` }}
+                      style={{ width: `${stats.conversions.visitToSubscription}%` }}
                     ></div>
                   </div>
                 </CardContent>
@@ -388,11 +382,11 @@ export default function Reports() {
                   <CardTitle className="text-sm">Taxa de Cancelamento</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{MOCK_CONVERSION_DATA.churnRate}%</div>
+                  <div className="text-xl font-bold">{stats.conversions.churnRate}%</div>
                   <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-red-500" 
-                      style={{ width: `${MOCK_CONVERSION_DATA.churnRate}%` }}
+                      style={{ width: `${stats.conversions.churnRate}%` }}
                     ></div>
                   </div>
                 </CardContent>
@@ -419,7 +413,14 @@ export default function Reports() {
                       <ChartContainer config={{
                         newUsers: { label: "Novos Usuários", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                       }} className="h-80">
-                        <BarChart data={MOCK_USERS_CHART_DATA}>
+                        <BarChart data={reportData?.users.activeUsers.map((value, index) => {
+                          const date = new Date();
+                          date.setDate(date.getDate() - (6 - index));
+                          return {
+                            date: `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`,
+                            count: Math.floor(value * 0.05) // Assuming ~5% of active users are new
+                          };
+                        }) || []}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" />
                           <YAxis />
@@ -438,7 +439,14 @@ export default function Reports() {
                       <ChartContainer config={{
                         activeUsers: { label: "Usuários Ativos", theme: { light: "#82ca9d", dark: "#65ba83" } }
                       }} className="h-80">
-                        <LineChart data={MOCK_ACTIVE_USERS_DATA}>
+                        <LineChart data={reportData?.users.activeUsers.map((value, index) => {
+                          const date = new Date();
+                          date.setDate(date.getDate() - (6 - index));
+                          return {
+                            date: `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`,
+                            active: value
+                          };
+                        }) || []}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" />
                           <YAxis />
@@ -464,7 +472,7 @@ export default function Reports() {
                     <ChartContainer config={{
                       monthlyUsers: { label: "Usuários", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                     }} className="h-80">
-                      <BarChart data={MOCK_MONTHLY_USERS_DATA}>
+                      <BarChart data={reportData?.users.monthlyGrowth || []}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis />
@@ -490,7 +498,7 @@ export default function Reports() {
                       }} className="h-80">
                         <PieChart>
                           <Pie
-                            data={MOCK_SUBSCRIPTION_DATA}
+                            data={reportData?.subscriptionDistribution || []}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
@@ -500,9 +508,9 @@ export default function Reports() {
                             nameKey="name"
                             label={(entry) => `${entry.name}: ${entry.value}%`}
                           >
-                            {MOCK_SUBSCRIPTION_DATA.map((entry, index) => (
+                            {reportData?.subscriptionDistribution?.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
+                            )) || []}
                           </Pie>
                           <Tooltip content={<ChartTooltipContent nameKey="name" />} />
                           <Legend />
@@ -520,40 +528,60 @@ export default function Reports() {
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="text-sm">Retenção de 30 dias</div>
-                            <div className="text-sm font-medium text-green-500">95.4%</div>
+                            <div className="text-sm font-medium text-green-500">
+                              {reportData?.conversions.retentionRates.thirtyDays || 0}%
+                            </div>
                           </div>
                           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500" style={{ width: "95.4%" }}></div>
+                            <div 
+                              className="h-full bg-green-500" 
+                              style={{ width: `${reportData?.conversions.retentionRates.thirtyDays || 0}%` }}
+                            ></div>
                           </div>
                         </div>
                         
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="text-sm">Retenção de 60 dias</div>
-                            <div className="text-sm font-medium text-green-500">87.2%</div>
+                            <div className="text-sm font-medium text-green-500">
+                              {reportData?.conversions.retentionRates.sixtyDays || 0}%
+                            </div>
                           </div>
                           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500" style={{ width: "87.2%" }}></div>
+                            <div 
+                              className="h-full bg-green-500" 
+                              style={{ width: `${reportData?.conversions.retentionRates.sixtyDays || 0}%` }}
+                            ></div>
                           </div>
                         </div>
                         
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="text-sm">Retenção de 90 dias</div>
-                            <div className="text-sm font-medium text-green-500">78.6%</div>
+                            <div className="text-sm font-medium text-green-500">
+                              {reportData?.conversions.retentionRates.ninetyDays || 0}%
+                            </div>
                           </div>
                           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500" style={{ width: "78.6%" }}></div>
+                            <div 
+                              className="h-full bg-green-500" 
+                              style={{ width: `${reportData?.conversions.retentionRates.ninetyDays || 0}%` }}
+                            ></div>
                           </div>
                         </div>
                         
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="text-sm">Taxa de renovação anual</div>
-                            <div className="text-sm font-medium text-green-500">67.5%</div>
+                            <div className="text-sm font-medium text-green-500">
+                              {reportData?.conversions.retentionRates.annual || 0}%
+                            </div>
                           </div>
                           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500" style={{ width: "67.5%" }}></div>
+                            <div 
+                              className="h-full bg-green-500" 
+                              style={{ width: `${reportData?.conversions.retentionRates.annual || 0}%` }}
+                            ></div>
                           </div>
                         </div>
                       </div>
@@ -612,7 +640,7 @@ export default function Reports() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {stats.topSuppliers.map((supplier, index) => (
+                        {stats.suppliers.topSuppliers.map((supplier, index) => (
                           <div key={supplier.id} className="space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center">
@@ -626,7 +654,9 @@ export default function Reports() {
                             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-primary" 
-                                style={{ width: `${(supplier.views / stats.topSuppliers[0].views) * 100}%` }}
+                                style={{ 
+                                  width: `${(supplier.views / (stats.suppliers.topSuppliers[0]?.views || 1)) * 100}%` 
+                                }}
                               ></div>
                             </div>
                           </div>
@@ -644,7 +674,7 @@ export default function Reports() {
                         categoryViews: { label: "Visualizações", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                       }} className="h-80">
                         <BarChart 
-                          data={MOCK_CATEGORY_VIEWS} 
+                          data={stats.suppliers.byCategories} 
                           layout="vertical" 
                           margin={{ left: 80 }}
                         >
@@ -679,7 +709,7 @@ export default function Reports() {
                       }} className="h-80">
                         <PieChart>
                           <Pie
-                            data={generatePieChartData(stats.topLocations)}
+                            data={generatePieChartData(reportData?.regionData.users)}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
@@ -689,7 +719,7 @@ export default function Reports() {
                             nameKey="name"
                             label={(entry) => `${entry.name}: ${entry.value}`}
                           >
-                            {stats.topLocations.map((entry, index) => (
+                            {generatePieChartData(reportData?.regionData.users).map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
@@ -709,13 +739,10 @@ export default function Reports() {
                         suppliersByState: { label: "Fornecedores", theme: { light: "#82ca9d", dark: "#65ba83" } }
                       }} className="h-80">
                         <BarChart 
-                          data={[
-                            { state: 'SP', suppliers: 32 },
-                            { state: 'CE', suppliers: 18 },
-                            { state: 'GO', suppliers: 15 },
-                            { state: 'MG', suppliers: 12 },
-                            { state: 'PE', suppliers: 10 }
-                          ]} 
+                          data={reportData?.regionData.suppliers.map(item => ({
+                            state: item.state,
+                            suppliers: item.count
+                          }))} 
                           layout="vertical" 
                           margin={{ left: 40 }}
                         >

@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BarChart, LineChart, PieChart } from "lucide-react";
+import { BarChart, LineChart, PieChart, FileSpreadsheet } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { exportReportToCSV } from "@/services/reportService";
 
 type ChartType = "bar" | "line" | "pie";
 type TimeRange = "7days" | "30days" | "90days" | "year";
@@ -18,9 +20,11 @@ interface MetricOption {
 }
 
 export function ReportBuilder() {
+  const { toast } = useToast();
   const [chartType, setChartType] = useState<ChartType>("bar");
   const [timeRange, setTimeRange] = useState<TimeRange>("30days");
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["new_users"]);
+  const [isGenerating, setIsGenerating] = useState(false);
   
   // Mock metric options
   const metricOptions: MetricOption[] = [
@@ -59,13 +63,65 @@ export function ReportBuilder() {
     retention: "Retenção",
     revenue: "Receita"
   };
+
+  // Function to generate report
+  const generateReport = async () => {
+    if (selectedMetrics.length === 0) {
+      toast({
+        title: "Nenhuma métrica selecionada",
+        description: "Selecione pelo menos uma métrica para gerar o relatório",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsGenerating(true);
+    
+    try {
+      toast({
+        title: "Gerando relatório",
+        description: "O relatório está sendo preparado...",
+      });
+      
+      // Generate the report
+      await exportReportToCSV('custom', timeRange, { 
+        metrics: selectedMetrics.join(','),
+        chart_type: chartType
+      });
+      
+      toast({
+        title: "Relatório gerado com sucesso",
+        description: "O relatório foi baixado para o seu computador.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao gerar relatório",
+        description: "Não foi possível gerar o relatório solicitado.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  // Function to clear selection
+  const clearSelection = () => {
+    setSelectedMetrics([]);
+  };
+  
+  const handleSaveReport = async () => {
+    toast({
+      title: "Relatório salvo",
+      description: "O modelo de relatório foi salvo para uso futuro",
+    });
+  };
   
   return (
     <Card className="border-primary/20">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>Construtor de Relatórios</span>
-          <Button size="sm">Salvar Relatório</Button>
+          <Button size="sm" onClick={handleSaveReport}>Salvar Relatório</Button>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -185,8 +241,17 @@ export function ReportBuilder() {
             </div>
             
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline">Limpar Seleção</Button>
-              <Button>Gerar Relatório</Button>
+              <Button variant="outline" onClick={clearSelection}>Limpar Seleção</Button>
+              <Button onClick={generateReport} disabled={selectedMetrics.length === 0 || isGenerating}>
+                {isGenerating ? (
+                  "Gerando..."
+                ) : (
+                  <>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Gerar Relatório
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>

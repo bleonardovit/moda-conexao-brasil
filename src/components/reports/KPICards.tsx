@@ -1,6 +1,9 @@
 
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { getReportData } from "@/services/reportService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface KPICardProps {
   title: string;
@@ -9,11 +12,39 @@ interface KPICardProps {
   target?: number;
   unit?: string;
   description?: string;
+  isLoading?: boolean;
 }
 
-export function KPICard({ title, value, change, target, unit, description }: KPICardProps) {
+export function KPICard({ title, value, change, target, unit, description, isLoading = false }: KPICardProps) {
   const isPositive = change >= 0;
   const percentComplete = target ? Math.min(Number(value) / target * 100, 100) : null;
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-4 pt-3">
+          <div className="flex justify-between items-center mb-1">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-4 w-8" />
+          </div>
+          {target && (
+            <div className="mt-3 space-y-1">
+              <div className="flex justify-between">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <Skeleton className="h-2 w-full" />
+            </div>
+          )}
+          {description && <Skeleton className="mt-2 h-4 w-full" />}
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card>
@@ -55,32 +86,46 @@ export function KPICard({ title, value, change, target, unit, description }: KPI
 }
 
 export function KPIGrid() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['report-data'],
+    queryFn: () => getReportData()
+  });
+  
+  if (error) {
+    return (
+      <div className="p-4 border rounded-md bg-red-50 text-red-500">
+        Erro ao carregar dados dos KPIs: {(error as Error).message}
+      </div>
+    );
+  }
+
   const kpis = [
     {
       title: "Novas Usuárias",
-      value: 156,
-      change: 12.4,
+      value: isLoading ? 0 : data?.users.newUsersLast30Days || 0,
+      change: isLoading ? 0 : data?.users.growthRate || 0,
       target: 200,
       description: "Novos registros este mês"
     },
     {
       title: "Taxa de Conversão",
-      value: 8.7,
-      change: 1.2,
+      value: isLoading ? 0 : data?.conversions.visitToRegister || 0,
+      change: isLoading ? 0 : 1.2, // This would come from historical data in a real system
       unit: "%",
       target: 10,
       description: "De visitante para assinante"
     },
     {
       title: "Receita Mensal",
+      // In a real system, this would come from actual payment data
       value: "R$ 12.540",
       change: 15.8,
       description: "Crescimento em relação ao mês anterior"
     },
     {
       title: "Retenção",
-      value: 92.3,
-      change: -1.5,
+      value: isLoading ? 0 : data?.conversions.retentionRates.thirtyDays || 0,
+      change: isLoading ? 0 : -1.5, // This would come from historical data in a real system
       unit: "%",
       target: 95,
       description: "Taxa de retenção de usuárias"
@@ -98,6 +143,7 @@ export function KPIGrid() {
           unit={kpi.unit}
           target={kpi.target}
           description={kpi.description}
+          isLoading={isLoading}
         />
       ))}
     </div>

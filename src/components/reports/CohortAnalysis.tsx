@@ -4,16 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// Mock cohort data - Retention percentages by month
-const COHORT_DATA = [
-  { month: "Jan 2025", m0: 100, m1: 83, m2: 76, m3: 72, m4: 68, m5: 66 },
-  { month: "Fev 2025", m0: 100, m1: 85, m2: 78, m3: 74, m4: 70, m5: null },
-  { month: "Mar 2025", m0: 100, m1: 87, m2: 79, m3: 75, m4: null, m5: null },
-  { month: "Abr 2025", m0: 100, m1: 88, m2: 81, m3: null, m4: null, m5: null },
-  { month: "Mai 2025", m0: 100, m1: 90, m2: null, m3: null, m4: null, m5: null },
-  { month: "Jun 2025", m0: 100, m1: null, m2: null, m3: null, m4: null, m5: null },
-];
+import { useQuery } from '@tanstack/react-query';
+import { getCohortData } from '@/services/reportService';
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper function to get cell color based on retention value
 const getCellColor = (value: number | null) => {
@@ -28,6 +21,24 @@ const getCellColor = (value: number | null) => {
 
 export function CohortAnalysis() {
   const [cohortType, setCohortType] = useState("retention");
+  
+  // Fetch cohort data
+  const { data: cohortData, isLoading, error } = useQuery({
+    queryKey: ['cohort-data'],
+    queryFn: getCohortData
+  });
+  
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-red-500">
+            Erro ao carregar dados de coortes: {(error as Error).message}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card>
@@ -59,46 +70,54 @@ export function CohortAnalysis() {
           </div>
           
           <TabsContent value="heatmap">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-center">Coorte</TableHead>
-                    <TableHead className="text-center">Mês 0</TableHead>
-                    <TableHead className="text-center">Mês 1</TableHead>
-                    <TableHead className="text-center">Mês 2</TableHead>
-                    <TableHead className="text-center">Mês 3</TableHead>
-                    <TableHead className="text-center">Mês 4</TableHead>
-                    <TableHead className="text-center">Mês 5</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {COHORT_DATA.map((row) => (
-                    <TableRow key={row.month}>
-                      <TableCell className="font-medium">{row.month}</TableCell>
-                      <TableCell className={`text-center ${getCellColor(row.m0)}`}>
-                        {row.m0 !== null ? `${row.m0}%` : '-'}
-                      </TableCell>
-                      <TableCell className={`text-center ${getCellColor(row.m1)}`}>
-                        {row.m1 !== null ? `${row.m1}%` : '-'}
-                      </TableCell>
-                      <TableCell className={`text-center ${getCellColor(row.m2)}`}>
-                        {row.m2 !== null ? `${row.m2}%` : '-'}
-                      </TableCell>
-                      <TableCell className={`text-center ${getCellColor(row.m3)}`}>
-                        {row.m3 !== null ? `${row.m3}%` : '-'}
-                      </TableCell>
-                      <TableCell className={`text-center ${getCellColor(row.m4)}`}>
-                        {row.m4 !== null ? `${row.m4}%` : '-'}
-                      </TableCell>
-                      <TableCell className={`text-center ${getCellColor(row.m5)}`}>
-                        {row.m5 !== null ? `${row.m5}%` : '-'}
-                      </TableCell>
+            {isLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">Coorte</TableHead>
+                      <TableHead className="text-center">Mês 0</TableHead>
+                      <TableHead className="text-center">Mês 1</TableHead>
+                      <TableHead className="text-center">Mês 2</TableHead>
+                      <TableHead className="text-center">Mês 3</TableHead>
+                      <TableHead className="text-center">Mês 4</TableHead>
+                      <TableHead className="text-center">Mês 5</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {cohortData?.map((row) => (
+                      <TableRow key={row.month}>
+                        <TableCell className="font-medium">{row.month}</TableCell>
+                        <TableCell className={`text-center ${getCellColor(row.m0)}`}>
+                          {row.m0 !== null ? `${row.m0}%` : '-'}
+                        </TableCell>
+                        <TableCell className={`text-center ${getCellColor(row.m1)}`}>
+                          {row.m1 !== null ? `${row.m1}%` : '-'}
+                        </TableCell>
+                        <TableCell className={`text-center ${getCellColor(row.m2)}`}>
+                          {row.m2 !== null ? `${row.m2}%` : '-'}
+                        </TableCell>
+                        <TableCell className={`text-center ${getCellColor(row.m3)}`}>
+                          {row.m3 !== null ? `${row.m3}%` : '-'}
+                        </TableCell>
+                        <TableCell className={`text-center ${getCellColor(row.m4)}`}>
+                          {row.m4 !== null ? `${row.m4}%` : '-'}
+                        </TableCell>
+                        <TableCell className={`text-center ${getCellColor(row.m5)}`}>
+                          {row.m5 !== null ? `${row.m5}%` : '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
             
             <div className="mt-4 flex items-center justify-center gap-6">
               <div className="flex items-center gap-2">
@@ -136,8 +155,19 @@ export function CohortAnalysis() {
                 <Card className="bg-muted/30">
                   <CardContent className="p-4">
                     <div className="text-xs text-muted-foreground mb-1">Melhor coorte</div>
-                    <div className="text-xl font-bold">Maio 2025</div>
-                    <div className="text-sm">90% retenção após primeiro mês</div>
+                    <div className="text-xl font-bold">
+                      {isLoading ? <Skeleton className="h-6 w-24" /> : (
+                        cohortData && cohortData.length > 0 ? 
+                          cohortData.sort((a, b) => (b.m1 || 0) - (a.m1 || 0))[0].month : 'Maio 2025'
+                      )}
+                    </div>
+                    <div className="text-sm">
+                      {isLoading ? <Skeleton className="h-4 w-36" /> : (
+                        cohortData && cohortData.length > 0 ? 
+                          `${cohortData.sort((a, b) => (b.m1 || 0) - (a.m1 || 0))[0].m1 || 0}% retenção após primeiro mês` : 
+                          '90% retenção após primeiro mês'
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
                 <Card className="bg-muted/30">
