@@ -21,44 +21,47 @@ import Reports from './pages/admin/Reports';
 import TrackingSettings from './pages/admin/TrackingSettings';
 import { TrackingScripts } from './components/tracking/TrackingScripts';
 import { AuthProvider } from './hooks/useAuth';
+import { ThemeProvider } from './hooks/use-theme';
 
 const queryClient = new QueryClient();
 
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <TrackingScripts />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/index" element={<Index />} />
-            
-            {/* Auth routes */}
-            <Route path="/auth">
-              <Route index element={<Auth />} />
-              <Route path="login" element={<Auth />} />
-              <Route path="register" element={<Auth />} />
-              <Route path="reset-password" element={<Auth />} />
-              <Route path="reset-confirmation" element={<ResetConfirmation />} />
-            </Route>
-            
-            {/* Admin routes */}
-            <Route path="/admin" element={<AdminHome />} />
-            <Route path="/admin/users" element={<UsersManagement />} />
-            <Route path="/admin/suppliers" element={<SuppliersManagement />} />
-            <Route path="/admin/suppliers/bulk" element={<SuppliersBulkUpload />} />
-            <Route path="/admin/notifications" element={<NotificationsManagement />} />
-            <Route path="/admin/articles" element={<ArticlesManagement />} />
-            <Route path="/admin/reports" element={<Reports />} />
-            <Route path="/admin/tracking-settings" element={<TrackingSettings />} />
-            
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-          <Toaster />
-        </AuthProvider>
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <TrackingScripts />
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/index" element={<Index />} />
+              
+              {/* Auth routes */}
+              <Route path="/auth">
+                <Route index element={<Auth />} />
+                <Route path="login" element={<Auth />} />
+                <Route path="register" element={<Auth />} />
+                <Route path="reset-password" element={<Auth />} />
+                <Route path="reset-confirmation" element={<ResetConfirmation />} />
+              </Route>
+              
+              {/* Admin routes */}
+              <Route path="/admin" element={<AdminHome />} />
+              <Route path="/admin/users" element={<UsersManagement />} />
+              <Route path="/admin/suppliers" element={<SuppliersManagement />} />
+              <Route path="/admin/suppliers/bulk" element={<SuppliersBulkUpload />} />
+              <Route path="/admin/notifications" element={<NotificationsManagement />} />
+              <Route path="/admin/articles" element={<ArticlesManagement />} />
+              <Route path="/admin/reports" element={<Reports />} />
+              <Route path="/admin/tracking-settings" element={<TrackingSettings />} />
+              
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+            <Toaster />
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };
