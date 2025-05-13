@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -16,6 +17,7 @@ import { getSuppliers, searchSuppliers } from '@/services/supplierService';
 import { getArticles } from '@/services/articleService';
 import { getCategories } from '@/services/categoryService';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useImageEditor } from '@/hooks/use-image-editor';
 
 // Component for supplier card - optimized for mobile
 const SupplierCard = ({ supplier, allCategories }: { supplier: Supplier, allCategories: Category[] }) => {
@@ -154,6 +156,8 @@ const SkeletonCard = () => {
 export default function Home() {
   const isMobile = useIsMobile();
   const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const { getImages } = useImageEditor();
+  const landingImages = getImages();
   
   // Fetch recent suppliers
   const { data: allSuppliers, isLoading: loadingSuppliers } = useQuery({
