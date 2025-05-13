@@ -63,7 +63,7 @@ const SupplierCard = ({ supplier, allCategories }: { supplier: Supplier, allCate
           </button>
         </div>
       </div>
-      <CardContent className="p-3">
+      <CardContent className="p-4">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-medium truncate">{supplier.name}</h3>
         </div>
@@ -110,7 +110,7 @@ const ArticleCard = ({ article }: { article: Article }) => {
           </Badge>
         </div>
       </div>
-      <CardContent className="p-3">
+      <CardContent className="p-4">
         <h3 className="font-medium line-clamp-2 mb-2">{article.title}</h3>
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-400">
@@ -202,11 +202,29 @@ export default function Home() {
 
   return (
     <AppLayout>
+      {/* Hero Section */}
+      <section className="mb-8 pt-4 md:pt-8 text-center">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gradient mb-4 animate-fade-in-down">
+          Bem-vindo à Moda Conexão Brasil
+        </h1>
+        <p className="text-md sm:text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto animate-fade-in-up animation-delay-300">
+          Sua plataforma completa para encontrar os melhores fornecedores, descobrir tendências e impulsionar seu negócio de moda.
+        </p>
+        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 animate-fade-in-up animation-delay-600">
+          <Button asChild size="lg" className="bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90 transition-opacity text-white shadow-lg hover:shadow-xl transform hover:scale-105">
+            <Link to="/suppliers">Explorar Fornecedores</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="border-[#9b87f5] text-[#9b87f5] hover:bg-[#9b87f5]/10 shadow-lg hover:shadow-xl transform hover:scale-105">
+            <Link to="/articles">Ver Artigos do Blog</Link>
+          </Button>
+        </div>
+      </section>
+
       {/* Recent Suppliers Section */}
-      <section className="mb-6">
-        <div className="flex justify-between items-center mb-3">
+      <section className="mb-8 px-4">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl md:text-2xl font-bold text-gradient">Fornecedores Recentes</h2>
-          <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
+          <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm font-medium">
             Ver todos
             <ArrowRight className="h-4 w-4" />
           </Link>
@@ -238,10 +256,10 @@ export default function Home() {
       </section>
 
       {/* Popular Suppliers Section */}
-      <section className="mb-6">
-        <div className="flex justify-between items-center mb-3">
+      <section className="mb-8 px-4">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl md:text-2xl font-bold text-gradient">Fornecedores Populares</h2>
-          <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
+          <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm font-medium">
             Ver todos
             <ArrowRight className="h-4 w-4" />
           </Link>
@@ -279,10 +297,10 @@ export default function Home() {
       </section>
       
       {/* Recent Articles Section */}
-      <section className="mb-6">
-        <div className="flex justify-between items-center mb-3">
+      <section className="mb-8 px-4">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl md:text-2xl font-bold text-gradient">Artigos Recentes</h2>
-          <Link to="/articles" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm">
+          <Link to="/articles" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm font-medium">
             Ver todos
             <ArrowRight className="h-4 w-4" />
           </Link>
