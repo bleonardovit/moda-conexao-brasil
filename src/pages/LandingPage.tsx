@@ -7,10 +7,12 @@ import { Facebook, Instagram, Linkedin, Check } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useImageEditor } from '@/hooks/use-image-editor';
 import { ImageEditor } from '@/components/landing/ImageEditor';
+import { useAuth } from '@/hooks/useAuth';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const { getImages } = useImageEditor();
+  const { user } = useAuth();
   const mockImages = getImages();
   
   const scrollToSection = (id: string) => {
@@ -28,7 +30,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Add the ImageEditor component */}
+      {/* Add the ImageEditor component - only for admins */}
       <ImageEditor isAdmin={true} />
       
       {/* Header - Sticky */}

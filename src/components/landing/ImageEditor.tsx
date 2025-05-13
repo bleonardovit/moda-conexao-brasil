@@ -6,6 +6,7 @@ import { ImageUploader } from '@/components/admin/ImageUploader';
 import { useImageEditor, LandingPageImages } from '@/hooks/use-image-editor';
 import { Card, CardContent } from '@/components/ui/card';
 import { Pencil, RotateCcw } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ImageEditorProps {
   isAdmin?: boolean;
@@ -16,6 +17,13 @@ export const ImageEditor = ({ isAdmin = false }: ImageEditorProps) => {
   const [open, setOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<keyof LandingPageImages | null>(null);
   const [imageUploaderOpen, setImageUploaderOpen] = useState(false);
+  const { user } = useAuth();
+  
+  // Check if user is admin
+  const userIsAdmin = user?.role === 'admin';
+  
+  // If not admin, don't render the editor button
+  if (!userIsAdmin && isAdmin) return null;
   
   const images = getImages();
   
@@ -47,18 +55,17 @@ export const ImageEditor = ({ isAdmin = false }: ImageEditorProps) => {
     testimonial2: "Depoimento 2"
   };
   
-  // If not admin, don't render anything
-  if (!isAdmin) return null;
-  
   return (
     <>
-      <Button 
-        onClick={() => setOpen(true)} 
-        className="fixed bottom-4 right-4 z-50 bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90"
-      >
-        <Pencil className="mr-2 h-4 w-4" /> 
-        Editar Imagens
-      </Button>
+      {userIsAdmin && isAdmin && (
+        <Button 
+          onClick={() => setOpen(true)} 
+          className="fixed bottom-4 right-4 z-50 bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90"
+        >
+          <Pencil className="mr-2 h-4 w-4" /> 
+          Editar Imagens
+        </Button>
+      )}
       
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[700px]">
