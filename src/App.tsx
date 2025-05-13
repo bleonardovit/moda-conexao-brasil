@@ -27,8 +27,8 @@ const queryClient = new QueryClient();
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
           <TrackingScripts />
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -56,9 +56,9 @@ const App = () => {
             
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-        </BrowserRouter>
-        <Toaster />
-      </AuthProvider>
+          <Toaster />
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 };
