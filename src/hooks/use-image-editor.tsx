@@ -1,5 +1,8 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { uploadBase64ImageToStorage, isBase64Image } from '@/utils/imageUtils';
 
 export interface LandingPageImages {
   hero: string;
@@ -10,75 +13,86 @@ export interface LandingPageImages {
   testimonial2: string;
 }
 
-// Default images for the landing page
-const defaultImages: LandingPageImages = {
-  hero: 'https://images.unsplash.com/photo-1557804506-669a67965ba0',
-  app1: 'https://images.unsplash.com/photo-1551650975-87deedd944c3',
-  app2: 'https://images.unsplash.com/photo-1618761714954-0b8cd0026356',
-  app3: 'https://images.unsplash.com/photo-1616469829941-c7200edec809',
-  testimonial1: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-  testimonial2: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d'
+const defaultImages = {
+  hero: "https://images.unsplash.com/photo-1614771637369-ed94441a651a?q=80&w=1200&auto=format&fit=crop",
+  app1: "https://images.unsplash.com/photo-1509631179407-329d2570cac2?q=80&w=500&auto=format&fit=crop",
+  app2: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=500&auto=format&fit=crop",
+  app3: "https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?q=80&w=500&auto=format&fit=crop",
+  testimonial1: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop",
+  testimonial2: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=100&auto=format&fit=crop",
 };
 
-// Storage key for saving landing page images to localStorage
-const STORAGE_KEY = 'landing_page_images';
+// Key for localStorage
+const LANDING_PAGE_IMAGES_KEY = 'landing_page_images';
 
 export const useImageEditor = () => {
-  const [images, setImages] = useState<LandingPageImages>(defaultImages);
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Load saved images from localStorage or use defaults
+  const getSavedImages = (): LandingPageImages => {
+    const savedImages = localStorage.getItem(LANDING_PAGE_IMAGES_KEY);
+    return savedImages ? JSON.parse(savedImages) : defaultImages;
+  };
 
-  // Load saved images from localStorage on initial mount
-  useEffect(() => {
-    try {
-      const savedImages = localStorage.getItem(STORAGE_KEY);
-      if (savedImages) {
-        setImages(JSON.parse(savedImages));
-      }
-    } catch (error) {
-      console.error('Error loading saved images:', error);
-      // If there's an error loading saved images, fallback to defaults
-      setImages(defaultImages);
-    }
-  }, []);
+  // Save images to localStorage
+  const saveImages = (images: LandingPageImages) => {
+    localStorage.setItem(LANDING_PAGE_IMAGES_KEY, JSON.stringify(images));
+  };
 
-  // Function to update a specific image
-  const updateImage = (key: keyof LandingPageImages, url: string) => {
+  // Update a single image
+  const updateImage = async (key: keyof LandingPageImages, imageUrl: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const updatedImages = { ...images, [key]: url };
-      setImages(updatedImages);
       
-      // Save to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedImages));
+      // If the image is base64, upload to storage first
+      let finalImageUrl = imageUrl;
+      if (isBase64Image(imageUrl)) {
+        const uploadedUrl = await uploadBase64ImageToStorage(imageUrl);
+        if (!uploadedUrl) {
+          throw new Error("Falha ao fazer upload da imagem");
+        }
+        finalImageUrl = uploadedUrl;
+      }
+      
+      // Update in localStorage
+      const currentImages = getSavedImages();
+      const updatedImages = { ...currentImages, [key]: finalImageUrl };
+      saveImages(updatedImages);
+      
+      toast({
+        title: "Imagem atualizada",
+        description: "A imagem foi atualizada com sucesso.",
+      });
+      
+      return true;
     } catch (error) {
-      console.error('Error updating image:', error);
+      console.error("Erro ao atualizar imagem:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar imagem",
+        description: "Ocorreu um erro ao tentar atualizar a imagem.",
+      });
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to reset all images to defaults
+  // Reset to default images
   const resetToDefaults = () => {
-    try {
-      setIsLoading(true);
-      setImages(defaultImages);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultImages));
-    } catch (error) {
-      console.error('Error resetting images:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Function to get current images
-  const getImages = () => {
-    return images;
+    saveImages(defaultImages);
+    toast({
+      title: "Imagens redefinidas",
+      description: "Todas as imagens foram redefinidas para os valores padrão.",
+    });
+    return defaultImages;
   };
 
   return {
-    getImages,
+    getImages: getSavedImages,
     updateImage,
     resetToDefaults,
-    isLoading
+    isLoading,
   };
 };

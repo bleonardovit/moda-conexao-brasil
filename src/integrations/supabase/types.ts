@@ -342,42 +342,6 @@ export type Database = {
           },
         ]
       }
-      tracking_settings: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean
-          key: string
-          last_updated_by: string | null
-          name: string
-          script: string | null
-          updated_at: string
-          value: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          key: string
-          last_updated_by?: string | null
-          name: string
-          script?: string | null
-          updated_at?: string
-          value?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          key?: string
-          last_updated_by?: string | null
-          name?: string
-          script?: string | null
-          updated_at?: string
-          value?: string | null
-        }
-        Relationships: []
-      }
       user_notifications: {
         Row: {
           created_at: string

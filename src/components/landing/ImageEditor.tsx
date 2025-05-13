@@ -2,52 +2,11 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ImageUploader } from '@/components/admin/ImageUploader';
+import { useImageEditor, LandingPageImages } from '@/hooks/use-image-editor';
 import { Card, CardContent } from '@/components/ui/card';
 import { Pencil, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useImageEditor, LandingPageImages } from '@/hooks/use-image-editor';
-
-// Mocking the ImageUploader component since we can't modify it
-// In a real situation, this should be imported from the admin components
-const ImageUploader = ({ 
-  open, 
-  onClose, 
-  onSelectImage, 
-  currentImageUrl 
-}: { 
-  open: boolean;
-  onClose: () => void;
-  onSelectImage: (url: string) => void;
-  currentImageUrl?: string;
-}) => {
-  // This is a simple mock implementation
-  return open ? (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Upload Image</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2">
-            {['https://images.unsplash.com/photo-1557804506-669a67965ba0', 
-              'https://images.unsplash.com/photo-1551650975-87deedd944c3',
-              'https://images.unsplash.com/photo-1618761714954-0b8cd0026356',
-              'https://images.unsplash.com/photo-1616469829941-c7200edec809'].map(url => (
-              <div 
-                key={url} 
-                className="cursor-pointer border rounded-md overflow-hidden"
-                onClick={() => onSelectImage(url)}
-              >
-                <img src={url} alt="Sample" className="w-full h-32 object-cover" />
-              </div>
-            ))}
-          </div>
-          <Button onClick={onClose} variant="outline">Cancel</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  ) : null;
-};
 
 interface ImageEditorProps {
   isAdmin?: boolean;
@@ -60,7 +19,7 @@ export const ImageEditor = ({ isAdmin = false }: ImageEditorProps) => {
   const [imageUploaderOpen, setImageUploaderOpen] = useState(false);
   const { user } = useAuth();
   
-  // Make sure user is defined before checking its properties
+  // Check if user is admin
   const userIsAdmin = user?.role === 'admin';
   
   // If not admin, don't render the editor button
@@ -126,8 +85,7 @@ export const ImageEditor = ({ isAdmin = false }: ImageEditorProps) => {
                     alt={imageLabels[key as keyof LandingPageImages]} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158';
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158';
                     }}
                   />
                   <Button 
