@@ -76,8 +76,8 @@ export const TrackingScripts = () => {
         gtmNoscript.setAttribute('data-tracking', 'gtm_noscript');
         const gtmIframe = document.createElement('iframe');
         gtmIframe.src = `https://www.googletagmanager.com/ns.html?id=${gtm.value}`;
-        gtmIframe.height = 0;
-        gtmIframe.width = 0;
+        gtmIframe.height = '0';
+        gtmIframe.width = '0';
         gtmIframe.style.display = 'none';
         gtmIframe.style.visibility = 'hidden';
         gtmNoscript.appendChild(gtmIframe);

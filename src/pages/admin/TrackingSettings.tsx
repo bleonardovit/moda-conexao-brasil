@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
@@ -176,7 +175,7 @@ const TrackingSettings = () => {
                     defaultValue={setting.script || ''}
                     className="font-mono text-sm"
                   />
-                  <Alert variant="outline" className="mt-2">
+                  <Alert className="mt-2">
                     <Info className="h-4 w-4" />
                     <AlertDescription>
                       Este código será injetado no final da página. Tenha cuidado ao inserir códigos de terceiros.
