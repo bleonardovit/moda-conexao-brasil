@@ -74,16 +74,17 @@ export const getActiveSessions = async (): Promise<ActiveSession[]> => {
           .eq('id', session.user_id)
           .single();
           
-        const { data: authData } = await supabase
-          .from('auth')
-          .select('email')
+        // We'll get email from profiles too since we can't access auth schema directly
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
           .eq('id', session.user_id)
           .single();
           
         return {
           ...session,
           full_name: userData?.full_name || 'Unknown',
-          user_email: authData?.email || 'Unknown'
+          user_email: profileData?.email || 'Unknown' // Get email from profiles
         };
       })
     );
