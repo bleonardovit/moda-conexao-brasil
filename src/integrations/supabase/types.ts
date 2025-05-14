@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      active_sessions: {
+        Row: {
+          id: number
+          ip_address: string
+          last_active: string
+          login_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: number
+          ip_address: string
+          last_active?: string
+          login_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: number
+          ip_address?: string
+          last_active?: string
+          login_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       article_categories: {
         Row: {
           color: string
@@ -80,6 +104,33 @@ export type Database = {
           },
         ]
       }
+      blocked_ips: {
+        Row: {
+          attempts_count: number
+          blocked_at: string
+          blocked_until: string
+          id: number
+          ip_address: string
+          reason: string | null
+        }
+        Insert: {
+          attempts_count?: number
+          blocked_at?: string
+          blocked_until: string
+          id?: number
+          ip_address: string
+          reason?: string | null
+        }
+        Update: {
+          attempts_count?: number
+          blocked_at?: string
+          blocked_until?: string
+          id?: number
+          ip_address?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -132,6 +183,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      login_logs: {
+        Row: {
+          attempted_at: string
+          id: number
+          ip_address: string
+          success: boolean
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          id?: number
+          ip_address: string
+          success: boolean
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          id?: number
+          ip_address?: string
+          success?: boolean
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -242,6 +320,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_settings: {
+        Row: {
+          description: string | null
+          id: number
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          description?: string | null
+          id?: number
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          description?: string | null
+          id?: number
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
@@ -418,6 +523,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_failed_attempts_count: {
+        Args: { check_ip: string; hours?: number }
+        Returns: number
+      }
       get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -442,6 +551,14 @@ export type Database = {
         Args: { "": unknown }
         Returns: unknown
       }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_ip_blocked: {
+        Args: { check_ip: string }
+        Returns: boolean
+      }
       set_limit: {
         Args: { "": number }
         Returns: number
@@ -453,6 +570,10 @@ export type Database = {
       show_trgm: {
         Args: { "": string }
         Returns: string[]
+      }
+      update_session_last_active: {
+        Args: { user_uuid: string }
+        Returns: undefined
       }
     }
     Enums: {

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,6 +38,7 @@ import NotificationsManagement from "./pages/admin/NotificationsManagement";
 import Reports from "./pages/admin/Reports";
 import ArticlesManagement from "./pages/admin/ArticlesManagement";
 import TrackingSettings from "./pages/admin/TrackingSettings";
+import SecurityMonitoring from "./pages/admin/SecurityMonitoring";
 
 // Configuração do React Query
 import { defaultQueryOptions } from "./lib/react-query-config";
@@ -324,6 +326,16 @@ const AppRoutes = () => {
         element={
           <AdminRoute>
             <TrackingSettings />
+          </AdminRoute>
+        } 
+      />
+      
+      {/* Nova rota para monitoramento de segurança */}
+      <Route 
+        path="/admin/security-monitoring" 
+        element={
+          <AdminRoute>
+            <SecurityMonitoring />
           </AdminRoute>
         } 
       />

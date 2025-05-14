@@ -17,6 +17,137 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Helper function to get client IP address
+const getClientIP = async (): Promise<string> => {
+  try {
+    // This service returns the client's IP address
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip;
+  } catch (error) {
+    console.error('Error fetching IP address:', error);
+    return 'unknown';
+  }
+};
+
+// Helper function to check if IP is blocked
+const checkIPBlocked = async (ip: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('is_ip_blocked', { check_ip: ip });
+    if (error) {
+      console.error('Error checking if IP is blocked:', error);
+      return false;
+    }
+    return data === true;
+  } catch (error) {
+    console.error('Error in checkIPBlocked function:', error);
+    return false;
+  }
+};
+
+// Helper function to record login attempt
+const recordLoginAttempt = async (
+  userEmail: string,
+  userId: string | null,
+  ipAddress: string,
+  success: boolean
+) => {
+  try {
+    const { error } = await supabase
+      .from('login_logs')
+      .insert({
+        user_id: userId,
+        user_email: userEmail,
+        ip_address: ipAddress,
+        success: success
+      });
+
+    if (error) {
+      console.error('Error recording login attempt:', error);
+    }
+  } catch (error) {
+    console.error('Error in recordLoginAttempt function:', error);
+  }
+};
+
+// Helper function to check and block IP if needed
+const checkAndBlockIP = async (ipAddress: string) => {
+  try {
+    // Get max attempts setting
+    const { data: settingsData } = await supabase
+      .from('security_settings')
+      .select('value')
+      .eq('key', 'max_login_attempts')
+      .single();
+    
+    const maxAttempts = settingsData ? parseInt(settingsData.value) : 3;
+    
+    // Get block duration setting
+    const { data: durationData } = await supabase
+      .from('security_settings')
+      .select('value')
+      .eq('key', 'block_duration_minutes')
+      .single();
+    
+    const blockDurationMinutes = durationData ? parseInt(durationData.value) : 30;
+    
+    // Get failed attempts count
+    const { data: attemptsCount } = await supabase.rpc(
+      'get_failed_attempts_count', 
+      { check_ip: ipAddress }
+    );
+    
+    // If attempts exceed threshold, block the IP
+    if (attemptsCount && attemptsCount >= maxAttempts) {
+      const blockUntil = new Date(Date.now() + blockDurationMinutes * 60 * 1000).toISOString();
+      
+      await supabase
+        .from('blocked_ips')
+        .insert({
+          ip_address: ipAddress,
+          blocked_until: blockUntil,
+          reason: `Exceeded ${maxAttempts} failed login attempts`,
+          attempts_count: attemptsCount
+        });
+      
+      console.log(`IP ${ipAddress} blocked until ${blockUntil}`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error in checkAndBlockIP function:', error);
+    return false;
+  }
+};
+
+// Helper function to manage active session
+const manageActiveSession = async (userId: string, ipAddress: string) => {
+  try {
+    // First, delete any existing sessions for this user
+    await supabase
+      .from('active_sessions')
+      .delete()
+      .eq('user_id', userId);
+    
+    // Then, create a new session
+    const { error } = await supabase
+      .from('active_sessions')
+      .insert({
+        user_id: userId,
+        ip_address: ipAddress,
+        login_at: new Date().toISOString(),
+        last_active: new Date().toISOString()
+      });
+    
+    if (error) {
+      console.error('Error creating active session:', error);
+    }
+  } catch (error) {
+    console.error('Error in manageActiveSession function:', error);
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,6 +192,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Update session last active periodically
+  useEffect(() => {
+    if (user) {
+      const updateActivityInterval = setInterval(async () => {
+        try {
+          await supabase.rpc('update_session_last_active', { user_uuid: user.id });
+        } catch (error) {
+          console.error('Error updating last active timestamp:', error);
+        }
+      }, 60000); // Update every minute
+      
+      return () => clearInterval(updateActivityInterval);
+    }
+  }, [user]);
+
   // Manipulador de mudança de estado de autenticação
   const handleAuthChange = async (event: string, session: any) => {
     console.log(`Evento de autenticação: ${event}`);
@@ -80,6 +226,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Atualizar último login se necessário
         if (event === 'SIGNED_IN') {
           await updateLastLogin(session.user.id);
+          // Get client IP and manage session
+          const ipAddress = await getClientIP();
+          await manageActiveSession(session.user.id, ipAddress);
         }
         
         // Obter a role do usuário e armazenar em sessionStorage
@@ -175,14 +324,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setIsLoading(true);
     try {
+      // Get client IP address
+      const ipAddress = await getClientIP();
+      
+      // Check if IP is blocked
+      const isBlocked = await checkIPBlocked(ipAddress);
+      if (isBlocked) {
+        toast({
+          variant: "destructive",
+          title: "Acesso bloqueado",
+          description: "Seu endereço IP foi bloqueado temporariamente por motivos de segurança.",
+        });
+        // Record failed attempt
+        await recordLoginAttempt(email, null, ipAddress, false);
+        return false;
+      }
+      
+      // Attempt login
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
+      // If login failed
       if (error) {
         console.error('Erro no login:', error.message);
+        // Record failed attempt
+        await recordLoginAttempt(email, null, ipAddress, false);
+        // Check if we need to block this IP
+        await checkAndBlockIP(ipAddress);
+        
         throw error;
+      }
+
+      // Login successful
+      if (data.user) {
+        // Record successful attempt
+        await recordLoginAttempt(email, data.user.id, ipAddress, true);
       }
 
       toast({
@@ -230,6 +408,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
+      
+      // Record successful registration
+      if (data.user) {
+        const ipAddress = await getClientIP();
+        await recordLoginAttempt(email, data.user.id, ipAddress, true);
+      }
 
       toast({
         title: "Registro realizado com sucesso!",
@@ -253,6 +437,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Logout function
   const logout = async () => {
     try {
+      // If user exists, remove their active session
+      if (user) {
+        await supabase
+          .from('active_sessions')
+          .delete()
+          .eq('user_id', user.id);
+      }
+      
       await supabase.auth.signOut();
       setUser(null);
       // Clear session storage when user logs out
