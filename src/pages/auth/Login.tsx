@@ -1,5 +1,6 @@
 
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,8 @@ export default function Login() {
     }
   }, [user, navigate, isInitializing]);
   
-  const handleLogin = async (e: React.FormEvent) => {
+  // Usando useCallback para memoizar a função de login
+  const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     
@@ -67,11 +69,11 @@ export default function Login() {
     } finally {
       setLocalSubmitting(false);
     }
-  };
+  }, [email, password, localSubmitting, isLoading, isInitializing, login]);
   
-  const toggleShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
+  const toggleShowPassword = useCallback(() => {
+    setShowPassword(prev => !prev);
+  }, []);
   
   // Aguarde até que a inicialização seja concluída para renderizar
   if (isInitializing) {
@@ -184,3 +186,4 @@ export default function Login() {
     </div>
   );
 }
+

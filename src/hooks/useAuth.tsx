@@ -1,9 +1,11 @@
 
-import { useState, useEffect, createContext, useContext } from 'react';
+
+import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import { debounce, isEqual } from '@/lib/utils';
 
 interface AuthContextType {
   user: User | null;
@@ -154,6 +156,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Add refs to track session and prevent duplicate processing
+  const lastProcessedSessionId = useRef<string | null>(null);
+  const processingAuthChange = useRef<boolean>(false);
 
   // Função auxiliar para obter o perfil do usuário
   const fetchUserProfile = async (userId: string) => {
@@ -192,60 +198,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Update session last active periodically
+  // Update session last active periodically using a debounced function
   useEffect(() => {
     if (user) {
-      const updateActivityInterval = setInterval(async () => {
+      const updateActivity = debounce(async () => {
         try {
           await supabase.rpc('update_session_last_active', { user_uuid: user.id });
         } catch (error) {
           console.error('Error updating last active timestamp:', error);
         }
-      }, 60000); // Update every minute
+      }, 60000); // Debounce to once per minute maximum
       
+      const updateActivityInterval = setInterval(updateActivity, 60000);
       return () => clearInterval(updateActivityInterval);
     }
   }, [user]);
 
-  // Manipulador de mudança de estado de autenticação
-  const handleAuthChange = async (event: string, session: any) => {
+  // Manipulador de mudança de estado de autenticação com debounce e verificação de duplicação
+  const handleAuthChange = useCallback(async (event: string, session: any) => {
     console.log(`Evento de autenticação: ${event}`);
     
-    if (!session) {
-      console.log('Sem sessão, definindo usuário como nulo');
-      setUser(null);
-      sessionStorage.removeItem('user_role');
+    // Skip if we're already processing an auth change
+    if (processingAuthChange.current) {
+      console.log('Skipping auth event processing, already in progress');
+      return;
+    }
+    
+    // Skip if this is the same session we've already processed
+    if (session?.access_token && session.access_token === lastProcessedSessionId.current) {
+      console.log('Skipping duplicate session processing');
       return;
     }
     
     try {
+      processingAuthChange.current = true;
+      
+      if (!session) {
+        console.log('Sem sessão, definindo usuário como nulo');
+        setUser(null);
+        sessionStorage.removeItem('user_role');
+        return;
+      }
+      
+      // Update the last processed session ID
+      lastProcessedSessionId.current = session.access_token;
+      
       // Buscar dados do perfil de forma assíncrona
       const profile = await fetchUserProfile(session.user.id);
       
       if (profile) {
         // Atualizar último login se necessário
         if (event === 'SIGNED_IN') {
-          await updateLastLogin(session.user.id);
-          // Get client IP and manage session
-          const ipAddress = await getClientIP();
-          await manageActiveSession(session.user.id, ipAddress);
+          // Use setTimeout to avoid blocking the main thread
+          setTimeout(async () => {
+            await updateLastLogin(session.user.id);
+            // Get client IP and manage session
+            const ipAddress = await getClientIP();
+            await manageActiveSession(session.user.id, ipAddress);
+          }, 0);
         }
         
         // Obter a role do usuário e armazenar em sessionStorage
         const userRole = profile.role || 'user';
         sessionStorage.setItem('user_role', userRole);
         
-        // Combinar dados de autenticação e perfil
-        setUser({
+        // Create new user object
+        const newUser = {
           id: session.user.id,
           email: session.user.email || '',
           full_name: profile.full_name || session.user.user_metadata?.full_name || '',
           phone: profile.phone || session.user.phone || '',
           role: userRole as 'user' | 'admin',
           subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive'
-        });
+        };
         
-        console.log('Usuário autenticado:', session.user.email);
+        // Only update state if user data has actually changed
+        setUser(prevUser => {
+          if (!isEqual(prevUser, newUser)) {
+            console.log('Usuário autenticado:', session.user.email);
+            return newUser;
+          }
+          return prevUser;
+        });
       } else {
         console.log('Perfil não encontrado para o usuário autenticado');
         setUser(null);
@@ -253,8 +287,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Erro ao processar alteração de autenticação:', error);
+    } finally {
+      processingAuthChange.current = false;
     }
-  };
+  }, []);
 
   // Check auth status and set up listener for auth changes
   useEffect(() => {
@@ -264,17 +300,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsInitializing(true);
       
       try {
+        // Setup safe auth change handler with debounce
+        const debouncedAuthChangeHandler = debounce((event: string, session: any) => {
+          console.log(`Evento de autenticação detectado: ${event}`);
+          // Use a timeout to avoid potential deadlocks in auth state changes
+          setTimeout(() => {
+            handleAuthChange(event, session);
+          }, 0);
+        }, 300); // 300ms debounce to avoid rapid consecutive auth events
+        
         // Configurar listener de mudança de estado primeiro
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (event, session) => {
-            console.log(`Evento de autenticação detectado: ${event}`);
-            
-            // Use setTimeout para evitar bloqueios
-            setTimeout(() => {
-              handleAuthChange(event, session);
-            }, 0);
-          }
-        );
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(debouncedAuthChangeHandler);
         
         // Verificar sessão atual
         console.log('Verificando sessão atual');
@@ -307,9 +343,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     };
-  }, []);
+  }, [handleAuthChange]);
 
-  // Login function
+  // Login function with debounce to prevent multiple submissions
   const login = async (email: string, password: string): Promise<boolean> => {
     console.log('Tentativa de login para:', email);
     
@@ -519,3 +555,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

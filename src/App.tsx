@@ -1,10 +1,11 @@
 
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
@@ -76,26 +77,47 @@ const AppRoutes = () => {
   });
   
   // Efeito para verificar o status de autenticação baseado no user do AuthProvider
+  // Usando uma dependência memoizada para evitar execuções desnecessárias
+  const userIdentifier = useMemo(() => user?.id, [user?.id]);
+  
   useEffect(() => {
     // Somente atualizar o estado de auth quando a inicialização estiver completa
     if (!isInitializing) {
       if (user) {
-        setAuth({
-          isAuthenticated: true,
-          isAdmin: user.role === 'admin',
-          hasSubscription: user.subscription_status === 'active' || true // Temporariamente considerando todos como tendo assinatura
+        // Usando uma comparação de estado funcional para evitar atualizações desnecessárias
+        setAuth(prevAuth => {
+          if (prevAuth.isAuthenticated && prevAuth.isAdmin === (user.role === 'admin')) {
+            // Estado não mudou, evitar re-renderização
+            return prevAuth;
+          }
+          
+          // Estado mudou, atualizar
+          const newAuth = {
+            isAuthenticated: true,
+            isAdmin: user.role === 'admin',
+            hasSubscription: user.subscription_status === 'active' || true // Temporariamente considerando todos como tendo assinatura
+          };
+          console.log('Auth state atualizado: usuário autenticado');
+          return newAuth;
         });
-        console.log('Auth state atualizado: usuário autenticado');
       } else {
-        setAuth({
-          isAuthenticated: false,
-          isAdmin: false,
-          hasSubscription: true
+        setAuth(prevAuth => {
+          if (!prevAuth.isAuthenticated) {
+            // Já está não-autenticado, evitar re-renderização
+            return prevAuth;
+          }
+          
+          // Estado mudou, atualizar
+          console.log('Auth state atualizado: sem usuário');
+          return {
+            isAuthenticated: false,
+            isAdmin: false,
+            hasSubscription: true
+          };
         });
-        console.log('Auth state atualizado: sem usuário');
       }
     }
-  }, [user, isInitializing]);
+  }, [userIdentifier, isInitializing, user]);
 
   // Loading state durante inicialização
   if (isInitializing) {
