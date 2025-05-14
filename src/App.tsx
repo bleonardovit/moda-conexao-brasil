@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +9,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
+import { TrackingScripts } from "./components/tracking/TrackingScripts";
 
 // Páginas de autenticação
 import Login from "./pages/auth/Login";
@@ -36,6 +36,7 @@ import SuppliersBulkUpload from "./pages/admin/SuppliersBulkUpload";
 import NotificationsManagement from "./pages/admin/NotificationsManagement";
 import Reports from "./pages/admin/Reports";
 import ArticlesManagement from "./pages/admin/ArticlesManagement";
+import TrackingSettings from "./pages/admin/TrackingSettings";
 
 // Configuração do React Query
 import { defaultQueryOptions } from "./lib/react-query-config";
@@ -53,6 +54,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AuthProvider>
+              <TrackingScripts />
               <AppRoutes />
             </AuthProvider>
           </BrowserRouter>
@@ -313,6 +315,15 @@ const AppRoutes = () => {
         element={
           <AdminRoute>
             <ArticlesManagement />
+          </AdminRoute>
+        } 
+      />
+      {/* Nova rota para configurações de rastreamento */}
+      <Route 
+        path="/admin/tracking-settings" 
+        element={
+          <AdminRoute>
+            <TrackingSettings />
           </AdminRoute>
         } 
       />
