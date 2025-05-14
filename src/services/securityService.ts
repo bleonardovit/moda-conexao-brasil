@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { ActiveSession, BlockedIP, DailyLoginStat, LoginLog, LoginStats, SecuritySetting } from '@/types';
 
 export interface LoginLog {
   id: number;
@@ -74,17 +74,12 @@ export const getActiveSessions = async (): Promise<ActiveSession[]> => {
           .eq('id', session.user_id)
           .single();
           
-        // We'll get email from profiles too since we can't access auth schema directly
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user_id)
-          .single();
-          
+        // We need to get the email but it's not in the profiles table
+        // Let's use a default value with the user ID instead
         return {
           ...session,
           full_name: userData?.full_name || 'Unknown',
-          user_email: profileData?.email || 'Unknown' // Get email from profiles
+          user_email: `user-${session.user_id}@example.com` // Default placeholder email since we can't access auth.users
         };
       })
     );
