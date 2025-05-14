@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getBlockedIPs, BlockedIP, blockIP, unblockIP } from '@/services/securityService';
+import { getBlockedIPs, blockIP, unblockIP } from '@/services/securityService';
+import { BlockedIP } from '@/types';
 import {
   Table,
   TableBody,

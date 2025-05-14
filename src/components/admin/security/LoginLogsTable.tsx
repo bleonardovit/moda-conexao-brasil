@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getLoginLogs, LoginLog, exportLoginLogsToCSV } from '@/services/securityService';
+import { getLoginLogs, exportLoginLogsToCSV } from '@/services/securityService';
+import { LoginLog } from '@/types';
 import {
   Table,
   TableBody,

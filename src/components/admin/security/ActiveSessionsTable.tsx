@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getActiveSessions, ActiveSession } from '@/services/securityService';
+import { getActiveSessions } from '@/services/securityService';
+import { ActiveSession } from '@/types';
 import {
   Table,
   TableBody,

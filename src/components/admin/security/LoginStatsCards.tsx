@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getLoginStats, LoginStats } from '@/services/securityService';
+import { getLoginStats } from '@/services/securityService';
+import { LoginStats } from '@/types';
 import {
   Card,
   CardContent,

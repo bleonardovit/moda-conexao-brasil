@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getSecuritySettings, updateSecuritySetting, SecuritySetting } from '@/services/securityService';
+import { getSecuritySettings, updateSecuritySetting } from '@/services/securityService';
+import { SecuritySetting } from '@/types';
 import {
   Card,
   CardContent,

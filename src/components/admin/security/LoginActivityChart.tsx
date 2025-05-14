@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getDailyLoginStats, DailyLoginStat } from '@/services/securityService';
+import { getDailyLoginStats } from '@/services/securityService';
+import { DailyLoginStat } from '@/types';
 import {
   Card,
   CardContent,
