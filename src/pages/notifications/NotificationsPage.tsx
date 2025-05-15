@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { 
   Card, 
   CardContent, 
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getUserNotifications, markNotificationAsRead, deleteUserNotification } from '@/services/notificationService';
+import { markNotificationAsRead, deleteUserNotification } from '@/services/notificationService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Check, Trash } from 'lucide-react';
@@ -29,50 +29,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Notification } from '@/types/notification';
+import { useNotificationsRealtime } from '@/hooks/use-notifications-realtime';
 
 export default function NotificationsPage() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
 
-  // Otimizado: Adicionado staleTime e reuso do cache do dropdown quando possível
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: async () => {
-      if (!user?.id) {
-        throw new Error('Usuário não autenticado');
-      }
-      const result = await getUserNotifications(user.id);
-      return result;
-    },
-    enabled: !!user?.id,
-    staleTime: 2 * 60 * 1000, // 2 minutos
-    // Reusando dados do dropdown quando disponíveis e recentes
-    initialData: () => {
-      const dropdownData = queryClient.getQueryData<{notifications: Notification[], unreadCount: number}>(['notifications-dropdown']);
-      if (dropdownData) {
-        return dropdownData;
-      }
-      return undefined;
-    }
-  });
+  // Usando o hook de realtime em vez de useQuery com polling
+  const { notifications, unreadCount, isLoading, error } = useNotificationsRealtime(user?.id);
 
-  useEffect(() => {
-    if (error) {
-      console.error('Erro ao buscar notificações:', error);
-      toast.error('Não foi possível carregar suas notificações');
-    }
-  }, [error]);
+  // Exibir erro se houver
+  if (error) {
+    console.error('Erro ao buscar notificações:', error);
+    toast.error('Não foi possível carregar suas notificações');
+  }
 
   const markAsReadMutation = useMutation({
     mutationFn: ({ userId, notificationId }: { userId: string; notificationId: string }) =>
       markNotificationAsRead(userId, notificationId),
     onSuccess: () => {
-      // Invalidar ambas as queries para manter consistência
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
       toast.success('Notificação marcada como lida.');
     },
     onError: (error) => {
@@ -90,9 +66,6 @@ export default function NotificationsPage() {
       return deleteUserNotification(user.id, notificationId);
     },
     onSuccess: () => {
-      // Invalidar ambas as queries para manter consistência
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
       toast.success('Notificação excluída com sucesso.');
       setIsDeleteDialogOpen(false);
       setNotificationToDelete(null);
@@ -166,9 +139,9 @@ export default function NotificationsPage() {
               </Card>
             ))}
           </div>
-        ) : data?.notifications && data.notifications.length > 0 ? (
+        ) : notifications && notifications.length > 0 ? (
           <div className="space-y-4">
-            {data.notifications.map((notification) => (
+            {notifications.map((notification) => (
               <Link
                 key={notification.id}
                 to={`/notifications/${notification.id}`}

@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowLeft } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
   Card, 
   CardContent, 
@@ -27,10 +27,9 @@ import { Notification } from '@/types/notification';
 export default function NotificationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { user } = useAuth();
   
-  // Otimizado: Adicionado staleTime e reutilização de dados do cache
+  // Mantemos a query aqui porque precisamos de um item específico
   const { data: notification, isLoading, error } = useQuery({
     queryKey: ['notification', id],
     queryFn: async () => {
@@ -39,22 +38,6 @@ export default function NotificationDetailPage() {
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000, // 5 minutos
-    initialData: () => {
-      // Tenta usar dados do cache de listagens, se o ID corresponder
-      const notificationsData = queryClient.getQueryData<{notifications: Notification[]}>(['notifications']);
-      if (notificationsData?.notifications) {
-        const foundNotification = notificationsData.notifications.find(n => n.id === id);
-        if (foundNotification) return foundNotification;
-      }
-      
-      const dropdownData = queryClient.getQueryData<{notifications: Notification[]}>(['notifications-dropdown']);
-      if (dropdownData?.notifications) {
-        const foundNotification = dropdownData.notifications.find(n => n.id === id);
-        if (foundNotification) return foundNotification;
-      }
-      
-      return undefined;
-    }
   });
   
   // Verificar erro
@@ -72,9 +55,6 @@ export default function NotificationDetailPage() {
       return markNotificationAsRead(user.id, id);
     },
     onSuccess: () => {
-      // Invalidar ambas as queries para manter consistência
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
       // Não exibimos o toast aqui para não interromper a experiência do usuário
     },
     onError: (error) => {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,12 +17,13 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { getUserNotifications, deleteUserNotification } from '@/services/notificationService';
+import { deleteUserNotification } from '@/services/notificationService';
 import type { Notification } from '@/types/notification';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNotificationsRealtime } from '@/hooks/use-notifications-realtime';
 
 export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,27 +31,10 @@ export function NotificationDropdown() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  // Otimizado: refetchInterval aumentado de 60000 (1 min) para 5 minutos
-  // Adicionado staleTime para reduzir fetches desnecessários
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['notifications-dropdown'],
-    queryFn: async () => {
-      if (!user?.id) throw new Error('Usuário não autenticado');
-      return getUserNotifications(user.id);
-    },
-    enabled: !!user?.id,
-    refetchInterval: 5 * 60 * 1000, // Atualizado para 5 minutos em vez de 1 minuto
-    staleTime: 4.5 * 60 * 1000,     // Dados consideram-se "fresh" por 4.5 minutos
-    refetchOnWindowFocus: true,      // Atualiza quando o usuário volta à janela
-  });
+  // Usando o hook de realtime em vez de useQuery com polling
+  const { notifications, unreadCount, isLoading, error } = useNotificationsRealtime(user?.id);
   
-  // Refetching manual quando o dropdown é aberto
-  useEffect(() => {
-    if (isOpen) {
-      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
-    }
-  }, [isOpen, queryClient]);
-  
+  // Efeito para verificar erros
   useEffect(() => {
     if (error) {
       console.error('Erro ao buscar notificações:', error);
@@ -66,8 +51,6 @@ export function NotificationDropdown() {
       return deleteUserNotification(user.id, notificationId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications-dropdown'] });
-      // Otimização: Não invalidamos 'notifications' aqui, apenas quando realmente necessário
       toast.success('Notificação excluída com sucesso.');
     },
     onError: (error) => {
@@ -128,9 +111,6 @@ export function NotificationDropdown() {
       </div>
     </DropdownMenuItem>
   );
-
-  const notifications = data?.notifications || [];
-  const unreadCount = data?.unreadCount || 0;
 
   // Usando Popover em vez de DropdownMenu para mobile, para UX melhor
   if (isMobile) {
