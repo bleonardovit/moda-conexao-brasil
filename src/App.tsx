@@ -1,5 +1,3 @@
-
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +9,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
+import LandingPageTest from "./pages/LandingPageTest";
 import { TrackingScripts } from "./components/tracking/TrackingScripts";
 
 // Páginas de autenticação
@@ -173,6 +172,9 @@ const AppRoutes = () => {
     <Routes>
       {/* Landing page como rota principal */}
       <Route path="/" element={<LandingPage />} />
+      
+      {/* Nova rota para a Landing Page de Teste */}
+      <Route path="/landing-test" element={<LandingPageTest />} />
       
       {/* Home page ao logar */}
       <Route 

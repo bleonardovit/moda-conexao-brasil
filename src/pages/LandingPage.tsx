@@ -99,7 +99,7 @@ const LandingPage = () => {
               
               <div className="rounded-lg overflow-hidden shadow-xl">
                 <img 
-                  src={mockImages.hero} 
+                  src="/images/mosaico.png"
                   alt="Aplicativo Conexão Brasil" 
                   className="w-full h-auto object-cover"
                 />
@@ -205,9 +205,9 @@ const LandingPage = () => {
             
             <div className="grid md:grid-cols-3 gap-6">
               {[
-                { image: mockImages.app1, title: "Busca de Fornecedores" },
-                { image: mockImages.app2, title: "Filtros Avançados" },
-                { image: mockImages.app3, title: "Perfil Detalhado" }
+                { image: "images/home.jpeg", title: "Busca de Fornecedores" },
+                { image: "images/filtros.png", title: "Filtros Avançados" },
+                { image: "images/perfil.jpeg", title: "Perfil Detalhado" }
               ].map((screen, index) => (
                 <div key={index} className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
                   <img 
