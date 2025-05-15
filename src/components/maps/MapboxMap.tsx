@@ -118,7 +118,7 @@ const MapboxMapComponent: React.FC<MapboxMapProps> = ({ data, metricType, mapbox
 
             new mapboxgl.Popup()
               .setLngLat((e.lngLat as any)) // Use e.lngLat which is correct
-              .setHTML(\`<strong>\${stateName}</strong><br />\${metricType}: \${value?.toLocaleString() || 'N/A'}\`)
+              .setHTML(`<strong>${stateName}</strong><br />${metricType}: ${value?.toLocaleString() || 'N/A'}`) // Corrected this line
               .addTo(mapRef.current!);
           }
         });
@@ -133,7 +133,7 @@ const MapboxMapComponent: React.FC<MapboxMapProps> = ({ data, metricType, mapbox
       });
     } catch (error) {
         console.error("Failed to initialize Mapbox map:", error);
-        if (error.message.includes("Failed to fetch") || error.message.includes("accessToken")) {
+        if (error instanceof Error && (error.message.includes("Failed to fetch") || error.message.includes("accessToken"))) {
             setTokenError(true);
         }
     }
