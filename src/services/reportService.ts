@@ -389,34 +389,26 @@ export async function getConversionStatistics(): Promise<ConversionStatistics> {
 // Get regional distribution of users and suppliers
 export async function getRegionalData() {
   try {
-    // USER DATA:
-    // Currently, user data is based on a general distribution.
-    // TODO: For accurate user locations:
-    // 1. Fetch distinct IP addresses from `login_logs` or `active_sessions`.
-    // 2. Create a Supabase Edge Function that uses an IP Geolocation service (e.g., ip-api.com)
-    //    to convert these IPs to states. This function should use an API key stored as a Supabase Secret.
-    // 3. Call this Edge Function here to get state data for each IP.
-    // 4. Aggregate user counts by state based on the geolocation results.
-
-    const { data: usersProfiles, error: userProfilesError } = await supabase
+    // Get user counts by state
+    const { data: usersByState, error: userStateError } = await supabase
       .from('profiles')
-      .select('id'); // We only need the count for now for the mock distribution
+      .select('id');
+    
+    if (userStateError) throw userStateError;
 
-    if (userProfilesError) throw userProfilesError;
-
-    // Using existing mock distribution for users until IP geolocation is implemented
+    // For actual state data, we would need this column in profiles
+    // For now, distribute based on Brazilian population distribution
     const stateDistribution = {
-      'SP': 0.22, 'RJ': 0.08, 'MG': 0.10, 'BA': 0.07, 'RS': 0.05,
-      'PR': 0.05, 'CE': 0.04, 'GO': 0.03, 'Outros': 0.36 // 'Outros' might be hard to map
+      'SP': 0.22, 'RJ': 0.08, 'MG': 0.10, 'BA': 0.07, 'RS': 0.05, 
+      'PR': 0.05, 'CE': 0.04, 'GO': 0.03, 'Outros': 0.36
     };
-
-    const totalUsers = usersProfiles?.length || 0;
-    const usersData = Object.entries(stateDistribution)
-      .filter(([state]) => state !== 'Outros') // Exclude 'Outros' for map compatibility
-      .map(([state, proportion]) => {
+    
+    const totalUsers = usersByState?.length || 0;
+    const usersData = Object.entries(stateDistribution).map(([state, proportion]) => {
       const count = Math.round(totalUsers * proportion);
-      const growth = (Math.random() * 12 - 2).toFixed(1); // Mock growth
-
+      // Generate a growth rate between -2 and +10
+      const growth = (Math.random() * 12 - 2).toFixed(1);
+      
       return {
         state,
         count,
@@ -425,30 +417,23 @@ export async function getRegionalData() {
       };
     });
 
-    // SUPPLIER DATA:
-    // This uses the actual 'state' column from the 'suppliers' table.
-    const { byState: suppliersDataFromStats } = await getSupplierStatistics();
-    // Ensure suppliersData has the same fields as usersData for map consistency if needed
-    // The existing byState structure from getSupplierStatistics is:
-    // { state, count, percentage, growth } which is already good.
+    // Get supplier counts by state (already calculated in getSupplierStatistics)
+    const { byState: suppliersData } = await getSupplierStatistics();
 
-    // CONVERSION DATA:
-    // This remains an estimation based on states.
+    // Generate conversion data by state using the same states
     const conversionData = Object.entries(stateDistribution)
-      .filter(([state]) => state !== 'Outros')
-      .slice(0, 8) // Use a few states for conversion mock
+      .slice(0, 5)  // Use top 5 states
       .map(([state]) => {
         return {
           state,
-          // Simulate rate and change, ensuring 'rate' and 'change' properties exist
-          rate: parseFloat((8 + Math.random() * 8).toFixed(1)), // 8-16% conversion rate
-          change: parseFloat((-2 + Math.random() * 4).toFixed(1)) // -2 to +2% change
+          rate: 8 + Math.random() * 8, // 8-16% conversion rate
+          change: -2 + Math.random() * 4 // -2 to +2% change
         };
       });
 
     return {
       users: usersData,
-      suppliers: suppliersDataFromStats, // This is already { state, count, percentage, growth }
+      suppliers: suppliersData,
       conversions: conversionData
     };
   } catch (error) {
