@@ -34,3 +34,16 @@ export interface Review {
   comment: string;
   created_at: string;
 }
+
+// Types for supplier import history
+export interface SupplierImportHistory {
+  id: string;
+  filename: string;
+  total_count: number;
+  success_count: number;
+  error_count: number;
+  status: 'success' | 'error' | 'pending';
+  imported_by?: string;
+  imported_at: string;
+  error_details?: Record<string, string[]>;
+}
