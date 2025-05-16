@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -119,19 +118,29 @@ export default function SuppliersBulkUpload() {
   const fetchImportHistory = async () => {
     try {
       const { data, error } = await supabase
-        .from('supplier_import_history')
+        .from('supplier_import_history') // This should now be a valid table name
         .select('*')
         .order('imported_at', { ascending: false })
         .limit(20);
       
       if (error) {
         console.error('Error fetching import history:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar histórico",
+          description: error.message
+        });
         return;
       }
       
-      setImportHistory(data || []);
+      setImportHistory(data as SupplierImportHistory[] || []); // Explicitly cast if needed, or ensure types align
     } catch (error) {
       console.error('Error in fetchImportHistory:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro inesperado ao carregar histórico",
+        description: error instanceof Error ? error.message : "Erro desconhecido"
+      });
     }
   };
   
@@ -436,18 +445,19 @@ export default function SuppliersBulkUpload() {
       const result = await importSuppliers(
         parsedSuppliers, 
         imageMap,
-        (progress) => setProgress(40 + Math.floor(progress * 0.5))
+        (progress) => setProgress(40 + Math.floor(progress * 0.5)) // Adjusted progress calculation base
       );
       
       setProgress(90);
       
       // Save import history
       await saveImportHistory({
-        filename: excelFile?.name || 'import.xlsx',
-        totalSuppliers: parsedSuppliers.length,
-        successCount: result.successCount,
-        errorCount: result.errorCount,
-        status: result.success ? 'success' : 'error'
+        filename: excelFile?.name || 'importação.xlsx', // Default filename
+        total_count: parsedSuppliers.length, // Use parsedSuppliers.length for total_count
+        success_count: result.successCount,
+        error_count: result.errorCount,
+        status: result.success ? 'success' : 'error',
+        error_details: result.success ? undefined : result.errors // Pass error details
       });
       
       setProgress(100);
@@ -781,8 +791,7 @@ export default function SuppliersBulkUpload() {
                     <TableRow>
                       <TableHead>Data</TableHead>
                       <TableHead>Arquivo</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Status da Importação</TableHead> {/* Combined Status and Counts */}
                       <TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -800,29 +809,50 @@ export default function SuppliersBulkUpload() {
                         </TableCell>
                         <TableCell>{item.filename}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span>{item.total_count} fornecedores</span>
-                            {item.error_count > 0 && (
-                              <Badge variant="destructive">{item.error_count} erros</Badge>
-                            )}
+                           <div className="flex flex-col">
+                            <div>
+                              {item.status === 'success' ? (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                  Sucesso
+                                </Badge>
+                              ) : item.status === 'error' ? (
+                                <Badge variant="destructive">Erro na Importação</Badge>
+                              ) : (
+                                <Badge variant="outline">Pendente</Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              <span>Total: {item.total_count}</span>
+                              {item.status !== 'pending' && (
+                                <>
+                                  <span className="mx-1">·</span>
+                                  <span>Sucesso: {item.success_count}</span>
+                                  <span className="mx-1">·</span>
+                                  <span>Falhas: {item.error_count}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          {item.status === 'success' ? (
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
-                              Sucesso
-                            </Badge>
-                          ) : item.status === 'error' ? (
-                            <Badge variant="destructive">Erro</Badge>
-                          ) : (
-                            <Badge variant="outline">Pendente</Badge>
+                          {item.error_count > 0 && item.error_details && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                const errorCSV = exportValidationErrorsToCSV(item.error_details as ValidationErrors);
+                                if (errorCSV) {
+                                  downloadCSV(errorCSV, `erros_${item.filename.split('.')[0]}.csv`);
+                                } else {
+                                  toast({ title: "Sem detalhes de erro para exportar."});
+                                }
+                              }}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Baixar Erros
+                            </Button>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <Database className="h-4 w-4 mr-1" />
-                            Detalhes
-                          </Button>
+                           {/* Placeholder for other actions if needed */}
                         </TableCell>
                       </TableRow>
                     ))}

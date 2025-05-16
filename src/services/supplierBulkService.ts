@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSupplier, updateSupplier } from "@/services/supplierService";
 import type { Supplier } from "@/types";
@@ -309,28 +308,42 @@ export const processImagesFromZip = async (
 // Save import history
 export const saveImportHistory = async (historyData: {
   filename: string;
-  totalSuppliers: number;
-  successCount: number;
-  errorCount: number;
+  total_count: number; // Renamed from totalSuppliers
+  success_count: number; // Renamed from successCount
+  error_count: number;   // Renamed from errorCount
   status: 'success' | 'error' | 'pending';
+  error_details?: ValidationErrors; // Added to store error details
 }) => {
   try {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      console.error('Error fetching user for import history:', userError);
+      // Decide how to handle this: throw error, or save without user_id?
+      // For now, let's proceed without imported_by if user is not found, though DB might reject if it's NOT NULL and no default.
+      // The migration sets imported_by as nullable, so this is okay.
+    }
+
     const { data, error } = await supabase
-      .from('supplier_import_history')
+      .from('supplier_import_history') // This should now be a valid table name
       .insert({
         filename: historyData.filename,
-        total_count: historyData.totalSuppliers,
-        success_count: historyData.successCount,
-        error_count: historyData.errorCount,
+        total_count: historyData.total_count,
+        success_count: historyData.success_count,
+        error_count: historyData.error_count,
         status: historyData.status,
-        imported_by: (await supabase.auth.getUser()).data.user?.id,
-        imported_at: new Date().toISOString()
+        imported_by: userData.user?.id || null, // Use null if user not found
+        imported_at: new Date().toISOString(),
+        error_details: historyData.error_details // Save error details
       })
       .select()
       .single();
     
     if (error) {
       console.error('Error saving import history:', error);
+      // Check for specific Supabase errors, e.g., RLS issues
+      if (error.message.includes("violates row-level security policy")) {
+        console.error("RLS policy violation when saving import history. Ensure the user has permissions.");
+      }
       return null;
     }
     

@@ -348,6 +348,42 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_import_history: {
+        Row: {
+          error_count: number
+          error_details: Json | null
+          filename: string
+          id: string
+          imported_at: string
+          imported_by: string | null
+          status: string
+          success_count: number
+          total_count: number
+        }
+        Insert: {
+          error_count?: number
+          error_details?: Json | null
+          filename: string
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          status: string
+          success_count?: number
+          total_count?: number
+        }
+        Update: {
+          error_count?: number
+          error_details?: Json | null
+          filename?: string
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          status?: string
+          success_count?: number
+          total_count?: number
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           avg_price: string | null
