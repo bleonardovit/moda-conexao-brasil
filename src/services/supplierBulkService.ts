@@ -95,12 +95,12 @@ export const mapRowToSupplierFormValues = (row: SupplierRowData): SupplierFormVa
     requires_cnpj: requiresCnpj,
     avg_price: avgPrice,
     shipping_methods: shippingMethods,
-    custom_shipping_method: '',
+    custom_shipping_method: '', // Assuming this is intentional or handled elsewhere
     city: row.cidade || '',
     state: row.estado || '',
     categories: categories,
-    featured: false,
-    hidden: false,
+    featured: false, // Default value
+    hidden: false,   // Default value
     images: [], // Will be filled later with image URLs
   };
 };
@@ -127,13 +127,13 @@ export const validateSupplierRow = (
   
   // Validate price
   if (row.preco_medio) {
-    const normalizedPrice = row.preco_medio
+    const normalizedPrice = (row.preco_medio || "") // Add null check for row.preco_medio itself
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .replace(/[\u0300-\u036f]/g, ""); // Ensure this uses the corrected regex pattern if normalize() isn't used here directly
     
     if (!['baixo', 'medio', 'alto', 'low', 'medium', 'high', '1', '2', '3'].includes(normalizedPrice)) {
-      errors.push('Preço médio deve ser baixo, médio ou alto');
+      errors.push('Preço médio deve ser baixo, médio ou alto, ou um número de 1 a 3');
     }
   }
   
@@ -167,16 +167,30 @@ export const importSuppliers = async (
   
   try {
     // Get existing supplier codes to check for duplicates
-    const { data: existingSuppliers } = await supabase
+    const { data: existingSuppliers, error: fetchError } = await supabase
       .from('suppliers')
       .select('code');
+
+    if (fetchError) {
+      console.error('Error fetching existing supplier codes:', fetchError);
+      result.success = false;
+      result.errors['global'] = [`Erro ao buscar códigos existentes: ${fetchError.message}`];
+      return result;
+    }
     
     const existingCodes = new Set((existingSuppliers || []).map(s => s.code));
     
     // Get existing categories
-    const { data: categoriesData } = await supabase
+    const { data: categoriesData, error: categoriesError } = await supabase
       .from('categories')
       .select('id, name');
+
+    if (categoriesError) {
+      console.error('Error fetching existing categories:', categoriesError);
+      result.success = false;
+      result.errors['global'] = [`Erro ao buscar categorias existentes: ${categoriesError.message}`];
+      return result;
+    }
     
     const existingCategories = new Map(
       (categoriesData || []).map(c => [c.id, c.name])
@@ -186,7 +200,7 @@ export const importSuppliers = async (
     for (const row of suppliers) {
       const errors = validateSupplierRow(row, existingCodes, existingCategories);
       if (errors.length > 0) {
-        result.errors[row.codigo || 'unknown'] = errors;
+        result.errors[row.codigo || `unknown-${Date.now()}`] = errors; // Ensure unique key for errors
         result.errorCount++;
       }
     }
@@ -201,6 +215,7 @@ export const importSuppliers = async (
     let processed = 0;
     
     for (const row of suppliers) {
+      const supplierCodeForError = row.codigo || `unknown-processing-${Date.now()}`;
       try {
         // Map Excel data to supplier format
         const supplierData = mapRowToSupplierFormValues(row);
@@ -211,16 +226,17 @@ export const importSuppliers = async (
         }
         
         // Create supplier in database
-        await createSupplier(supplierData);
+        // Assuming createSupplier handles its own errors or throws them
+        await createSupplier(supplierData); 
         
         result.successCount++;
       } catch (error) {
-        console.error(`Error importing supplier ${row.codigo}:`, error);
-        result.errors[row.codigo || 'unknown'] = [
+        console.error(`Error importing supplier ${supplierCodeForError}:`, error);
+        result.errors[supplierCodeForError] = [
           `Erro ao importar: ${error instanceof Error ? error.message : 'erro desconhecido'}`
         ];
         result.errorCount++;
-        result.success = false;
+        result.success = false; // Mark overall success as false if any supplier fails
       }
       
       processed++;
@@ -233,7 +249,7 @@ export const importSuppliers = async (
   } catch (error) {
     console.error('Error in bulk import process:', error);
     result.success = false;
-    result.errors['global'] = [
+    result.errors['global'] = [ // Ensure 'global' errors are captured
       `Erro no processo de importação: ${error instanceof Error ? error.message : 'erro desconhecido'}`
     ];
     return result;
@@ -245,111 +261,118 @@ export const processImagesFromZip = async (
   zipData: ArrayBuffer, 
   storagePath = 'supplier-images'
 ): Promise<Record<string, string[]>> => {
-  // Import JSZip dynamically (already installed in the project)
   const JSZip = await import('jszip').then(mod => mod.default);
   const zip = await JSZip.loadAsync(zipData);
   
   const imageMap: Record<string, string[]> = {};
-  
-  // Process each file in the ZIP
-  const promises = Object.keys(zip.files).map(async (filename) => {
-    if (zip.files[filename].dir) return;
-    
-    // Check if it's an image file
-    if (!/\.(jpe?g|png|gif|webp)$/i.test(filename)) return;
-    
-    // Extract code from filename (e.g., F001-img1.jpg -> F001)
-    const match = filename.match(/^([^-]+)-/) || [null, filename.split('.')[0]];
-    const supplierCode = match[1];
-    
-    if (!supplierCode) return;
-    
-    // Get the file as blob
-    const blob = await zip.files[filename].async("blob");
-    
-    // Upload to Supabase Storage
-    const fileExt = filename.split('.').pop();
-    const filePath = `${supplierCode}/${Date.now()}.${fileExt}`;
-    
-    try {
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(storagePath)
-        .upload(filePath, blob, {
-          contentType: blob.type,
-          upsert: true
-        });
+  const processingPromises: Promise<void>[] = [];
+
+  for (const filename of Object.keys(zip.files)) {
+    const fileInZip = zip.files[filename];
+    if (fileInZip.dir || !/\.(jpe?g|png|gif|webp)$/i.test(filename)) {
+      continue;
+    }
+
+    const processingPromise = (async () => {
+      // Extract code from filename (e.g., F001-img1.jpg -> F001)
+      const match = filename.match(/^([^-]+)-/) || filename.match(/^([^.]+)\./); // More flexible match
+      const supplierCode = match ? match[1] : null;
       
-      if (uploadError) {
-        console.error(`Error uploading ${filename}:`, uploadError);
+      if (!supplierCode) {
+        console.warn(`Could not extract supplier code from image filename: ${filename}`);
         return;
       }
       
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(storagePath)
-        .getPublicUrl(filePath);
-      
-      if (urlData && urlData.publicUrl) {
-        // Add to image map
-        if (!imageMap[supplierCode]) {
-          imageMap[supplierCode] = [];
+      try {
+        const blob = await fileInZip.async("blob");
+        const fileExt = filename.split('.').pop() || 'jpg'; // Default extension
+        const uniqueFileName = `${supplierCode}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from(storagePath)
+          .upload(uniqueFileName, blob, {
+            contentType: blob.type,
+            upsert: false // Set to false to avoid accidental overwrites if not intended
+          });
+        
+        if (uploadError) {
+          console.error(`Error uploading ${filename} (for ${supplierCode}):`, uploadError);
+          // Optionally, collect these errors to show to the user
+          return;
         }
-        imageMap[supplierCode].push(urlData.publicUrl);
+        
+        if (uploadData?.path) {
+            const { data: urlData } = supabase.storage
+            .from(storagePath)
+            .getPublicUrl(uploadData.path);
+        
+            if (urlData && urlData.publicUrl) {
+                if (!imageMap[supplierCode]) {
+                imageMap[supplierCode] = [];
+                }
+                imageMap[supplierCode].push(urlData.publicUrl);
+            } else {
+                console.warn(`Could not get public URL for uploaded image: ${filename}`);
+            }
+        } else {
+            console.warn(`Upload data path missing for ${filename}`);
+        }
+
+      } catch (error) {
+        console.error(`Error processing image ${filename} from ZIP:`, error);
       }
-    } catch (error) {
-      console.error(`Error processing ${filename}:`, error);
-    }
-  });
+    })();
+    processingPromises.push(processingPromise);
+  }
   
-  await Promise.all(promises);
+  await Promise.all(processingPromises);
   return imageMap;
 };
 
 // Save import history
 export const saveImportHistory = async (historyData: {
   filename: string;
-  total_count: number; // Renamed from totalSuppliers
-  success_count: number; // Renamed from successCount
-  error_count: number;   // Renamed from errorCount
+  total_count: number;
+  success_count: number;
+  error_count: number;
   status: 'success' | 'error' | 'pending';
-  error_details?: ValidationErrors; // Added to store error details
+  error_details?: ValidationErrors;
 }) => {
   try {
     const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData.user) {
-      console.error('Error fetching user for import history:', userError);
-      // Decide how to handle this: throw error, or save without user_id?
-      // For now, let's proceed without imported_by if user is not found, though DB might reject if it's NOT NULL and no default.
-      // The migration sets imported_by as nullable, so this is okay.
+    // Not critical if user fetch fails, imported_by is nullable
+    if (userError) {
+      console.warn('Error fetching user for import history:', userError.message);
     }
 
     const { data, error } = await supabase
-      .from('supplier_import_history') // This should now be a valid table name
+      .from('supplier_import_history')
       .insert({
         filename: historyData.filename,
         total_count: historyData.total_count,
         success_count: historyData.success_count,
         error_count: historyData.error_count,
         status: historyData.status,
-        imported_by: userData.user?.id || null, // Use null if user not found
+        imported_by: userData?.user?.id || null,
         imported_at: new Date().toISOString(),
-        error_details: historyData.error_details // Save error details
+        error_details: historyData.error_details || null // Ensure null if undefined
       })
       .select()
-      .single();
+      .single(); // Assuming you expect one row back
     
     if (error) {
       console.error('Error saving import history:', error);
-      // Check for specific Supabase errors, e.g., RLS issues
+      // Specific RLS check
       if (error.message.includes("violates row-level security policy")) {
-        console.error("RLS policy violation when saving import history. Ensure the user has permissions.");
+        console.error("RLS policy violation when saving import history. Ensure the user has permissions or table policy allows insert.");
       }
-      return null;
+      // Optionally re-throw or return a more specific error object
+      return null; // Or throw error to be caught by caller
     }
     
     return data;
   } catch (error) {
-    console.error('Error in saveImportHistory:', error);
-    return null;
+    console.error('Unexpected error in saveImportHistory:', error);
+    return null; // Or throw
   }
 };
