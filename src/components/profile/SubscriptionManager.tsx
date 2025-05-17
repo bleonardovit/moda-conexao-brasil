@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
-import { Loader2, Calendar, CheckCircle, CreditCard, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Calendar, CheckCircle, CreditCard, AlertCircle, ExternalLink } from 'lucide-react';
 import { User } from '@/types';
+import { supabase } from '@/integrations/supabase/client'; // Import supabase client
 
 interface SubscriptionManagerProps {
   user: User;
@@ -12,26 +13,31 @@ interface SubscriptionManagerProps {
 
 export function SubscriptionManager({ user }: SubscriptionManagerProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isChangingPlan, setIsChangingPlan] = useState(false);
+  const { toast } = useToast();
   
   const handleManageSubscription = async () => {
     setIsLoading(true);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulating opening a payment portal
-      window.open('https://example.com/payment', '_blank');
-      
-      toast({
-        title: 'Portal de pagamento aberto',
-        description: 'Você foi redirecionado para o portal de gerenciamento de assinatura.',
-      });
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data && data.url) {
+        window.open(data.url, '_blank');
+        toast({
+          title: 'Portal de Gerenciamento Aberto',
+          description: 'Você foi redirecionado para gerenciar sua assinatura.',
+        });
+      } else {
+        throw new Error('Não foi possível obter a URL do portal de gerenciamento.');
+      }
     } catch (error) {
+      console.error('Erro ao gerenciar assinatura:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível acessar o portal de assinatura. Tente novamente mais tarde.',
+        description: error instanceof Error ? error.message : 'Não foi possível acessar o portal. Tente novamente.',
         variant: 'destructive'
       });
     } finally {
@@ -39,31 +45,8 @@ export function SubscriptionManager({ user }: SubscriptionManagerProps) {
     }
   };
   
-  const handleChangePlan = async () => {
-    setIsChangingPlan(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast({
-        title: 'Plano alterado',
-        description: user.subscription_type === 'monthly' 
-          ? 'Seu plano foi alterado para anual com sucesso!' 
-          : 'Seu plano foi alterado para mensal com sucesso!',
-      });
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível alterar o plano. Tente novamente mais tarde.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsChangingPlan(false);
-    }
-  };
-  
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
   
@@ -75,23 +58,33 @@ export function SubscriptionManager({ user }: SubscriptionManagerProps) {
     
     if (user.subscription_type === 'monthly') {
       nextDate.setMonth(nextDate.getMonth() + 1);
-    } else {
+    } else if (user.subscription_type === 'yearly') { // Corrected to 'yearly'
       nextDate.setFullYear(nextDate.getFullYear() + 1);
+    } else {
+        return 'N/A';
     }
     
     return formatDate(nextDate.toISOString());
   };
   
   const getPlanValue = () => {
-    return user.subscription_type === 'monthly' ? 'R$ 49,90/mês' : 'R$ 479,90/ano';
+    if (user.subscription_type === 'monthly') return 'R$ 9,70/mês';
+    if (user.subscription_type === 'yearly') return 'R$ 87,00/ano'; // Corrected to 'yearly'
+    return 'N/A';
   };
+
+  const getPlanName = () => {
+    if (user.subscription_type === 'monthly') return 'Plano Mensal';
+    if (user.subscription_type === 'yearly') return 'Plano Anual'; // Corrected to 'yearly'
+    return 'Nenhum plano ativo';
+  }
   
   return (
     <Card>
       <CardHeader>
         <CardTitle>Sua Assinatura</CardTitle>
         <CardDescription>
-          Detalhes do seu plano atual e opções de gerenciamento
+          Detalhes do seu plano atual e opções de gerenciamento.
         </CardDescription>
       </CardHeader>
       
@@ -100,19 +93,22 @@ export function SubscriptionManager({ user }: SubscriptionManagerProps) {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-medium flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                Plano {user.subscription_type === 'monthly' ? 'Mensal' : 'Anual'}
+                {user.subscription_status === 'active' ? <CheckCircle className="h-4 w-4 text-green-500 mr-2" /> : <AlertCircle className="h-4 w-4 text-yellow-500 mr-2" />}
+                {getPlanName()}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {user.subscription_status === 'active' ? 'Ativo' : 'Inativo'}
+                {user.subscription_status === 'active' ? 'Ativo' : 
+                 user.subscription_status === 'pending' ? 'Pendente' : 'Inativo'}
               </p>
             </div>
             <span 
               className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                user.subscription_status === 'active' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
+                user.subscription_status === 'active' ? 'bg-green-500 text-white' : 
+                user.subscription_status === 'pending' ? 'bg-yellow-500 text-black' : 'bg-red-500 text-white'
               }`}
             >
-              {user.subscription_status === 'active' ? 'Ativo' : 'Inativo'}
+              {user.subscription_status === 'active' ? 'Ativo' : 
+               user.subscription_status === 'pending' ? 'Pendente' : 'Inativo'}
             </span>
           </div>
         </div>
@@ -122,21 +118,21 @@ export function SubscriptionManager({ user }: SubscriptionManagerProps) {
             <h3 className="text-sm font-medium text-muted-foreground flex items-center">
               <Calendar className="h-4 w-4 mr-1" /> Data de Início
             </h3>
-            <p>{user.subscription_start_date ? formatDate(user.subscription_start_date) : 'N/A'}</p>
+            <p>{formatDate(user.subscription_start_date)}</p>
           </div>
           
           <div className="space-y-1">
             <h3 className="text-sm font-medium text-muted-foreground flex items-center">
               <Calendar className="h-4 w-4 mr-1" /> Próxima cobrança
             </h3>
-            <p>{getNextBillingDate()}</p>
+            <p>{user.subscription_status === 'active' ? getNextBillingDate() : 'N/A'}</p>
           </div>
           
           <div className="space-y-1">
             <h3 className="text-sm font-medium text-muted-foreground flex items-center">
               <CreditCard className="h-4 w-4 mr-1" /> Valor
             </h3>
-            <p>{getPlanValue()}</p>
+            <p>{user.subscription_status === 'active' ? getPlanValue() : 'N/A'}</p>
           </div>
           
           <div className="space-y-1">
@@ -144,30 +140,12 @@ export function SubscriptionManager({ user }: SubscriptionManagerProps) {
               <AlertCircle className="h-4 w-4 mr-1" /> Status
             </h3>
             <div className="flex items-center">
-              <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
-              <span>Ativa</span>
+              {user.subscription_status === 'active' && <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>}
+              {user.subscription_status === 'inactive' && <span className="h-2 w-2 rounded-full bg-red-500 mr-2"></span>}
+              {user.subscription_status === 'pending' && <span className="h-2 w-2 rounded-full bg-yellow-500 mr-2"></span>}
+              <span>{user.subscription_status === 'active' ? 'Ativa' : user.subscription_status === 'pending' ? 'Pendente' : 'Inativa'}</span>
             </div>
           </div>
-        </div>
-        
-        <div className="pt-2">
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={handleChangePlan}
-            disabled={isChangingPlan}
-          >
-            {isChangingPlan ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processando...
-              </>
-            ) : (
-              <>
-                Mudar para plano {user.subscription_type === 'monthly' ? 'anual' : 'mensal'}
-              </>
-            )}
-          </Button>
         </div>
       </CardContent>
       
@@ -182,12 +160,18 @@ export function SubscriptionManager({ user }: SubscriptionManagerProps) {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Carregando...
             </>
-          ) : 'Gerenciar método de pagamento'}
+          ) : (
+            <>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Gerenciar Assinatura e Pagamento
+            </>
+          )}
         </Button>
         <p className="text-xs text-muted-foreground text-center">
-          Você pode alterar seu plano ou método de pagamento a qualquer momento.
+          Você será redirecionado ao portal do Stripe para gerenciar seu plano ou método de pagamento.
         </p>
       </CardFooter>
     </Card>
   );
 }
+

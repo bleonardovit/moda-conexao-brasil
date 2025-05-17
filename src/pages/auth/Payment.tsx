@@ -1,12 +1,12 @@
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { CreditCard, Banknote, QrCode, CheckCircle } from 'lucide-react';
+import { CreditCard, Banknote, QrCode, CheckCircle, Loader2 } from 'lucide-react';
 import { 
   Card, 
   CardContent, 
@@ -15,243 +15,113 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client'; // Import supabase client
+import { useAuth } from '@/hooks/useAuth'; // To check if user is authenticated
+
+type PlanType = 'monthly' | 'yearly';
 
 export default function Payment() {
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCVC, setCardCVC] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('card'); // Default to card, Stripe handles this
   const [isLoading, setIsLoading] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const [isComplete, setIsComplete] = useState(false); // For post-payment success message
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
   
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const plan = queryParams.get('plan') as PlanType;
+    if (plan === 'monthly' || plan === 'yearly') {
+      setSelectedPlan(plan);
+    }
+    // Check for Stripe success/cancel query params
+    const success = queryParams.get('payment_success');
+    const cancelled = queryParams.get('payment_cancelled');
+
+    if (success === 'true') {
+        setIsComplete(true);
+        toast({
+            title: "Pagamento processado com sucesso!",
+            description: "Sua assinatura está ativa. Bem-vindo à Conexão Brasil!",
+        });
+        // Optionally fetch subscription status from backend here
+        setTimeout(() => {
+            navigate('/suppliers'); // Or profile page
+        }, 3000);
+    } else if (cancelled === 'true') {
+        toast({
+            variant: "destructive",
+            title: "Pagamento cancelado",
+            description: "Você cancelou o processo de pagamento. Sua assinatura não foi ativada.",
+        });
+        navigate('/'); // Redirect to home or pricing
+    }
+
+  }, [location.search, navigate, toast]);
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Usuário não autenticado",
+            description: "Por favor, faça login para continuar.",
+        });
+        navigate('/auth/login');
+        return;
+    }
     setIsLoading(true);
     
     try {
-      // Simulação de processamento de pagamento
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setIsComplete(true);
-      
-      toast({
-        title: "Pagamento processado com sucesso!",
-        description: "Sua assinatura está ativa. Bem-vindo à Conexão Brasil!",
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { planType: selectedPlan }
       });
-      
-      // Redirecionar após um curto atraso
-      setTimeout(() => {
-        navigate('/suppliers');
-      }, 3000);
+
+      if (error) {
+        console.error('Stripe Checkout Error:', error);
+        throw new Error(error.message || 'Falha ao iniciar o checkout.');
+      }
+
+      if (data && data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error('Não foi possível obter a URL de checkout do Stripe.');
+      }
     } catch (error) {
       console.error('Erro no pagamento:', error);
       toast({
         variant: "destructive",
-        title: "Erro no processamento do pagamento",
-        description: "Por favor, tente novamente ou use outro método de pagamento.",
+        title: "Erro no Processamento",
+        description: error instanceof Error ? error.message : "Ocorreu um erro. Tente novamente.",
       });
-    } finally {
       setIsLoading(false);
     }
+    // setIsLoading(false) is not called here because the user is redirected
   };
 
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-
-    for (let i=0, len=match.length; i<len; i+=4) {
-      parts.push(match.substring(i, i+4));
-    }
-
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return value;
-    }
+  const planDetails = {
+    monthly: { name: 'Plano Mensal', price: 'R$ 9,70', id: 'prod_SKDr4FhH8ZMx1z' },
+    yearly: { name: 'Plano Anual', price: 'R$ 87,00', id: 'prod_SKDstDNOxG1OOV', originalPrice: 'R$ 116,40' },
   };
 
-  const formatExpiry = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length > 2) {
-      return `${v.substring(0, 2)}/${v.substring(2, 4)}`;
-    }
-    return v;
-  };
+  const currentPlan = planDetails[selectedPlan];
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
-      <Card className="w-full max-w-md glass-morphism border-white/10 shadow-lg hover:shadow-xl transition-shadow duration-300">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
-            {isComplete ? 'Pagamento Confirmado!' : 'Finalizar Assinatura'}
-          </CardTitle>
-          <CardDescription className="text-gray-300">
-            {isComplete ? 'Sua conta foi ativada com sucesso' : 'Escolha seu método de pagamento preferido'}
-          </CardDescription>
-        </CardHeader>
-        
-        {!isComplete ? (
-          <form onSubmit={handlePayment}>
-            <CardContent className="space-y-4">
-              <Tabs defaultValue="card" value={paymentMethod} onValueChange={setPaymentMethod} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-black/40">
-                  <TabsTrigger 
-                    value="card" 
-                    className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white"
-                  >
-                    <CreditCard size={16} className="mr-2" /> Cartão
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="pix" 
-                    className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white"
-                  >
-                    <QrCode size={16} className="mr-2" /> Pix
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="boleto" 
-                    className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white"
-                  >
-                    <Banknote size={16} className="mr-2" /> Boleto
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="card" className="mt-4 border-none">
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="cardNumber" className="text-white">Número do Cartão</Label>
-                      <Input
-                        id="cardNumber"
-                        type="text"
-                        placeholder="0000 0000 0000 0000"
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                        className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50"
-                        maxLength={19}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="cardName" className="text-white">Nome no Cartão</Label>
-                      <Input
-                        id="cardName"
-                        type="text"
-                        placeholder="Nome completo"
-                        value={cardName}
-                        onChange={(e) => setCardName(e.target.value)}
-                        className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50"
-                        required
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="cardExpiry" className="text-white">Validade</Label>
-                        <Input
-                          id="cardExpiry"
-                          type="text"
-                          placeholder="MM/AA"
-                          value={cardExpiry}
-                          onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                          className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50"
-                          maxLength={5}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="cardCVC" className="text-white">CVC</Label>
-                        <Input
-                          id="cardCVC"
-                          type="text"
-                          placeholder="000"
-                          value={cardCVC}
-                          onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                          className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50"
-                          maxLength={4}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="pix" className="mt-4 border-none">
-                  <div className="flex flex-col items-center py-4">
-                    <div className="h-48 w-48 bg-white p-2 rounded-lg mb-4">
-                      <div className="h-full w-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9InJlZCIvPjwvc3ZnPg==')]" />
-                    </div>
-                    <p className="text-white text-center">
-                      Escaneie este código QR com o seu aplicativo bancário ou carteira digital para efetuar o pagamento.
-                    </p>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="boleto" className="mt-4 border-none">
-                  <div className="flex flex-col items-center py-4">
-                    <div className="h-20 w-full bg-white/90 rounded flex items-center justify-center mb-4">
-                      <div className="text-black font-mono text-xs">
-                        34191.79001 01043.510047 91020.150008 8 94750000029990
-                      </div>
-                    </div>
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      className="border-white/20 text-gray-300 hover:bg-white/5 hover:text-white"
-                      onClick={() => {
-                        toast({
-                          title: "Boleto gerado",
-                          description: "O boleto foi copiado para a área de transferência.",
-                        });
-                      }}
-                    >
-                      Copiar código
-                    </Button>
-                    <p className="text-white text-center mt-4">
-                      O boleto será enviado para o seu email. O acesso será liberado após a confirmação do pagamento (1-3 dias úteis).
-                    </p>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-            
-            <CardFooter className="flex flex-col space-y-2">
-              <p className="text-sm text-gray-400 mb-2">
-                Total: <span className="text-white font-bold">R$ {paymentMethod === "boleto" ? "49,90" : "49,90"}</span>
-              </p>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                    Processando...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    {paymentMethod === "pix" ? <QrCode size={18} /> : 
-                     paymentMethod === "boleto" ? <Banknote size={18} /> : 
-                     <CreditCard size={18} />}
-                    Finalizar Pagamento
-                  </span>
-                )}
-              </Button>
-              
-              <p className="text-xs text-center text-gray-400 mt-2">
-                Seus dados estão seguros. Utilizamos criptografia de ponta a ponta.
-              </p>
-            </CardFooter>
-          </form>
-        ) : (
+  if (isComplete) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
+        <Card className="w-full max-w-md glass-morphism border-white/10 shadow-lg">
+          <CardHeader className="space-y-1 text-center">
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
+              Pagamento Confirmado!
+            </CardTitle>
+            <CardDescription className="text-gray-300">
+              Sua conta foi ativada com sucesso.
+            </CardDescription>
+          </CardHeader>
           <CardContent className="space-y-4 text-center">
             <div className="py-8 text-white">
               <div className="mx-auto w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
@@ -269,8 +139,82 @@ export default function Payment() {
               Acessar a plataforma
             </Button>
           </CardContent>
-        )}
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
+      <Card className="w-full max-w-md glass-morphism border-white/10 shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
+            Finalizar Assinatura
+          </CardTitle>
+          <CardDescription className="text-gray-300">
+            Você está assinando o <span className="font-semibold text-white">{currentPlan.name}</span>.
+            {selectedPlan === 'yearly' && currentPlan.originalPrice && (
+              <span className="block text-sm">De <span className="line-through">{currentPlan.originalPrice}</span> por {currentPlan.price} à vista.</span>
+            )}
+          </CardDescription>
+        </CardHeader>
+        
+        {/* Stripe irá lidar com os métodos de pagamento. Removemos as abas e inputs de cartão. */}
+        <form onSubmit={handlePayment}>
+          <CardContent className="space-y-4">
+            <p className="text-center text-white">
+              Você será redirecionado para o ambiente seguro do Stripe para finalizar o pagamento.
+            </p>
+            <div className="flex justify-center space-x-2 mt-4">
+                <Button 
+                    type="button"
+                    variant={selectedPlan === 'monthly' ? 'default' : 'outline'}
+                    onClick={() => setSelectedPlan('monthly')}
+                    className={selectedPlan === 'monthly' ? "bg-gradient-to-r from-brand.purple to-brand.pink text-white" : "text-gray-300 border-white/20 hover:bg-white/5"}
+                >
+                    Mudar para Mensal (R$ 9,70)
+                </Button>
+                <Button 
+                    type="button"
+                    variant={selectedPlan === 'yearly' ? 'default' : 'outline'}
+                    onClick={() => setSelectedPlan('yearly')}
+                    className={selectedPlan === 'yearly' ? "bg-gradient-to-r from-brand.purple to-brand.pink text-white" : "text-gray-300 border-white/20 hover:bg-white/5"}
+                >
+                    Mudar para Anual (R$ 87,00)
+                </Button>
+            </div>
+          </CardContent>
+          
+          <CardFooter className="flex flex-col space-y-2">
+            <p className="text-sm text-gray-400 mb-2">
+              Total: <span className="text-white font-bold">{currentPlan.price}</span>
+            </p>
+            
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" 
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redirecionando...
+                </>
+              ) : (
+                <>
+                  <CreditCard size={18} className="mr-2" />
+                  Pagar com Stripe
+                </>
+              )}
+            </Button>
+            
+            <p className="text-xs text-center text-gray-400 mt-2">
+              Seus dados estão seguros. Utilizamos criptografia de ponta a ponta.
+            </p>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   );
 }
+

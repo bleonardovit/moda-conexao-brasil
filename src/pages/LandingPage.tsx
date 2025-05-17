@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -235,18 +234,18 @@ const LandingPage = () => {
             </div>
             
             <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              {/* Basic Plan */}
+              {/* Monthly Plan */}
               <div className="bg-white p-6 rounded-lg shadow-md border border-border">
-                <h3 className="text-xl font-bold text-center mb-4">Plano Básico</h3>
+                <h3 className="text-xl font-bold text-center mb-4">Plano Mensal</h3>
                 <div className="text-center mb-6">
-                  <span className="text-3xl font-bold">R$ 29</span>
+                  <span className="text-3xl font-bold">R$ 9,70</span>
                   <span className="text-muted-foreground">/mês</span>
                 </div>
                 
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>Acesso limitado a fornecedores</span>
+                    <span>Acesso a fornecedores verificados</span>
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
@@ -259,22 +258,24 @@ const LandingPage = () => {
                 </ul>
                 
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-4">Ideal para iniciantes no mercado</p>
-                  <Button onClick={() => navigate('/auth/register')} className="w-full">
-                    Assinar Plano Básico
+                  <p className="text-sm text-muted-foreground mb-4">Ideal para quem quer começar</p>
+                  <Button onClick={() => navigate('/auth/register?plan=monthly')} className="w-full">
+                    Assinar Plano Mensal
                   </Button>
                 </div>
               </div>
               
-              {/* Premium Plan */}
+              {/* Annual Plan */}
               <div className="bg-white p-6 rounded-lg shadow-lg border-2 border-[#9b87f5] relative">
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#9b87f5] text-white px-3 py-1 rounded-full text-sm">
-                  Recomendado
+                  Melhor Oferta!
                 </div>
-                <h3 className="text-xl font-bold text-center mb-4">Plano Premium</h3>
+                <h3 className="text-xl font-bold text-center mb-4">Plano Anual</h3>
                 <div className="text-center mb-6">
-                  <span className="text-3xl font-bold">R$ 79</span>
-                  <span className="text-muted-foreground">/mês</span>
+                  <span className="text-3xl font-bold">R$ 87,00</span>
+                  <span className="text-muted-foreground block text-sm">Pagamento único anual</span>
+                  <p className="text-sm text-green-600 font-medium">De <span className="line-through">R$ 116,40</span> por R$ 87,00 à vista</p>
+                  <p className="text-xs text-muted-foreground">(Economize R$ 29,40 - Oferta Limitada)</p>
                 </div>
                 
                 <ul className="space-y-3 mb-6">
@@ -292,17 +293,17 @@ const LandingPage = () => {
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>Ferramentas avançadas de análise</span>
+                    <span>Conteúdo exclusivo</span>
                   </li>
                 </ul>
                 
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-4">Ideal para negócios em expansão</p>
+                  <p className="text-sm text-muted-foreground mb-4">Ideal para quem busca o melhor custo-benefício</p>
                   <Button 
-                    onClick={() => navigate('/auth/register')}
+                    onClick={() => navigate('/auth/register?plan=yearly')}
                     className="w-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90"
                   >
-                    Assinar Plano Premium
+                    Assinar Plano Anual
                   </Button>
                 </div>
               </div>
@@ -332,7 +333,7 @@ const LandingPage = () => {
                 <AccordionItem value="item-2">
                   <AccordionTrigger>Posso mudar de plano depois?</AccordionTrigger>
                   <AccordionContent>
-                    Sim, você pode alterar seu plano a qualquer momento nas configurações da sua conta.
+                    Sim, você pode alterar seu plano a qualquer momento através do portal de gerenciamento de assinatura.
                   </AccordionContent>
                 </AccordionItem>
                 
@@ -353,7 +354,7 @@ const LandingPage = () => {
                 <AccordionItem value="item-5">
                   <AccordionTrigger>O que acontece após o cadastro?</AccordionTrigger>
                   <AccordionContent>
-                    Após o cadastro, você terá acesso imediato à plataforma conforme o plano escolhido. Nossa equipe também entrará em contato para ajudar nos primeiros passos.
+                    Após o cadastro e a confirmação do pagamento da assinatura, você terá acesso imediato à plataforma conforme o plano escolhido.
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
