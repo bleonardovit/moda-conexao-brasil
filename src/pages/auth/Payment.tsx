@@ -182,8 +182,8 @@ export default function Payment() {
           </CardContent>
           
           <CardFooter className="flex flex-col space-y-2">
-            <p className="text-sm text-gray-300 mb-2"> {/* Legibility Change */}
-              Total: <span className="text-white font-bold">{currentPlanDetails.price}</span>
+            <p className="text-sm mb-2 text-slate-500"> {/* Legibility Change */}
+              Total: <span className="font-bold text-slate-950">{currentPlanDetails.price}</span>
             </p>
             
             <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" disabled={isLoading}>
