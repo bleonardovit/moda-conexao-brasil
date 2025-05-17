@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Card, 
   CardContent, 
@@ -22,12 +22,13 @@ export default function Register() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [planType, setPlanType] = useState('monthly');
+  const [planType, setPlanType] = useState<'monthly' | 'yearly'>('monthly');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const { register, isLoading } = useAuth();
 
@@ -42,14 +43,11 @@ export default function Register() {
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validar primeiro passo
     if (currentStep === 1) {
       if (!validatePasswordMatch()) {
         return;
       }
       setCurrentStep(2);
-      return;
     }
   };
 
@@ -57,14 +55,24 @@ export default function Register() {
     e.preventDefault();
     
     if (currentStep !== 2) return;
+    if (!validatePasswordMatch()) {
+        toast({
+            variant: "destructive",
+            title: "Erro de Validação",
+            description: "As senhas não conferem. Por favor, verifique.",
+        });
+        setCurrentStep(1);
+        return;
+    }
     
     try {
       const success = await register(fullName, email, password, phone);
       if (success) {
-        // Simulação de redirecionamento para o checkout
-        setTimeout(() => {
-          navigate('/auth/payment');
-        }, 1000);
+        toast({
+            title: "Cadastro realizado com sucesso!",
+            description: "Você será redirecionado para a página de pagamento.",
+        });
+        navigate(`/auth/payment?plan=${planType}`);
       }
     } catch (error) {
       console.error('Erro no registro:', error);
@@ -86,7 +94,7 @@ export default function Register() {
           <CardTitle className="text-2xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
             Criar Conta
           </CardTitle>
-          <CardDescription className="text-gray-300">
+          <CardDescription className="text-gray-200">
             {currentStep === 1 
               ? 'Preencha seus dados para criar sua conta' 
               : 'Escolha seu plano de assinatura'}
@@ -97,45 +105,45 @@ export default function Register() {
           {currentStep === 1 ? (
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-white">Nome Completo</Label>
+                <Label htmlFor="fullName" className="text-gray-100">Nome Completo</Label>
                 <Input
                   id="fullName"
                   type="text"
                   placeholder="Seu nome completo"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50"
+                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50"
                   required
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white">Email</Label>
+                <Label htmlFor="email" className="text-gray-100">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50"
+                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50"
                   required
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-white">Telefone (opcional)</Label>
+                <Label htmlFor="phone" className="text-gray-100">Telefone (opcional)</Label>
                 <Input
                   id="phone"
                   type="tel"
                   placeholder="(11) 98765-4321"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50"
+                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-white">Senha</Label>
+                <Label htmlFor="password" className="text-gray-100">Senha</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -146,12 +154,12 @@ export default function Register() {
                       setPassword(e.target.value);
                       if (confirmPassword) validatePasswordMatch();
                     }}
-                    className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50 pr-12"
+                    className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50 pr-12"
                     required
                   />
                   <button 
                     type="button"
-                    onClick={toggleShowPassword}
+                    onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -160,7 +168,7 @@ export default function Register() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-white">Confirmar Senha</Label>
+                <Label htmlFor="confirmPassword" className="text-gray-100">Confirmar Senha</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -171,14 +179,14 @@ export default function Register() {
                       setConfirmPassword(e.target.value);
                       if (password) validatePasswordMatch();
                     }}
-                    className={`bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50 pr-12 ${
+                    className={`bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50 pr-12 ${
                       passwordError ? "border-red-500" : ""
                     }`}
                     required
                   />
                   <button 
                     type="button"
-                    onClick={toggleShowConfirmPassword}
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -192,41 +200,41 @@ export default function Register() {
           ) : (
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-white">Escolha seu plano</Label>
-                <Tabs defaultValue="monthly" value={planType} onValueChange={setPlanType} className="w-full">
+                <Label className="text-gray-100">Escolha seu plano</Label>
+                <Tabs defaultValue="monthly" value={planType} onValueChange={(value) => setPlanType(value as 'monthly' | 'yearly')} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 bg-black/40">
                     <TabsTrigger 
                       value="monthly" 
-                      className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white"
+                      className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white text-gray-300"
                     >
                       Mensal
                     </TabsTrigger>
                     <TabsTrigger 
                       value="yearly" 
-                      className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white"
+                      className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white text-gray-300"
                     >
                       Anual (20% OFF)
                     </TabsTrigger>
                   </TabsList>
-                  <TabsContent value="monthly" className="mt-4 border-none">
+                  <TabsContent value="monthly" className="mt-4 border-none p-0">
                     <Card className="glass-morphism border-white/10">
                       <CardContent className="pt-4 pb-2">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-white">R$ 49,90<span className="text-sm font-normal text-gray-300">/mês</span></div>
+                          <div className="text-2xl font-bold text-white">R$ 9,70<span className="text-sm font-normal text-gray-300">/mês</span></div>
                           <p className="text-sm text-gray-300 mt-1">
-                            Acesso a todos os fornecedores
+                            Acesso a todos os fornecedores. Cobrança recorrente mensal.
                           </p>
                         </div>
                       </CardContent>
                     </Card>
                   </TabsContent>
-                  <TabsContent value="yearly" className="mt-4 border-none">
+                  <TabsContent value="yearly" className="mt-4 border-none p-0">
                     <Card className="glass-morphism border-white/10">
                       <CardContent className="pt-4 pb-2">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-white">R$ 479,90<span className="text-sm font-normal text-gray-300">/ano</span></div>
+                          <div className="text-2xl font-bold text-white">R$ 87,00<span className="text-sm font-normal text-gray-300">/ano</span></div>
                           <p className="text-sm text-gray-300 mt-1">
-                            Economia de R$ 118,80 por ano
+                            Economia de R$ 29,40 por ano. Cobrança recorrente anual.
                           </p>
                         </div>
                       </CardContent>
@@ -241,36 +249,34 @@ export default function Register() {
             {currentStep === 1 ? (
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity"
+                className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white"
               >
-                <span className="flex items-center gap-2">
-                  <UserPlus size={18} />
-                  Continuar
-                </span>
+                <UserPlus size={18} className="mr-2" />
+                Continuar
               </Button>
             ) : (
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" 
+                className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" 
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                  <>
+                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
                     Processando...
-                  </span>
+                  </>
                 ) : (
-                  <span className="flex items-center gap-2">
-                    <UserPlus size={18} />
+                  <>
+                    <UserPlus size={18} className="mr-2" />
                     Finalizar e Pagar
-                  </span>
+                  </>
                 )}
               </Button>
             )}
             
             <div className="text-center text-sm text-gray-300">
               Já tem uma conta?{' '}
-              <Link to="/auth/login" className="text-brand.purple hover:text-brand.pink transition-colors">
+              <Link to="/auth/login" className="font-semibold text-brand.purple hover:text-brand.pink transition-colors">
                 Faça login
               </Link>
             </div>
@@ -280,7 +286,7 @@ export default function Register() {
                 type="button"
                 variant="outline"
                 onClick={() => setCurrentStep(1)}
-                className="mt-2 border-white/20 text-gray-300 hover:bg-white/5 hover:text-white"
+                className="mt-2 border-white/20 text-gray-300 hover:bg-white/5 hover:text-white w-full"
               >
                 Voltar
               </Button>
