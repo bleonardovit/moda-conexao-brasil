@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Download
 } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { SupplierImportHistory } from '@/types'; 
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from 'xlsx';
@@ -394,7 +395,13 @@ export default function SuppliersBulkUpload() {
       const { data: buckets, error: listBucketError } = await supabase.storage.listBuckets();
       if (listBucketError) {
         console.error("Erro ao listar buckets:", listBucketError);
-        throw new Error(`Não foi possível verificar os buckets de armazenamento: ${listBucketError.message}`);
+        toast({
+            variant: "destructive",
+            title: "Erro ao verificar buckets",
+            description: `Não foi possível verificar os buckets de armazenamento: ${listBucketError.message}`
+        });
+        setIsProcessing(false);
+        return;
       }
       
       const bucketExists = buckets?.some(b => b.name === 'supplier-images');
@@ -411,10 +418,16 @@ export default function SuppliersBulkUpload() {
             toast({ title: "Aviso", description: "Bucket 'supplier-images' já existe. Continuando..." });
           } else {
             console.error("Erro ao criar bucket:", createBucketError);
-            throw new Error(`Erro ao criar bucket 'supplier-images': ${createBucketError.message}`);
+            toast({
+                variant: "destructive",
+                title: "Erro ao criar bucket",
+                description: `Erro ao criar bucket 'supplier-images': ${createBucketError.message}`
+            });
+            setIsProcessing(false);
+            return;
           }
         } else {
-          toast({ title: "Bucket 'supplier-images' criado com sucesso!", variant: "success" });
+          toast({ title: "Bucket 'supplier-images' criado com sucesso!" });
         }
       }
       setProgress(5); 
@@ -452,7 +465,6 @@ export default function SuppliersBulkUpload() {
         toast({
           title: "Importação concluída com sucesso!",
           description: `${result.successCount} fornecedores importados.`,
-          variant: "success",
           duration: 5000,
         });
         setParsedSuppliers([]);
@@ -669,7 +681,7 @@ export default function SuppliersBulkUpload() {
             )}
             
             {existingCategories.size === 0 && parsedSuppliers.length > 0 && (
-              <Alert variant="warning" className="shadow-md"> 
+              <Alert variant="default" className="shadow-md border-yellow-500 text-yellow-700 [&>svg]:text-yellow-500"> 
                 <AlertTriangle className="h-5 w-5" />
                 <AlertTitle className="font-semibold">Atenção: Nenhuma Categoria Cadastrada</AlertTitle>
                 <AlertDescription>
@@ -869,7 +881,7 @@ export default function SuppliersBulkUpload() {
                                     if (errorCSV) {
                                     downloadCSV(errorCSV, `erros_${item.filename.split('.')[0] || 'importacao'}_${new Date(item.imported_at).toISOString().split('T')[0]}.csv`);
                                     } else {
-                                    toast({ title: "Sem detalhes de erro para exportar.", variant: "info"});
+                                    toast({ title: "Sem detalhes de erro para exportar."});
                                     }
                                 }}
                                 >
