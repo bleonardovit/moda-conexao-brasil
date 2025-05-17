@@ -111,7 +111,7 @@ export default function Register() {
                 if (confirmPassword) validatePasswordMatch();
               }} className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50 pr-12" required />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors">
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPassword ? <EyeOff size={18} className="text-white" /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
@@ -124,7 +124,7 @@ export default function Register() {
                 if (password) validatePasswordMatch();
               }} className={`bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50 pr-12 ${passwordError ? "border-red-500" : ""}`} required />
                   <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors">
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showConfirmPassword ? <EyeOff size={18} className="text-white" /> : <Eye size={18} />}
                   </button>
                 </div>
                 {passwordError && <p className="text-red-500 text-xs mt-1">{passwordError}</p>}
