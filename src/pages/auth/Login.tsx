@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,14 +6,12 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  
   const {
     login,
     isLoading,
@@ -23,7 +19,7 @@ export default function Login() {
     isInitializing
   } = useAuth();
   const navigate = useNavigate();
-  
+
   // Verificar se o usuário já está autenticado e redirecionar
   useEffect(() => {
     // Somente redirecionar se o usuário estiver autenticado e a verificação inicial de auth estiver concluída
@@ -32,29 +28,27 @@ export default function Login() {
       navigate('/home');
     }
   }, [user, navigate, isInitializing]);
-  
+
   // Usando useCallback para memoizar a função de login
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    
+
     // Validar campos antes de submeter
     if (!email.trim()) {
       setFormError('Email é obrigatório');
       return;
     }
-    
     if (!password.trim()) {
       setFormError('Senha é obrigatória');
       return;
     }
-    
+
     // Evitar submissão duplicada ou durante inicialização
     if (localSubmitting || isLoading || isInitializing) {
       console.log('Submissão bloqueada: já está em andamento ou sistema inicializando');
       return;
     }
-    
     setLocalSubmitting(true);
     try {
       console.log('Iniciando processo de login para:', email);
@@ -70,15 +64,13 @@ export default function Login() {
       setLocalSubmitting(false);
     }
   }, [email, password, localSubmitting, isLoading, isInitializing, login]);
-  
   const toggleShowPassword = useCallback(() => {
     setShowPassword(prev => !prev);
   }, []);
-  
+
   // Aguarde até que a inicialização seja concluída para renderizar
   if (isInitializing) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-brand.dark">
+    return <div className="flex min-h-screen items-center justify-center bg-brand.dark">
         <Card className="w-full max-w-md glass-morphism border-white/10">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
@@ -92,12 +84,9 @@ export default function Login() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-  
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
+  return <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
       <Card className="w-full max-w-md glass-morphism border-white/10 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
@@ -109,23 +98,12 @@ export default function Login() {
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
-            {formError && (
-              <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-2 rounded-md text-sm">
+            {formError && <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-2 rounded-md text-sm">
                 {formError}
-              </div>
-            )}
+              </div>}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="seu@email.com" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50" 
-                required 
-                disabled={localSubmitting || isLoading}
-              />
+              <Label htmlFor="email" className="text-sm text-brand.purple hover:text-brand.pink transition-colors">Email</Label>
+              <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50" required disabled={localSubmitting || isLoading} />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -135,44 +113,22 @@ export default function Login() {
                 </Link>
               </div>
               <div className="relative">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  placeholder="••••••••" 
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)} 
-                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50 pr-12" 
-                  required 
-                  disabled={localSubmitting || isLoading}
-                />
-                <button 
-                  type="button" 
-                  onClick={toggleShowPassword} 
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                  disabled={localSubmitting || isLoading}
-                >
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50 pr-12" required disabled={localSubmitting || isLoading} />
+                <button type="button" onClick={toggleShowPassword} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors" disabled={localSubmitting || isLoading}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" 
-              disabled={localSubmitting || isLoading}
-            >
-              {(localSubmitting || isLoading) ? (
-                <span className="flex items-center gap-2">
+            <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" disabled={localSubmitting || isLoading}>
+              {localSubmitting || isLoading ? <span className="flex items-center gap-2">
                   <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
                   Entrando...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
+                </span> : <span className="flex items-center gap-2">
                   <LogIn size={18} />
                   Entrar
-                </span>
-              )}
+                </span>}
             </Button>
             <div className="text-center text-sm text-gray-300">
               Não tem uma conta?{' '}
@@ -183,7 +139,5 @@ export default function Login() {
           </CardFooter>
         </form>
       </Card>
-    </div>
-  );
+    </div>;
 }
-
