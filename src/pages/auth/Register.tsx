@@ -131,7 +131,7 @@ export default function Register() {
               </div>
             </CardContent> : <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-gray-100">Escolha seu plano</Label>
+                <Label className="text-gray-500">Escolha seu plano</Label>
                 <Tabs defaultValue="monthly" value={planType} onValueChange={value => setPlanType(value as 'monthly' | 'yearly')} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 bg-black/40">
                     <TabsTrigger value="monthly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white text-gray-300">
@@ -145,8 +145,8 @@ export default function Register() {
                     <Card className="glass-morphism border-white/10">
                       <CardContent className="pt-4 pb-2">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-white">R$ 9,70<span className="text-sm font-normal text-gray-300">/mês</span></div>
-                          <p className="text-sm text-gray-300 mt-1">
+                          <div className="text-2xl font-bold text-white text-slate-950">R$ 9,70<span className="text-sm font-normal text-gray-300">/mês</span></div>
+                          <p className="text-sm text-gray-400 mt-1">
                             Acesso a todos os fornecedores. Cobrança recorrente mensal.
                           </p>
                         </div>
