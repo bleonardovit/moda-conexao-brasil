@@ -137,7 +137,7 @@ export default function Register() {
                     <TabsTrigger value="monthly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink font-normal text-slate-400">
                       Mensal
                     </TabsTrigger>
-                    <TabsTrigger value="yearly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white text-gray-300">
+                    <TabsTrigger value="yearly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink text-slate-500">
                       Anual (20% OFF)
                     </TabsTrigger>
                   </TabsList>
