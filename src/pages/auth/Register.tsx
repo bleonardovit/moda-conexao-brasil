@@ -78,7 +78,7 @@ export default function Register() {
   return <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
       <Card className="w-full max-w-md glass-morphism border-white/10 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent-text-slate-950">
             Criar Conta
           </CardTitle>
           <CardDescription className="text-slate-950">
