@@ -157,7 +157,7 @@ export default function Register() {
                     <Card className="glass-morphism border-white/10">
                       <CardContent className="pt-4 pb-2">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-white">R$ 87,00<span className="text-sm font-normal text-gray-300">/ano</span></div>
+                          <div className="text-2xl font-bold text-slate-950">R$ 87,00<span className="text-sm font-normal text-gray-300">/ano</span></div>
                           <p className="text-sm text-gray-300 mt-1">
                             Economia de R$ 29,40 por ano. Cobrança recorrente anual.
                           </p>
