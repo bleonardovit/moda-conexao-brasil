@@ -134,7 +134,7 @@ export default function Register() {
                 <Label className="text-gray-500">Escolha seu plano</Label>
                 <Tabs defaultValue="monthly" value={planType} onValueChange={value => setPlanType(value as 'monthly' | 'yearly')} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 bg-black/40">
-                    <TabsTrigger value="monthly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white text-gray-300">
+                    <TabsTrigger value="monthly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink font-normal text-slate-400">
                       Mensal
                     </TabsTrigger>
                     <TabsTrigger value="yearly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white text-gray-300">
