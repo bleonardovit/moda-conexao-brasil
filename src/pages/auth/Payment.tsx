@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -153,13 +152,12 @@ export default function Payment() {
           </CardTitle>
           <CardDescription className="text-gray-300">
             Você está assinando o <span className="font-semibold text-white">{currentPlan.name}</span>.
-            {selectedPlan === 'yearly' && currentPlan.originalPrice && (
-              <span className="block text-sm">De <span className="line-through">{currentPlan.originalPrice}</span> por {currentPlan.price} à vista.</span>
+            {selectedPlan === 'yearly' && planDetails.yearly.originalPrice && (
+              <span className="block text-sm">De <span className="line-through">{planDetails.yearly.originalPrice}</span> por {planDetails.yearly.price} à vista.</span>
             )}
           </CardDescription>
         </CardHeader>
         
-        {/* Stripe irá lidar com os métodos de pagamento. Removemos as abas e inputs de cartão. */}
         <form onSubmit={handlePayment}>
           <CardContent className="space-y-4">
             <p className="text-center text-white">
@@ -217,4 +215,3 @@ export default function Payment() {
     </div>
   );
 }
-
