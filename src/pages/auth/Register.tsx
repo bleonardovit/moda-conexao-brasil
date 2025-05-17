@@ -145,7 +145,7 @@ export default function Register() {
                     <Card className="glass-morphism border-white/10">
                       <CardContent className="pt-4 pb-2">
                         <div className="text-center">
-                          <div className="text-2xl font-bold-text-slate-750">R$ 9,70<span className="text-sm font-normal text-gray-300">/mês</span></div>
+                          <div className="text-2xl font-bold-text-slate-950">R$ 9,70<span className="text-sm font-normal text-gray-300">/mês</span></div>
                           <p className="text-sm text-gray-400 mt-1">
                             Acesso a todos os fornecedores. Cobrança recorrente mensal.
                           </p>
