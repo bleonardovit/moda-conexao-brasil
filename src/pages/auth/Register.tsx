@@ -190,7 +190,7 @@ export default function Register() {
               </Link>
             </div>
             
-            {currentStep === 2 && <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="mt-2 border-white/20 text-gray-300 hover:bg-white/5 hover:text-white w-full">
+            {currentStep === 2 && <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="mt-2 border-white/20 text-gray-400 hover:bg-white/5">
                 Voltar
               </Button>}
           </CardFooter>
