@@ -107,7 +107,7 @@ export default function Login() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-white">Senha</Label>
+                <Label htmlFor="password" className="text-sm text-brand.purple hover:text-brand.pink transition-colors">Senha</Label>
                 <Link to="/auth/reset-password" className="text-sm text-brand.purple hover:text-brand.pink transition-colors">
                   Esqueceu a senha?
                 </Link>
