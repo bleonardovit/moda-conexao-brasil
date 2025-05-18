@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, Check, Mail, Lock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,9 +71,10 @@ export default function Login() {
 
   // Aguarde até que a inicialização seja concluída para renderizar
   if (isInitializing) {
-    return <div className="flex min-h-screen items-center justify-center bg-brand.dark">
-        <Card className="w-full max-w-md glass-morphism border-white/10">
-          <CardHeader className="space-y-1 text-center">
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#a164f1' }}>
+        <Card className="w-full max-w-md bg-slate-900 shadow-2xl rounded-xl border-slate-700">
+          <CardHeader className="space-y-1 text-center p-6 sm:p-8">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
               Conexão Brasil
             </CardTitle>
@@ -84,12 +86,14 @@ export default function Login() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </CardContent>
         </Card>
-      </div>;
+      </div>
+    );
   }
-  return <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
-      <Card className="w-full max-w-md glass-morphism border-white/10 shadow-lg hover:shadow-xl transition-shadow duration-300">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent-text-sm text-brand.purple hover:text-brand.pink transition-colors">
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{ backgroundColor: '#a164f1' }}>
+      <Card className="w-full max-w-md bg-slate-900 shadow-2xl rounded-xl border-slate-700">
+        <CardHeader className="space-y-2 text-center p-6 sm:p-8">
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
             Conexão Brasil
           </CardTitle>
           <CardDescription className="text-base text-slate-400">
@@ -97,47 +101,82 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
-          <CardContent className="space-y-4">
-            {formError && <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-2 rounded-md text-sm">
+          <CardContent className="space-y-6 p-6 sm:p-8">
+            {formError && (
+              <div className="bg-red-700/30 border border-red-600/50 text-red-200 px-4 py-3 rounded-md text-sm">
                 {formError}
-              </div>}
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm text-brand.purple hover:text-brand.pink transition-colors">Email</Label>
-              <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50" required disabled={localSubmitting || isLoading} />
+              <Label htmlFor="email" className="text-sm font-medium text-slate-300">Email</Label>
+              <div className="relative flex items-center">
+                <Mail className="absolute left-3 h-5 w-5 text-slate-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50"
+                  required
+                  disabled={localSubmitting || isLoading}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm text-brand.purple hover:text-brand.pink transition-colors">Senha</Label>
+                <Label htmlFor="password" className="text-sm font-medium text-slate-300">Senha</Label>
                 <Link to="/auth/reset-password" className="text-sm text-brand.purple hover:text-brand.pink transition-colors">
                   Esqueceu a senha?
                 </Link>
               </div>
-              <div className="relative">
-                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 transition-colors focus-visible:ring-brand.purple/50 pr-12" required disabled={localSubmitting || isLoading} />
-                <button type="button" onClick={toggleShowPassword} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors" disabled={localSubmitting || isLoading}>
+              <div className="relative flex items-center">
+                <Lock className="absolute left-3 h-5 w-5 text-slate-400" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50"
+                  required
+                  disabled={localSubmitting || isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={toggleShowPassword}
+                  className="absolute right-3 text-slate-400 hover:text-white transition-colors"
+                  disabled={localSubmitting || isLoading}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity" disabled={localSubmitting || isLoading}>
-              {localSubmitting || isLoading ? <span className="flex items-center gap-2">
+          <CardFooter className="flex flex-col space-y-4 p-6 sm:p-8">
+            <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" disabled={localSubmitting || isLoading}>
+              {localSubmitting || isLoading ? (
+                <span className="flex items-center gap-2">
                   <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
                   Entrando...
-                </span> : <span className="flex items-center gap-2">
-                  <LogIn size={18} />
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Check size={18} />
                   Entrar
-                </span>}
+                </span>
+              )}
             </Button>
-            <div className="text-center text-sm text-gray-300">
+            <div className="text-center text-sm text-slate-400">
               Não tem uma conta?{' '}
-              <Link to="/auth/register" className="text-brand.purple hover:text-brand.pink transition-colors">
+              <Link to="/auth/register" className="font-semibold text-brand.purple hover:text-brand.pink transition-colors">
                 Cadastre-se
               </Link>
             </div>
           </CardFooter>
         </form>
       </Card>
-    </div>;
+    </div>
+  );
 }

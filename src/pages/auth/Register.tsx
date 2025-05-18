@@ -1,13 +1,15 @@
-import { useState } from 'react';
+
+import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, EyeOff, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, Mail, Lock, UserCircle, Phone } from 'lucide-react'; // Added Mail, Lock, UserCircle, Phone
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+
 export default function Register() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,31 +22,33 @@ export default function Register() {
   const [currentStep, setCurrentStep] = useState(1);
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const {
-    register,
-    isLoading
-  } = useAuth();
-  const validatePasswordMatch = () => {
+  const { toast } = useToast();
+  const { register, isLoading } = useAuth();
+
+  const validatePasswordMatch = useCallback(() => {
     if (password !== confirmPassword) {
       setPasswordError('As senhas não conferem');
       return false;
     }
     setPasswordError('');
     return true;
-  };
-  const handleNext = (e: React.FormEvent) => {
+  }, [password, confirmPassword]);
+
+  const handleNext = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (currentStep === 1) {
+      if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+        toast({ variant: "destructive", title: "Campos obrigatórios", description: "Por favor, preencha todos os campos obrigatórios." });
+        return;
+      }
       if (!validatePasswordMatch()) {
         return;
       }
       setCurrentStep(2);
     }
-  };
-  const handleRegister = async (e: React.FormEvent) => {
+  }, [currentStep, fullName, email, password, confirmPassword, validatePasswordMatch, toast]);
+
+  const handleRegister = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentStep !== 2) return;
     if (!validatePasswordMatch()) {
@@ -67,134 +71,145 @@ export default function Register() {
       }
     } catch (error) {
       console.error('Erro no registro:', error);
+      // Error toast is handled by useAuth
     }
-  };
-  const toggleShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
-  const toggleShowConfirmPassword = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
-  return <div className="flex min-h-screen items-center justify-center bg-brand.dark px-4 py-12">
-      <Card className="w-full max-w-md glass-morphism border-white/10 shadow-lg hover:shadow-xl transition-shadow duration-300">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent-text-slate-950">
+  }, [currentStep, validatePasswordMatch, fullName, email, password, phone, planType, register, navigate, toast]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{ backgroundColor: '#a164f1' }}>
+      <Card className="w-full max-w-md bg-slate-900 shadow-2xl rounded-xl border-slate-700">
+        <CardHeader className="space-y-2 text-center p-6 sm:p-8">
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
             Criar Conta
           </CardTitle>
-          <CardDescription className="text-slate-950">
+          <CardDescription className="text-base text-slate-400">
             {currentStep === 1 ? 'Preencha seus dados para criar sua conta' : 'Escolha seu plano de assinatura'}
           </CardDescription>
         </CardHeader>
         
         <form onSubmit={currentStep === 1 ? handleNext : handleRegister}>
-          {currentStep === 1 ? <CardContent className="space-y-4">
+          {currentStep === 1 ? (
+            <CardContent className="space-y-6 p-6 sm:p-8">
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-slate-950">Nome Completo</Label>
-                <Input id="fullName" type="text" placeholder="Seu nome completo" value={fullName} onChange={e => setFullName(e.target.value)} className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50" required />
+                <Label htmlFor="fullName" className="text-sm font-medium text-slate-300">Nome Completo</Label>
+                <div className="relative flex items-center">
+                  <UserCircle className="absolute left-3 h-5 w-5 text-slate-400" />
+                  <Input id="fullName" type="text" placeholder="Seu nome completo" value={fullName} onChange={e => setFullName(e.target.value)} className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" required />
+                </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-950">Email</Label>
-                <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50" required />
+                <Label htmlFor="email" className="text-sm font-medium text-slate-300">Email</Label>
+                 <div className="relative flex items-center">
+                  <Mail className="absolute left-3 h-5 w-5 text-slate-400" />
+                  <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" required />
+                </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-slate-950">Telefone (opcional)</Label>
-                <Input id="phone" type="tel" placeholder="(11) 98765-4321" value={phone} onChange={e => setPhone(e.target.value)} className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50" />
+                <Label htmlFor="phone" className="text-sm font-medium text-slate-300">Telefone (opcional)</Label>
+                <div className="relative flex items-center">
+                  <Phone className="absolute left-3 h-5 w-5 text-slate-400" />
+                  <Input id="phone" type="tel" placeholder="(11) 98765-4321" value={phone} onChange={e => setPhone(e.target.value)} className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" />
+                </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-950">Senha</Label>
-                <div className="relative">
-                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => {
-                setPassword(e.target.value);
-                if (confirmPassword) validatePasswordMatch();
-              }} className="bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50 pr-12" required />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors">
-                    {showPassword ? <EyeOff size={18} className="text-white hover-text-white" /> : <Eye size={18} />}
+                <Label htmlFor="password" className="text-sm font-medium text-slate-300">Senha</Label>
+                <div className="relative flex items-center">
+                  <Lock className="absolute left-3 h-5 w-5 text-slate-400" />
+                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => { setPassword(e.target.value); if (confirmPassword) validatePasswordMatch(); }} className="pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" required />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-slate-400 hover:text-white transition-colors" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-slate-950">Confirmar Senha</Label>
-                <div className="relative">
-                  <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" value={confirmPassword} onChange={e => {
-                setConfirmPassword(e.target.value);
-                if (password) validatePasswordMatch();
-              }} className={`bg-black/30 border-white/10 text-white placeholder:text-gray-400 transition-colors focus-visible:ring-brand.purple/50 pr-12 ${passwordError ? "border-red-500" : ""}`} required />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors">
-                    {showConfirmPassword ? <EyeOff size={18} className="text-white hover-text-white" /> : <Eye size={18} />}
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-300">Confirmar Senha</Label>
+                <div className="relative flex items-center">
+                  <Lock className="absolute left-3 h-5 w-5 text-slate-400" />
+                  <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); if (password) validatePasswordMatch(); }} className={`pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50 ${passwordError ? "border-red-500" : ""}`} required />
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 text-slate-400 hover:text-white transition-colors" aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}>
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {passwordError && <p className="text-red-500 text-xs mt-1">{passwordError}</p>}
+                {passwordError && <p className="text-red-400 text-xs mt-1">{passwordError}</p>}
               </div>
-            </CardContent> : <CardContent className="space-y-4">
+            </CardContent>
+          ) : (
+            <CardContent className="space-y-6 p-6 sm:p-8">
               <div className="space-y-2">
-                <Label className="text-gray-500">Escolha seu plano</Label>
+                <Label className="text-sm font-medium text-slate-300">Escolha seu plano</Label>
                 <Tabs defaultValue="monthly" value={planType} onValueChange={value => setPlanType(value as 'monthly' | 'yearly')} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-black/40">
-                    <TabsTrigger value="monthly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink font-normal text-slate-500">
+                  <TabsList className="grid w-full grid-cols-2 bg-slate-800 border-slate-700 p-1">
+                    <TabsTrigger value="monthly" className="text-slate-400 data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white data-[state=active]:shadow-md rounded-sm">
                       Mensal
                     </TabsTrigger>
-                    <TabsTrigger value="yearly" className="data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink text-slate-500">
+                    <TabsTrigger value="yearly" className="text-slate-400 data-[state=active]:bg-gradient-to-r from-brand.purple to-brand.pink data-[state=active]:text-white data-[state=active]:shadow-md rounded-sm">
                       Anual (20% OFF)
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="monthly" className="mt-4 border-none p-0">
-                    <Card className="glass-morphism border-white/10">
-                      <CardContent className="pt-4 pb-2">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-slate-950">R$ 9,70<span className="text-sm font-normal text-gray-300">/mês</span></div>
-                          <p className="text-sm text-gray-400 mt-1">
-                            Acesso a todos os fornecedores. Cobrança recorrente mensal.
-                          </p>
-                        </div>
+                    <Card className="bg-slate-800 border-slate-700">
+                      <CardContent className="pt-4 pb-2 text-center">
+                        <div className="text-2xl font-bold text-white">R$ 9,70<span className="text-sm font-normal text-slate-400">/mês</span></div>
+                        <p className="text-sm text-slate-400 mt-1">
+                          Acesso a todos os fornecedores. Cobrança recorrente mensal.
+                        </p>
                       </CardContent>
                     </Card>
                   </TabsContent>
                   <TabsContent value="yearly" className="mt-4 border-none p-0">
-                    <Card className="glass-morphism border-white/10">
-                      <CardContent className="pt-4 pb-2">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-slate-950">R$ 87,00<span className="text-sm font-normal text-gray-300">/ano</span></div>
-                          <p className="text-sm text-gray-400 mt-1">
-                            Economia de R$ 29,40 por ano. Cobrança recorrente anual.
-                          </p>
-                        </div>
+                    <Card className="bg-slate-800 border-slate-700">
+                      <CardContent className="pt-4 pb-2 text-center">
+                        <div className="text-2xl font-bold text-white">R$ 87,00<span className="text-sm font-normal text-slate-400">/ano</span></div>
+                        <p className="text-sm text-slate-400 mt-1">
+                          Economia de R$ 29,40 por ano. Cobrança recorrente anual.
+                        </p>
                       </CardContent>
                     </Card>
                   </TabsContent>
                 </Tabs>
               </div>
-            </CardContent>}
+            </CardContent>
+          )}
           
-          <CardFooter className="flex flex-col space-y-4">
-            {currentStep === 1 ? <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white">
-                <UserPlus size={18} className="mr-2" />
-                Continuar
-              </Button> : <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" disabled={isLoading}>
-                {isLoading ? <>
-                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                    Processando...
-                  </> : <>
-                    <UserPlus size={18} className="mr-2" />
-                    Finalizar e Pagar
-                  </>}
-              </Button>}
+          <CardFooter className="flex flex-col space-y-4 p-6 sm:p-8">
+            <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" disabled={isLoading && currentStep === 2}>
+              {currentStep === 1 ? (
+                <>
+                  <UserPlus size={18} className="mr-2" />
+                  Continuar
+                </>
+              ) : isLoading ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <UserPlus size={18} className="mr-2" />
+                  Finalizar e Pagar
+                </>
+              )}
+            </Button>
             
-            <div className="text-center text-sm text-gray-500">
+            <div className="text-center text-sm text-slate-400">
               Já tem uma conta?{' '}
               <Link to="/auth/login" className="font-semibold text-brand.purple hover:text-brand.pink transition-colors">
                 Faça login
               </Link>
             </div>
             
-            {currentStep === 2 && <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="mt-2 border-white/20 text-gray-400 hover:bg-white/5">
+            {currentStep === 2 && (
+              <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="w-full mt-2 border-slate-700 text-slate-300 hover:bg-slate-700/50 hover:text-white">
                 Voltar
-              </Button>}
+              </Button>
+            )}
           </CardFooter>
         </form>
       </Card>
-    </div>;
+    </div>
+  );
 }
