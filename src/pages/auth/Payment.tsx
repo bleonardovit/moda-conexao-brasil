@@ -10,7 +10,31 @@ import { cn } from '@/lib/utils';
 
 type PlanType = 'monthly' | 'yearly';
 
-const planDetails = {
+// Define more specific types for each plan to help TypeScript
+interface MonthlyPlan {
+  name: string;
+  price: string;
+  id: string;
+  description: string;
+  features: string[];
+  originalPrice?: undefined; // Explicitly state originalPrice is not on monthly
+}
+
+interface YearlyPlan {
+  name: string;
+  price: string;
+  id: string;
+  originalPrice: string;
+  description: string;
+  features: string[];
+}
+
+type PlanDetailsType = {
+  monthly: MonthlyPlan;
+  yearly: YearlyPlan;
+};
+
+const planDetails: PlanDetailsType = {
   monthly: {
     name: 'Plano Mensal',
     price: 'R$ 9,70',
