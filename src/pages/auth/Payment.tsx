@@ -173,7 +173,7 @@ export default function Payment() {
                 Seu pagamento foi processado e sua conta está ativa.
               </p>
             </div>
-            <Button className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" onClick={() => navigate('/suppliers')}>
+            <Button className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" onClick={() => navigate('/home')}>
               Acessar a plataforma
             </Button>
           </CardContent>
