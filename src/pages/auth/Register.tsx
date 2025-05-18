@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,6 @@ import { Eye, EyeOff, UserPlus, Mail, Lock, UserCircle, Phone } from 'lucide-rea
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-
 export default function Register() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,9 +20,13 @@ export default function Register() {
   // currentStep state is removed
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { register, isLoading } = useAuth();
-
+  const {
+    toast
+  } = useToast();
+  const {
+    register,
+    isLoading
+  } = useAuth();
   const validatePasswordMatch = useCallback(() => {
     if (password !== confirmPassword) {
       setPasswordError('As senhas não conferem');
@@ -40,7 +42,11 @@ export default function Register() {
     e.preventDefault();
     // Validation for all fields
     if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      toast({ variant: "destructive", title: "Campos obrigatórios", description: "Por favor, preencha todos os campos obrigatórios." });
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios."
+      });
       return;
     }
     if (!validatePasswordMatch()) {
@@ -66,12 +72,12 @@ export default function Register() {
       // Error toast is handled by useAuth
     }
   }, [validatePasswordMatch, fullName, email, password, phone, register, navigate, toast]);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{ backgroundColor: '#a164f1' }}>
+  return <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{
+    backgroundColor: '#a164f1'
+  }}>
       <Card className="w-full max-w-md bg-slate-900 shadow-2xl rounded-xl border-slate-700">
         <CardHeader className="space-y-2 text-center p-6 sm:p-8">
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-slate-50">
             Criar Conta
           </CardTitle>
           <CardDescription className="text-base text-slate-400">
@@ -109,7 +115,10 @@ export default function Register() {
               <Label htmlFor="password" className="text-sm font-medium text-slate-300">Senha</Label>
               <div className="relative flex items-center">
                 <Lock className="absolute left-3 h-5 w-5 text-slate-400" />
-                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => { setPassword(e.target.value); if (confirmPassword) validatePasswordMatch(); }} className="pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" required />
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => {
+                setPassword(e.target.value);
+                if (confirmPassword) validatePasswordMatch();
+              }} className="pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" required />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-slate-400 hover:text-white transition-colors" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -120,7 +129,10 @@ export default function Register() {
               <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-300">Confirmar Senha</Label>
               <div className="relative flex items-center">
                 <Lock className="absolute left-3 h-5 w-5 text-slate-400" />
-                <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); if (password) validatePasswordMatch(); }} className={`pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50 ${passwordError ? "border-red-500" : ""}`} required />
+                <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" value={confirmPassword} onChange={e => {
+                setConfirmPassword(e.target.value);
+                if (password) validatePasswordMatch();
+              }} className={`pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50 ${passwordError ? "border-red-500" : ""}`} required />
                 <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 text-slate-400 hover:text-white transition-colors" aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}>
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -132,17 +144,13 @@ export default function Register() {
           
           <CardFooter className="flex flex-col space-y-4 p-6 sm:p-8">
             <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" disabled={isLoading}>
-              {isLoading ? (
-                <>
+              {isLoading ? <>
                   <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
                   Processando...
-                </>
-              ) : (
-                <>
+                </> : <>
                   <UserPlus size={18} className="mr-2" />
                   Criar Conta e Pagar
-                </>
-              )}
+                </>}
             </Button>
             
             <div className="text-center text-sm text-slate-400">
@@ -155,6 +163,5 @@ export default function Register() {
           </CardFooter>
         </form>
       </Card>
-    </div>
-  );
+    </div>;
 }
