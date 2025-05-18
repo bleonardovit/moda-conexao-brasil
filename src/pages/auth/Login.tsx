@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { Eye, EyeOff, Check, Mail, Lock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,8 +70,9 @@ export default function Login() {
 
   // Aguarde até que a inicialização seja concluída para renderizar
   if (isInitializing) {
-    return (
-      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#a164f1' }}>
+    return <div className="flex min-h-screen items-center justify-center" style={{
+      backgroundColor: '#a164f1'
+    }}>
         <Card className="w-full max-w-md bg-slate-900 shadow-2xl rounded-xl border-slate-700">
           <CardHeader className="space-y-1 text-center p-6 sm:p-8">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
@@ -86,41 +86,28 @@ export default function Login() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{ backgroundColor: '#a164f1' }}>
+  return <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{
+    backgroundColor: '#a164f1'
+  }}>
       <Card className="w-full max-w-md bg-slate-900 shadow-2xl rounded-xl border-slate-700">
         <CardHeader className="space-y-2 text-center p-6 sm:p-8">
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-transparent">
-            Conexão Brasil
-          </CardTitle>
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand.purple to-brand.pink bg-clip-text text-slate-50">Os Fornecedores</CardTitle>
           <CardDescription className="text-base text-slate-400">
             Entre com seus dados para acessar sua conta
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-6 p-6 sm:p-8">
-            {formError && (
-              <div className="bg-red-700/30 border border-red-600/50 text-red-200 px-4 py-3 rounded-md text-sm">
+            {formError && <div className="bg-red-700/30 border border-red-600/50 text-red-200 px-4 py-3 rounded-md text-sm">
                 {formError}
-              </div>
-            )}
+              </div>}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-slate-300">Email</Label>
               <div className="relative flex items-center">
                 <Mail className="absolute left-3 h-5 w-5 text-slate-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50"
-                  required
-                  disabled={localSubmitting || isLoading}
-                />
+                <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" required disabled={localSubmitting || isLoading} />
               </div>
             </div>
             <div className="space-y-2">
@@ -132,23 +119,8 @@ export default function Login() {
               </div>
               <div className="relative flex items-center">
                 <Lock className="absolute left-3 h-5 w-5 text-slate-400" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50"
-                  required
-                  disabled={localSubmitting || isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={toggleShowPassword}
-                  className="absolute right-3 text-slate-400 hover:text-white transition-colors"
-                  disabled={localSubmitting || isLoading}
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                >
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="pl-10 pr-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" required disabled={localSubmitting || isLoading} />
+                <button type="button" onClick={toggleShowPassword} className="absolute right-3 text-slate-400 hover:text-white transition-colors" disabled={localSubmitting || isLoading} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -156,17 +128,13 @@ export default function Login() {
           </CardContent>
           <CardFooter className="flex flex-col space-y-4 p-6 sm:p-8">
             <Button type="submit" className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" disabled={localSubmitting || isLoading}>
-              {localSubmitting || isLoading ? (
-                <span className="flex items-center gap-2">
+              {localSubmitting || isLoading ? <span className="flex items-center gap-2">
                   <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
                   Entrando...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
+                </span> : <span className="flex items-center gap-2">
                   <Check size={18} />
                   Entrar
-                </span>
-              )}
+                </span>}
             </Button>
             <div className="text-center text-sm text-slate-400">
               Não tem uma conta?{' '}
@@ -177,6 +145,5 @@ export default function Login() {
           </CardFooter>
         </form>
       </Card>
-    </div>
-  );
+    </div>;
 }
