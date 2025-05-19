@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -256,7 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           state: profile.state || session.user.user_metadata?.state || '',
           role: userRole as 'user' | 'admin',
           subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive',
-          subscription_type: profile.subscription_type || undefined,
+          subscription_type: profile.subscription_type as ('monthly' | 'yearly' | undefined), // Correção aqui
           subscription_start_date: profile.subscription_start_date || undefined,
         };
         
@@ -396,8 +397,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string, 
     password: string, 
     phone?: string,
-    city?: string,
-    state?: string
+    city?: string, // Adicionado city
+    state?: string  // Adicionado state
   ): Promise<boolean> => {
     setIsLoading(true);
     try {
