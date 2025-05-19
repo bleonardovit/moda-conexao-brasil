@@ -246,7 +246,7 @@ const LandingPageTest: React.FC = () => {
         <div className="text-center">
             <Button
               onClick={() => alert('CTA Assine Agora Bônus Clicado!')} 
-              className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 px-6 sm:py-5 sm:px-8 rounded-lg text-lg sm:text-xl w-full max-w-md sm:max-w-lg mx-auto break-words leading-tight transform transition-transform duration-200 hover:scale-105 shadow-lg hover:shadow-pink-500/50"
+              className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 px-6 sm:py-9 sm:px-8 rounded-lg text-lg sm:text-xl w-full max-w-md sm:max-w-lg mx-auto break-words leading-tight transform transition-transform duration-200 hover:scale-105 shadow-lg hover:shadow-pink-500/50"
             >
               Assine agora e aproveite <br /> este bônus exclusivo!
             </Button>
