@@ -5,6 +5,8 @@ export interface User {
   email: string;
   full_name: string;
   phone?: string;
+  city?: string; // Novo campo
+  state?: string; // Novo campo
   subscription_status: 'active' | 'inactive' | 'pending';
   subscription_type?: 'monthly' | 'yearly';
   subscription_start_date?: string;

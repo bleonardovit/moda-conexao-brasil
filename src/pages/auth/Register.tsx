@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 // Tabs is no longer needed as plan selection is removed from this page
-import { Eye, EyeOff, UserPlus, Mail, Lock, UserCircle, Phone } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, Mail, Lock, UserCircle, Phone, MapPin, Building } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,12 +12,12 @@ export default function Register() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  // planType state is removed
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  // currentStep state is removed
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
   const {
@@ -36,16 +36,13 @@ export default function Register() {
     return true;
   }, [password, confirmPassword]);
 
-  // handleNext is removed as it's a single step process now
-
   const handleRegister = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    // Validation for all fields
-    if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !city.trim() || !state.trim()) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios."
+        description: "Por favor, preencha todos os campos obrigatórios, incluindo Cidade e Estado."
       });
       return;
     }
@@ -58,20 +55,19 @@ export default function Register() {
       return;
     }
     try {
-      const success = await register(fullName, email, password, phone);
+      const success = await register(fullName, email, password, phone, city, state);
       if (success) {
         toast({
           title: "Cadastro realizado com sucesso!",
           description: "Você será redirecionado para a página de pagamento."
         });
-        // Navigate to payment page, defaulting to monthly plan. User can change on payment page.
         navigate(`/auth/payment?plan=monthly`);
       }
     } catch (error) {
       console.error('Erro no registro:', error);
       // Error toast is handled by useAuth
     }
-  }, [validatePasswordMatch, fullName, email, password, phone, register, navigate, toast]);
+  }, [validatePasswordMatch, fullName, email, password, phone, city, state, register, navigate, toast]);
   return <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{
     backgroundColor: '#a164f1'
   }}>
@@ -108,6 +104,22 @@ export default function Register() {
               <div className="relative flex items-center">
                 <Phone className="absolute left-3 h-5 w-5 text-slate-400" />
                 <Input id="phone" type="tel" placeholder="(11) 98765-4321" value={phone} onChange={e => setPhone(e.target.value)} className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="city" className="text-sm font-medium text-slate-300">Cidade</Label>
+              <div className="relative flex items-center">
+                <Building className="absolute left-3 h-5 w-5 text-slate-400" />
+                <Input id="city" type="text" placeholder="Sua cidade" value={city} onChange={e => setCity(e.target.value)} className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" required />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="state" className="text-sm font-medium text-slate-300">Estado (UF)</Label>
+              <div className="relative flex items-center">
+                <MapPin className="absolute left-3 h-5 w-5 text-slate-400" />
+                <Input id="state" type="text" placeholder="UF" value={state} onChange={e => setState(e.target.value)} className="pl-10 w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-brand.purple/50" maxLength={2} required />
               </div>
             </div>
             

@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +10,7 @@ interface AuthContextType {
   isLoading: boolean;
   isInitializing: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (fullName: string, email: string, password: string, phone?: string) => Promise<boolean>;
+  register: (fullName: string, email: string, password: string, phone?: string, city?: string, state?: string) => Promise<boolean>;
   logout: () => void;
   resetPassword: (email: string) => Promise<boolean>;
 }
@@ -157,11 +155,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Add refs to track session and prevent duplicate processing
   const lastProcessedSessionId = useRef<string | null>(null);
   const processingAuthChange = useRef<boolean>(false);
 
-  // Função auxiliar para obter o perfil do usuário
   const fetchUserProfile = async (userId: string) => {
     try {
       const { data: profile, error } = await supabase
@@ -182,7 +178,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Função para atualizar o último login
   const updateLastLogin = async (userId: string) => {
     try {
       const { error } = await supabase
@@ -198,7 +193,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Update session last active periodically using a debounced function
   useEffect(() => {
     if (user) {
       const updateActivity = debounce(async () => {
@@ -214,17 +208,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  // Manipulador de mudança de estado de autenticação com debounce e verificação de duplicação
   const handleAuthChange = useCallback(async (event: string, session: any) => {
     console.log(`Evento de autenticação: ${event}`);
     
-    // Skip if we're already processing an auth change
     if (processingAuthChange.current) {
       console.log('Skipping auth event processing, already in progress');
       return;
     }
     
-    // Skip if this is the same session we've already processed
     if (session?.access_token && session.access_token === lastProcessedSessionId.current) {
       console.log('Skipping duplicate session processing');
       return;
@@ -240,39 +231,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // Update the last processed session ID
       lastProcessedSessionId.current = session.access_token;
       
-      // Buscar dados do perfil de forma assíncrona
       const profile = await fetchUserProfile(session.user.id);
       
       if (profile) {
-        // Atualizar último login se necessário
         if (event === 'SIGNED_IN') {
-          // Use setTimeout to avoid blocking the main thread
           setTimeout(async () => {
             await updateLastLogin(session.user.id);
-            // Get client IP and manage session
             const ipAddress = await getClientIP();
             await manageActiveSession(session.user.id, ipAddress);
           }, 0);
         }
         
-        // Obter a role do usuário e armazenar em sessionStorage
         const userRole = profile.role || 'user';
         sessionStorage.setItem('user_role', userRole);
         
-        // Create new user object
-        const newUser = {
+        const newUser: User = {
           id: session.user.id,
           email: session.user.email || '',
           full_name: profile.full_name || session.user.user_metadata?.full_name || '',
           phone: profile.phone || session.user.phone || '',
+          city: profile.city || session.user.user_metadata?.city || '',
+          state: profile.state || session.user.user_metadata?.state || '',
           role: userRole as 'user' | 'admin',
-          subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive'
+          subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive',
+          subscription_type: profile.subscription_type || undefined,
+          subscription_start_date: profile.subscription_start_date || undefined,
         };
         
-        // Only update state if user data has actually changed
         setUser(prevUser => {
           if (!isEqual(prevUser, newUser)) {
             console.log('Usuário autenticado:', session.user.email);
@@ -292,7 +279,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Check auth status and set up listener for auth changes
   useEffect(() => {
     console.log('Inicializando provedor de autenticação');
     
@@ -300,20 +286,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsInitializing(true);
       
       try {
-        // Setup safe auth change handler with debounce
         const debouncedAuthChangeHandler = debounce((event: string, session: any) => {
           console.log(`Evento de autenticação detectado: ${event}`);
-          // Use a timeout to avoid potential deadlocks in auth state changes
           setTimeout(() => {
             handleAuthChange(event, session);
           }, 0);
-        }, 300); // 300ms debounce to avoid rapid consecutive auth events
+        }, 300);
         
-        // Configurar listener de mudança de estado primeiro
         const { data: { subscription } } = supabase.auth.onAuthStateChange(debouncedAuthChangeHandler);
         
-        // Verificar sessão atual
-        console.log('Verificando sessão atual');
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
@@ -345,7 +326,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [handleAuthChange]);
 
-  // Login function with debounce to prevent multiple submissions
   const login = async (email: string, password: string): Promise<boolean> => {
     console.log('Tentativa de login para:', email);
     
@@ -360,10 +340,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setIsLoading(true);
     try {
-      // Get client IP address
       const ipAddress = await getClientIP();
       
-      // Check if IP is blocked
       const isBlocked = await checkIPBlocked(ipAddress);
       if (isBlocked) {
         toast({
@@ -371,31 +349,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           title: "Acesso bloqueado",
           description: "Seu endereço IP foi bloqueado temporariamente por motivos de segurança.",
         });
-        // Record failed attempt
         await recordLoginAttempt(email, null, ipAddress, false);
         return false;
       }
       
-      // Attempt login
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      // If login failed
       if (error) {
         console.error('Erro no login:', error.message);
-        // Record failed attempt
         await recordLoginAttempt(email, null, ipAddress, false);
-        // Check if we need to block this IP
         await checkAndBlockIP(ipAddress);
         
         throw error;
       }
 
-      // Login successful
       if (data.user) {
-        // Record successful attempt
         await recordLoginAttempt(email, data.user.id, ipAddress, true);
       }
 
@@ -420,23 +391,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Register function
   const register = async (
     fullName: string, 
     email: string, 
     password: string, 
-    phone?: string
+    phone?: string,
+    city?: string,
+    state?: string
   ): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Sign up user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
-            phone: phone
+            phone: phone,
+            city: city,
+            state: state
           },
         }
       });
@@ -445,7 +418,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       
-      // Record successful registration
       if (data.user) {
         const ipAddress = await getClientIP();
         await recordLoginAttempt(email, data.user.id, ipAddress, true);
@@ -453,16 +425,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       toast({
         title: "Registro realizado com sucesso!",
-        description: "Seja bem-vindo(a) à Conexão Brasil!",
+        description: "Seja bem-vindo(a) à Conexão Brasil! Verifique seu email para confirmar sua conta.",
       });
       
       return true;
     } catch (error: any) {
       console.error('Erro no registro:', error);
+      let description = error.message || "Não foi possível criar sua conta. Tente novamente.";
+      if (error.message?.includes("User already registered")) {
+        description = "Este email já está cadastrado. Tente fazer login ou recuperar sua senha.";
+      } else if (error.message?.includes("Password should be at least 6 characters")) {
+        description = "A senha deve ter pelo menos 6 caracteres.";
+      }
       toast({
         variant: "destructive",
         title: "Erro ao registrar conta",
-        description: error.message || "Não foi possível criar sua conta. Tente novamente.",
+        description: description,
       });
       return false;
     } finally {
@@ -470,10 +448,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Logout function
   const logout = async () => {
     try {
-      // If user exists, remove their active session
       if (user) {
         await supabase
           .from('active_sessions')
@@ -483,7 +459,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       await supabase.auth.signOut();
       setUser(null);
-      // Clear session storage when user logs out
       sessionStorage.removeItem('user_role');
       toast({
         title: "Logout realizado",
@@ -500,7 +475,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Reset password function
   const resetPassword = async (email: string): Promise<boolean> => {
     setIsLoading(true);
     try {
@@ -555,4 +529,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

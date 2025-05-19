@@ -244,12 +244,14 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          city: string | null
           created_at: string | null
           full_name: string | null
           id: string
           last_login: string | null
           phone: string | null
           role: string
+          state: string | null
           subscription_start_date: string | null
           subscription_status: string | null
           subscription_type: string | null
@@ -257,12 +259,14 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          city?: string | null
           created_at?: string | null
           full_name?: string | null
           id: string
           last_login?: string | null
           phone?: string | null
           role?: string
+          state?: string | null
           subscription_start_date?: string | null
           subscription_status?: string | null
           subscription_type?: string | null
@@ -270,12 +274,14 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          city?: string | null
           created_at?: string | null
           full_name?: string | null
           id?: string
           last_login?: string | null
           phone?: string | null
           role?: string
+          state?: string | null
           subscription_start_date?: string | null
           subscription_status?: string | null
           subscription_type?: string | null
