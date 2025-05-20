@@ -184,6 +184,60 @@ export type Database = {
           },
         ]
       }
+      feature_access_rules: {
+        Row: {
+          created_at: string | null
+          feature_key: string
+          id: string
+          non_subscriber_access_level: Database["public"]["Enums"]["feature_access_level_enum"]
+          non_subscriber_message_locked: string | null
+          trial_access_level: Database["public"]["Enums"]["feature_access_level_enum"]
+          trial_limit_value: number | null
+          trial_message_locked: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          feature_key: string
+          id?: string
+          non_subscriber_access_level?: Database["public"]["Enums"]["feature_access_level_enum"]
+          non_subscriber_message_locked?: string | null
+          trial_access_level?: Database["public"]["Enums"]["feature_access_level_enum"]
+          trial_limit_value?: number | null
+          trial_message_locked?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          feature_key?: string
+          id?: string
+          non_subscriber_access_level?: Database["public"]["Enums"]["feature_access_level_enum"]
+          non_subscriber_message_locked?: string | null
+          trial_access_level?: Database["public"]["Enums"]["feature_access_level_enum"]
+          trial_limit_value?: number | null
+          trial_message_locked?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      free_trial_config: {
+        Row: {
+          allowed_supplier_ids: string[] | null
+          last_rotation_at: string | null
+          user_id: string
+        }
+        Insert: {
+          allowed_supplier_ids?: string[] | null
+          last_rotation_at?: string | null
+          user_id: string
+        }
+        Update: {
+          allowed_supplier_ids?: string[] | null
+          last_rotation_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       login_logs: {
         Row: {
           attempted_at: string
@@ -256,6 +310,9 @@ export type Database = {
           subscription_start_date: string | null
           subscription_status: string | null
           subscription_type: string | null
+          trial_end_date: string | null
+          trial_start_date: string | null
+          trial_status: Database["public"]["Enums"]["trial_status_enum"] | null
           updated_at: string | null
         }
         Insert: {
@@ -272,6 +329,9 @@ export type Database = {
           subscription_start_date?: string | null
           subscription_status?: string | null
           subscription_type?: string | null
+          trial_end_date?: string | null
+          trial_start_date?: string | null
+          trial_status?: Database["public"]["Enums"]["trial_status_enum"] | null
           updated_at?: string | null
         }
         Update: {
@@ -288,6 +348,9 @@ export type Database = {
           subscription_start_date?: string | null
           subscription_status?: string | null
           subscription_type?: string | null
+          trial_end_date?: string | null
+          trial_start_date?: string | null
+          trial_status?: Database["public"]["Enums"]["trial_status_enum"] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -622,7 +685,12 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      feature_access_level_enum:
+        | "full"
+        | "limited_count"
+        | "limited_blurred"
+        | "none"
+      trial_status_enum: "not_started" | "active" | "expired" | "converted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -737,6 +805,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      feature_access_level_enum: [
+        "full",
+        "limited_count",
+        "limited_blurred",
+        "none",
+      ],
+      trial_status_enum: ["not_started", "active", "expired", "converted"],
+    },
   },
 } as const
