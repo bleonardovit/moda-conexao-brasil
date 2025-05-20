@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { User, Payment, SubscriptionEvent } from '@/types';
 
@@ -26,7 +25,7 @@ export const getAllUsers = async (): Promise<User[]> => {
     // Mapear os dados do perfil para o formato de User
     return data.map(profile => ({
       id: profile.id,
-      email: profile.id, // Usar o ID como email temporariamente, já que a tabela profiles não tem email
+      email: profile.email || profile.id, // Usar o email da tabela profiles, com fallback para ID se não existir (para usuários antigos)
       full_name: profile.full_name || 'Sem nome',
       phone: profile.phone || undefined,
       subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive',
@@ -34,6 +33,10 @@ export const getAllUsers = async (): Promise<User[]> => {
       subscription_start_date: profile.subscription_start_date || undefined,
       last_login: profile.last_login || undefined,
       role: profile.role as 'user' | 'admin' || 'user',
+      // City e state já são parte do tipo User, mas não são explicitamente mapeados aqui
+      // se eles estiverem na tabela profiles, o select '*' os trará e podem ser usados diretamente no componente se necessário
+      // Se city e state não estiverem na tabela profiles, este mapeamento não os adicionará ao objeto User.
+      // O tipo User já tem city e state opcionais: city?: string; state?: string;
     }));
   } catch (error) {
     console.error("Erro não tratado ao buscar usuários:", error);
@@ -67,6 +70,8 @@ export const updateUser = async (user: User): Promise<User> => {
       .update({
         full_name: user.full_name,
         phone: user.phone,
+        // O email não deve ser atualizado por aqui, pois é gerenciado pelo auth.users
+        // Se precisar atualizar o email do perfil, deve ser feito junto com a atualização do email de autenticação
         updated_at: new Date().toISOString()
       })
       .eq('id', user.id)
@@ -80,8 +85,18 @@ export const updateUser = async (user: User): Promise<User> => {
 
     console.log("Usuário atualizado com sucesso:", data);
     
-    // Retornar os dados atualizados
-    return user;
+    // Retornar os dados atualizados (o user que foi passado como argumento)
+    // Idealmente, o 'data' retornado pelo Supabase seria usado, mas precisamos garantir que o tipo User seja consistente.
+    // E o 'data' pode não conter todos os campos do tipo User se não forem selecionados.
+    // Para este caso, o user passado já contém os campos atualizados exceto o 'email' se o email em profiles fosse diferente.
+    // Como não estamos atualizando email aqui, user já reflete o estado desejado.
+    const updatedProfile = data as any; // Cast para any para acessar campos dinamicamente
+    return {
+      ...user, // Mantém os dados originais do usuário
+      full_name: updatedProfile.full_name || user.full_name,
+      phone: updatedProfile.phone || user.phone,
+      // Não atualize o email aqui, ele deve vir do profile.email ou ser gerenciado via auth
+    };
   } catch (error) {
     console.error("Erro não tratado ao atualizar usuário:", error);
     throw error;
