@@ -1,7 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
-// import { Payment, SubscriptionEvent } from '@/types'; // Types 'Payment' and 'SubscriptionEvent' are not exported from @/types
-import type { User, TrialStatus } from '@/types/user';
-import { UserProfileUpdate } from '@/lib/validators/user-profile';
+import type { User, UserRole, TrialStatus, SubscriptionStatus, SubscriptionType } from '@/types/user';
+import type { Payment } from '@/types/payment'; // Import Payment type
+
+// UserProfileUpdate was from a potentially missing validator. Using Pick for relevant fields.
+type UserProfileUpdateData = Partial<Pick<User, 'full_name' | 'email' | 'phone' | 'avatar_url' | 'city' | 'state'>>;
 
 
 export const getAllUsers = async (): Promise<User[]> => {
@@ -16,7 +19,7 @@ export const getAllUsers = async (): Promise<User[]> => {
       throw error;
     }
 
-    return data || [];
+    return (data as User[]) || []; // Cast to User[]
   } catch (error) {
     console.error('Error in getAllUsers:', error);
     throw error;
@@ -32,11 +35,11 @@ export const getUserById = async (userId: string): Promise<User | null> => {
       .single();
 
     if (error) {
-      console.error('Error fetching user by ID:', error);
+      // console.error('Error fetching user by ID:', error); // Log is fine, but throwing might be better for query hook
       return null;
     }
 
-    return data || null;
+    return (data as User) || null; // Cast to User
   } catch (error) {
     console.error('Error in getUserById:', error);
     return null;
@@ -79,34 +82,39 @@ export const getUsersWithPagination = async (page: number, pageSize: number): Pr
 
     const totalCount = count || 0;
 
-    return { users: data || [], totalCount };
+    return { users: (data as User[]) || [], totalCount }; // Cast to User[]
   } catch (error) {
     console.error('Error in getUsersWithPagination:', error);
     return { users: [], totalCount: 0 };
   }
 };
 
-// // Get user payment history - Commenting out as 'Payment' type is not defined
-// export const getUserPaymentHistory = async (userId: string): Promise<Payment[]> => {
-//   try {
-//     const { data, error } = await supabase
-//       .from('payments') // Assuming 'payments' table exists
-//       .select('*')
-//       .eq('user_id', userId)
-//       .order('created_at', { ascending: false });
+// Get user payment history
+export const getUserPayments = async (userId: string): Promise<Payment[]> => {
+  try {
+    // This is a placeholder implementation.
+    // You'll need a 'payments' table in your Supabase schema with appropriate columns.
+    // Example: id, user_id, date, amount, method, status
+    console.warn(`getUserPayments is a placeholder. No 'payments' table interaction is implemented yet for user ${userId}.`);
+    // const { data, error } = await supabase
+    //   .from('payments') // Assuming 'payments' table exists
+    //   .select('*')
+    //   .eq('user_id', userId)
+    //   .order('created_at', { ascending: false });
 
-//     if (error) {
-//       console.error('Error fetching payment history:', error);
-//       throw error;
-//     }
-//     return data || [];
-//   } catch (error) {
-//     console.error('Error in getUserPaymentHistory:', error);
-//     throw error;
-//   }
-// };
+    // if (error) {
+    //   console.error('Error fetching payment history:', error);
+    //   throw error;
+    // }
+    // return (data as Payment[]) || [];
+    return Promise.resolve([]); // Return empty array for now
+  } catch (error) {
+    console.error('Error in getUserPayments:', error);
+    throw error;
+  }
+};
 
-export const updateUserProfile = async (userId: string, profileData: Partial<UserProfileUpdate>): Promise<User> => {
+export const updateUser = async (userId: string, profileData: UserProfileUpdateData): Promise<User> => {
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -121,41 +129,47 @@ export const updateUserProfile = async (userId: string, profileData: Partial<Use
     }
 
     if (!data) {
-      throw new Error('User profile not found');
+      throw new Error('User profile not found after update');
     }
 
-    return data;
+    return data as User; // Cast to User
   } catch (error) {
-    console.error('Error in updateUserProfile:', error);
+    console.error('Error in updateUser:', error);
     throw error;
   }
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
   try {
+    // This typically means a soft delete or an actual deletion.
+    // For now, let's assume it's an actual deletion from profiles.
+    // If it's a different kind of "delete" (e.g., auth user), adjust accordingly.
     const { error } = await supabase
       .from('profiles')
       .delete()
       .eq('id', userId);
 
     if (error) {
-      console.error('Error deleting user:', error);
+      console.error('Error deleting user profile:', error);
       throw error;
     }
   } catch (error) {
     console.error('Error in deleteUser:', error);
+    // Consider re-throwing or handling more gracefully
   }
 };
 
 export const banUser = async (userId: string): Promise<void> => {
   try {
+    // Since 'is_banned' column doesn't exist, we'll set subscription_status to 'inactive'.
+    // This is an approximation of "banning".
     const { error } = await supabase
       .from('profiles')
-      .update({ is_banned: true })
+      .update({ subscription_status: 'inactive' as SubscriptionStatus })
       .eq('id', userId);
 
     if (error) {
-      console.error('Error banning user:', error);
+      console.error('Error banning user (setting status to inactive):', error);
       throw error;
     }
   } catch (error) {
@@ -165,13 +179,15 @@ export const banUser = async (userId: string): Promise<void> => {
 
 export const unbanUser = async (userId: string): Promise<void> => {
   try {
+    // Reverses the "ban" by setting subscription_status back to 'active'.
+    // This might need more complex logic based on the user's previous actual status.
     const { error } = await supabase
       .from('profiles')
-      .update({ is_banned: false })
+      .update({ subscription_status: 'active' as SubscriptionStatus })
       .eq('id', userId);
 
     if (error) {
-      console.error('Error unbanning user:', error);
+      console.error('Error unbanning user (setting status to active):', error);
       throw error;
     }
   } catch (error) {
@@ -179,7 +195,7 @@ export const unbanUser = async (userId: string): Promise<void> => {
   }
 };
 
-export const changeUserRole = async (userId: string, newRole: 'user' | 'admin' | 'moderator'): Promise<void> => {
+export const changeUserRole = async (userId: string, newRole: UserRole): Promise<void> => {
   try {
     const { error } = await supabase
       .from('profiles')
@@ -205,9 +221,11 @@ export const updateUserTrialStatus = async (
       trial_status: trialStatus,
     };
 
-    if (trialEndDate) {
+    // Only include trial_end_date if it's explicitly provided (even if null)
+    if (typeof trialEndDate !== 'undefined') {
       updates.trial_end_date = trialEndDate;
     }
+
 
     const { error } = await supabase
       .from('profiles')
@@ -228,7 +246,8 @@ export const searchUsers = async (searchTerm: string): Promise<User[]> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .ilike('full_name', `%${searchTerm}%`)
+      .ilike('full_name', `%${searchTerm}%`) // Assuming full_name exists
+      // .or(`email.ilike.%${searchTerm}%`) // Example if you want to search email too
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -236,7 +255,7 @@ export const searchUsers = async (searchTerm: string): Promise<User[]> => {
       throw error;
     }
 
-    return data || [];
+    return (data as User[]) || []; // Cast to User[]
   } catch (error) {
     console.error('Error in searchUsers:', error);
     return [];
@@ -260,77 +279,12 @@ export const getRecentRegistrations = async (days: number = 7): Promise<User[]> 
       throw error;
     }
 
-    return data || [];
+    return (data as User[]) || []; // Cast to User[]
   } catch (error) {
     console.error('Error in getRecentRegistrations:', error);
     return [];
   }
 };
-
-// // Record a subscription event - Commenting out as 'SubscriptionEvent' type is not defined and 'subscription_events' table might not exist
-// export const recordSubscriptionEvent = async (
-//   userId: string,
-//   eventType: string,
-//   eventData: any
-// ): Promise<SubscriptionEvent> => {
-//   try {
-//     const { data, error } = await supabase
-//       .from('subscription_events') // Assuming 'subscription_events' table exists
-//       .insert([{ user_id: userId, event_type: eventType, event_data: eventData, created_at: new Date().toISOString() }])
-//       .select()
-//       .single();
-
-//     if (error) {
-//       console.error('Error recording subscription event:', error);
-//       throw error;
-//     }
-//     return data;
-//   } catch (error) {
-//     console.error('Error in recordSubscriptionEvent:', error);
-//     throw error;
-//   }
-// };
-
-
-// // Log user activity - Commenting out as 'activity_log' table might not exist
-// export const logUserActivity = async (
-//   userId: string,
-//   activityType: string,
-//   details?: any
-// ): Promise<void> => {
-//   try {
-//     const { error } = await supabase
-//       .from('activity_log') // Assuming 'activity_log' table exists
-//       .insert([{ user_id: userId, activity_type: activityType, details, timestamp: new Date().toISOString() }]);
-
-//     if (error) {
-//       console.error('Error logging user activity:', error);
-//     }
-//   } catch (error) {
-//     console.error('Error in logUserActivity:', error);
-//   }
-// };
-
-
-// // Get user activity log - Commenting out as 'activity_log' table might not exist
-// export const getUserActivityLog = async (userId: string, limit: number = 50): Promise<any[]> => {
-//   try {
-//     const { data, error } = await supabase
-//       .from('activity_log') // Assuming 'activity_log' table exists
-//       .select('*')
-//       .eq('user_id', userId)
-//       .order('timestamp', { ascending: false })
-//       .limit(limit);
-
-//     if (error) {
-//       console.error('Error fetching user activity log:', error);
-//       throw error;
-//     }
-//     return data || [];
-//   } catch (error) {
-//     console.error('Error in getUserActivityLog:', error);
-//   }
-// };
 
 export const setUserLastLogin = async (userId: string): Promise<void> => {
   try {
@@ -347,3 +301,48 @@ export const setUserLastLogin = async (userId: string): Promise<void> => {
     console.error('Error in setUserLastLogin:', error);
   }
 };
+
+// Function to update subscription details
+export const updateSubscription = async (userId: string, subscriptionType: SubscriptionType, subscriptionStatus: SubscriptionStatus): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        subscription_type: subscriptionType,
+        subscription_status: subscriptionStatus 
+      })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating subscription:', error);
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error in updateSubscription:', error);
+    throw error;
+  }
+};
+
+// Function to "deactivate" a user (e.g., set subscription to inactive)
+export const deactivateUser = async (userId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ subscription_status: 'inactive' as SubscriptionStatus }) // Mark as inactive
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error deactivating user:', error);
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error in deactivateUser:', error);
+    throw error;
+  }
+};
+
+// Commenting out unused/undefined type related functions for now
+// export const recordSubscriptionEvent = async ( ... )
+// export const logUserActivity = async ( ... )
+// export const getUserActivityLog = async ( ... )
+

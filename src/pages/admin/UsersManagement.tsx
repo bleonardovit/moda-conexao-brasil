@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Table, 
@@ -92,7 +91,7 @@ import {
   updateSubscription, 
   deactivateUser as serviceDeactivateUser
 } from '@/services/userService';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Interfaces para os formulários
 interface EmailFormValues {
@@ -108,6 +107,7 @@ interface UserFormValues {
 
 export default function UsersManagement() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [subscriptionFilter, setSubscriptionFilter] = useState('all');
@@ -118,13 +118,15 @@ export default function UsersManagement() {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Estado para pagamentos do usuário e carregamento
   const [userPayments, setUserPayments] = useState<Payment[]>([]);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
   
   // Novo estado para edição de assinatura
   const [subscriptionEditData, setSubscriptionEditData] = useState({
-    type: '',
-    status: ''
+    type: '' as User['subscription_type'], // Use type from User
+    status: '' as User['subscription_status'] // Use type from User
   });
   
   // Buscar dados de usuários do Supabase
@@ -169,10 +171,10 @@ export default function UsersManagement() {
       (user.phone && user.phone.includes(searchTerm));
     
     const matchesStatus = statusFilter === 'all' || 
-      user.subscription_status === statusFilter;
+      (user.subscription_status || 'inactive') === statusFilter; // Handle undefined status
     
     const matchesSubscription = subscriptionFilter === 'all' || 
-      user.subscription_type === subscriptionFilter;
+      (user.subscription_type || 'none') === subscriptionFilter; // Handle undefined type
     
     return matchesSearch && matchesStatus && matchesSubscription;
   });
@@ -194,7 +196,7 @@ export default function UsersManagement() {
     if (selectedUser) {
       setSubscriptionEditData({
         type: selectedUser.subscription_type || 'monthly',
-        status: selectedUser.subscription_status
+        status: selectedUser.subscription_status || 'inactive'
       });
       setIsEditSubscriptionOpen(true);
     }
@@ -214,87 +216,86 @@ export default function UsersManagement() {
   const openEditUserDialog = () => {
     if (selectedUser) {
       userForm.reset({
-        full_name: selectedUser.full_name,
-        email: selectedUser.email,
+        full_name: selectedUser.full_name || '',
+        email: selectedUser.email || '',
         phone: selectedUser.phone || ''
       });
       setIsEditUserDialogOpen(true);
     }
   };
 
-  // Salvar alterações na assinatura
-  const saveSubscriptionChanges = async () => {
-    if (selectedUser) {
-      try {
-        await updateSubscription(
-          selectedUser.id, 
-          subscriptionEditData.type, 
-          subscriptionEditData.status
-        );
-
-        // Atualizar o usuário selecionado com os novos dados
-        const updatedUser = {
-          ...selectedUser,
-          subscription_status: subscriptionEditData.status as 'active' | 'inactive' | 'pending',
-          subscription_type: subscriptionEditData.type as 'monthly' | 'yearly' | undefined
-        };
-        
-        setSelectedUser(updatedUser);
-        
-        toast({
-          title: "Assinatura atualizada",
-          description: `Detalhes da assinatura de ${selectedUser.full_name} foram atualizados com sucesso.`,
-        });
-
-        // Recarregar a lista de usuários
-        refetch();
-        
-        setIsEditSubscriptionOpen(false);
-      } catch (error) {
-        console.error("Erro ao salvar alterações na assinatura:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao atualizar assinatura",
-          description: "Ocorreu um erro ao salvar as alterações na assinatura.",
-        });
+  // Mutation for updating subscription
+  const updateSubscriptionMutation = useMutation({
+    mutationFn: (variables: { userId: string; type: User['subscription_type']; status: User['subscription_status'] }) => 
+      updateSubscription(variables.userId, variables.type!, variables.status!),
+    onSuccess: (_, variables) => {
+      toast({
+        title: "Assinatura atualizada",
+        description: `Detalhes da assinatura de ${selectedUser?.full_name} foram atualizados.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['users'] }); // Invalidate users query
+      queryClient.invalidateQueries({ queryKey: ['user', variables.userId] }); // Invalidate specific user query if exists
+      
+      // Update selectedUser state locally for immediate UI feedback
+      if (selectedUser && selectedUser.id === variables.userId) {
+        setSelectedUser(prev => prev ? {
+          ...prev,
+          subscription_type: variables.type,
+          subscription_status: variables.status,
+        } : null);
       }
+      setIsEditSubscriptionOpen(false);
+    },
+    onError: (error) => {
+      console.error("Erro ao salvar alterações na assinatura:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar assinatura",
+        description: "Ocorreu um erro ao salvar as alterações na assinatura.",
+      });
+    },
+  });
+
+  const saveSubscriptionChanges = async () => {
+    if (selectedUser && subscriptionEditData.type && subscriptionEditData.status) {
+      updateSubscriptionMutation.mutate({
+        userId: selectedUser.id,
+        type: subscriptionEditData.type,
+        status: subscriptionEditData.status
+      });
     }
   };
 
-  // Salvar alterações no usuário
+  // Mutation for updating user details
+  const updateUserMutation = useMutation({
+    mutationFn: (variables: { userId: string; data: UserFormValues }) => 
+      updateUser(variables.userId, variables.data),
+    onSuccess: (updatedUserData, variables) => {
+      toast({
+        title: "Usuário atualizado",
+        description: `Dados do usuário ${variables.data.full_name} foram atualizados.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['user', variables.userId] });
+
+      if (selectedUser && selectedUser.id === variables.userId) {
+        setSelectedUser(prev => prev ? ({ ...prev, ...variables.data }) : null);
+      }
+      setIsEditUserDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error("Erro ao salvar alterações no usuário:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar usuário",
+        description: "Ocorreu um erro ao salvar as alterações no usuário.",
+      });
+    },
+  });
+
   const saveUserChanges = async (data: UserFormValues) => {
     if (selectedUser) {
-      try {
-        // Atualizar o usuário no banco de dados
-        const updatedUser = {
-          ...selectedUser,
-          full_name: data.full_name,
-          email: data.email,
-          phone: data.phone
-        };
-        
-        await updateUser(updatedUser);
-
-        // Atualizar o usuário selecionado com os novos dados
-        setSelectedUser(updatedUser);
-        
-        toast({
-          title: "Usuário atualizado",
-          description: `Dados do usuário ${data.full_name} foram atualizados com sucesso.`,
-        });
-
-        // Recarregar a lista de usuários
-        refetch();
-        
-        setIsEditUserDialogOpen(false);
-      } catch (error) {
-        console.error("Erro ao salvar alterações no usuário:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao atualizar usuário",
-          description: "Ocorreu um erro ao salvar as alterações no usuário.",
-        });
-      }
+      updateUserMutation.mutate({ userId: selectedUser.id, data });
     }
   };
 
@@ -322,30 +323,36 @@ export default function UsersManagement() {
     setIsDeactivateDialogOpen(true);
   };
 
-  // Desativar usuário
-  const deactivateUser = async () => {
-    if (selectedUser) {
-      try {
-        await serviceDeactivateUser(selectedUser.id);
-        
-        toast({
-          title: "Usuário desativado",
-          description: `Conta de ${selectedUser.full_name} foi desativada com sucesso.`,
-        });
+  // Mutation for deactivating user
+  const deactivateUserMutation = useMutation({
+    mutationFn: (userId: string) => serviceDeactivateUser(userId),
+    onSuccess: (_, userId) => {
+      toast({
+        title: "Usuário desativado",
+        description: `Conta de ${selectedUser?.full_name} foi desativada.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
 
-        // Recarregar a lista de usuários
-        refetch();
-        
-        setIsDeactivateDialogOpen(false);
-        setIsUserDetailsOpen(false);
-      } catch (error) {
-        console.error("Erro ao desativar usuário:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao desativar usuário",
-          description: "Ocorreu um erro ao desativar o usuário.",
-        });
+      if (selectedUser && selectedUser.id === userId) {
+         setSelectedUser(prev => prev ? ({ ...prev, subscription_status: 'inactive' }) : null);
       }
+      setIsDeactivateDialogOpen(false);
+      setIsUserDetailsOpen(false); // Close details modal after deactivation
+    },
+    onError: (error) => {
+      console.error("Erro ao desativar usuário:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao desativar usuário",
+        description: "Ocorreu um erro ao desativar o usuário.",
+      });
+    },
+  });
+
+  const deactivateUserHandler = async () => { // Renamed to avoid conflict
+    if (selectedUser) {
+      deactivateUserMutation.mutate(selectedUser.id);
     }
   };
 
@@ -366,10 +373,10 @@ export default function UsersManagement() {
     try {
       const headers = ['Nome', 'Email', 'Telefone', 'Status', 'Plano', 'Data de Cadastro'];
       const rows = filteredUsers.map(user => [
-        user.full_name,
+        user.full_name || '',
         user.email,
         user.phone || '',
-        user.subscription_status,
+        user.subscription_status || '',
         user.subscription_type || '',
         user.subscription_start_date ? formatDate(user.subscription_start_date) : ''
       ]);
@@ -411,8 +418,9 @@ export default function UsersManagement() {
       const fetchPayments = async () => {
         setIsLoadingPayments(true);
         try {
-          const payments = await getUserPayments(selectedUser.id);
-          setUserPayments(payments);
+          // Make sure getUserPayments is correctly implemented in userService
+          const paymentsData = await getUserPayments(selectedUser.id);
+          setUserPayments(paymentsData);
         } catch (error) {
           console.error("Erro ao buscar pagamentos do usuário:", error);
           toast({
@@ -434,7 +442,7 @@ export default function UsersManagement() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
-          <Button onClick={exportCSV} disabled={isExporting}>
+          <Button onClick={exportCSV} disabled={isExporting || updateUserMutation.isPending || updateSubscriptionMutation.isPending || deactivateUserMutation.isPending}>
             {isExporting ? (
               <>
                 <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
@@ -473,6 +481,7 @@ export default function UsersManagement() {
               <SelectItem value="active">Ativos</SelectItem>
               <SelectItem value="inactive">Inativos</SelectItem>
               <SelectItem value="pending">Pendentes</SelectItem>
+              {/* Add other statuses if applicable, e.g., 'trialing', 'canceled' */}
             </SelectContent>
           </Select>
           
@@ -487,6 +496,7 @@ export default function UsersManagement() {
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="monthly">Mensal</SelectItem>
               <SelectItem value="yearly">Anual</SelectItem>
+              <SelectItem value="none">Nenhum</SelectItem> 
             </SelectContent>
           </Select>
         </div>
@@ -517,7 +527,7 @@ export default function UsersManagement() {
                 filteredUsers.map(user => (
                   <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openUserDetails(user)}>
                     <TableCell className="font-medium">
-                      {user.full_name}
+                      {user.full_name || 'N/A'}
                       {user.role === 'admin' && (
                         <Badge className="ml-2 bg-blue-500">Admin</Badge>
                       )}
@@ -532,13 +542,11 @@ export default function UsersManagement() {
                           ? 'bg-green-500' 
                           : user.subscription_status === 'pending'
                             ? 'bg-yellow-500'
-                            : 'bg-red-500'
+                            : user.subscription_status === 'trialing'
+                              ? 'bg-blue-400' // Example for trialing
+                              : 'bg-red-500' // inactive, canceled etc.
                       }`}>
-                        {user.subscription_status === 'active' 
-                          ? 'Ativo' 
-                          : user.subscription_status === 'pending'
-                            ? 'Pendente'
-                            : 'Inativo'}
+                        {user.subscription_status ? user.subscription_status.charAt(0).toUpperCase() + user.subscription_status.slice(1) : 'Inativo'}
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
@@ -547,9 +555,8 @@ export default function UsersManagement() {
                         : 'N/A'}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {user.subscription_start_date 
-                        ? formatDate(user.subscription_start_date)
-                        : 'N/A'}
+                      {/* Assuming created_at is the registration date */}
+                      {user.created_at ? formatDate(user.created_at) : 'N/A'} 
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {user.last_login
@@ -559,7 +566,7 @@ export default function UsersManagement() {
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" disabled={updateUserMutation.isPending || updateSubscriptionMutation.isPending || deactivateUserMutation.isPending}>
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Abrir menu</span>
                           </Button>
@@ -575,8 +582,8 @@ export default function UsersManagement() {
                             <Mail className="mr-2 h-4 w-4" />
                             <span>Enviar email</span>
                           </DropdownMenuItem>
-                          {user.subscription_status !== 'active' && (
-                            <DropdownMenuItem onClick={() => sendPaymentLink(user.id, user.full_name)}>
+                          {user.subscription_status !== 'active' && user.subscription_status !== 'trialing' && (
+                            <DropdownMenuItem onClick={() => sendPaymentLink(user.id, user.full_name || user.email)}>
                               <CreditCard className="mr-2 h-4 w-4" />
                               <span>Reenviar link de pagamento</span>
                             </DropdownMenuItem>
@@ -612,7 +619,7 @@ export default function UsersManagement() {
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {selectedUser.full_name}
+                {selectedUser.full_name || 'Usuário sem nome'}
                 {selectedUser.role === 'admin' && (
                   <Badge className="bg-blue-500">Admin</Badge>
                 )}
@@ -644,7 +651,7 @@ export default function UsersManagement() {
                   
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-muted-foreground">Função</h3>
-                    <p>{selectedUser.role === 'admin' ? 'Administrador' : 'Usuário'}</p>
+                    <p>{selectedUser.role ? selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1) : 'Usuário'}</p>
                   </div>
                   
                   <div className="space-y-2">
@@ -658,11 +665,11 @@ export default function UsersManagement() {
                 </div>
                 
                 <div className="flex justify-end gap-2 mt-4">
-                  <Button variant="outline" onClick={openEditUserDialog}>
+                  <Button variant="outline" onClick={openEditUserDialog} disabled={updateUserMutation.isPending || deactivateUserMutation.isPending}>
                     <Edit className="mr-2 h-4 w-4" />
                     Editar dados
                   </Button>
-                  <Button variant="destructive" onClick={confirmDeactivate}>
+                  <Button variant="destructive" onClick={confirmDeactivate} disabled={updateUserMutation.isPending || deactivateUserMutation.isPending}>
                     <Trash className="mr-2 h-4 w-4" />
                     Desativar usuário
                   </Button>
@@ -685,13 +692,11 @@ export default function UsersManagement() {
                             ? 'bg-green-500' 
                             : selectedUser.subscription_status === 'pending'
                               ? 'bg-yellow-500'
-                              : 'bg-red-500'
+                              : selectedUser.subscription_status === 'trialing'
+                                ? 'bg-blue-400'
+                                : 'bg-red-500'
                         }`}>
-                          {selectedUser.subscription_status === 'active' 
-                            ? 'Ativo' 
-                            : selectedUser.subscription_status === 'pending'
-                              ? 'Pendente'
-                              : 'Inativo'}
+                          {selectedUser.subscription_status ? selectedUser.subscription_status.charAt(0).toUpperCase() + selectedUser.subscription_status.slice(1) : 'Inativo'}
                         </Badge>
                       </div>
                       
@@ -705,14 +710,14 @@ export default function UsersManagement() {
                       </div>
                       
                       <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-muted-foreground">Data de início</h3>
+                        <h3 className="text-sm font-medium text-muted-foreground">Data de início da assinatura</h3>
                         <p>{selectedUser.subscription_start_date ? formatDate(selectedUser.subscription_start_date) : 'N/A'}</p>
                       </div>
                       
                       <div className="space-y-2">
                         <h3 className="text-sm font-medium text-muted-foreground">Próxima renovação</h3>
                         <p>
-                          {selectedUser.subscription_start_date && selectedUser.subscription_status === 'active'
+                          {selectedUser.subscription_start_date && (selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'trialing')
                             ? (selectedUser.subscription_type === 'monthly' 
                                 ? formatDate(new Date(new Date(selectedUser.subscription_start_date).setMonth(new Date(selectedUser.subscription_start_date).getMonth() + 1)).toISOString())
                                 : formatDate(new Date(new Date(selectedUser.subscription_start_date).setFullYear(new Date(selectedUser.subscription_start_date).getFullYear() + 1)).toISOString())
@@ -723,7 +728,7 @@ export default function UsersManagement() {
                     </div>
                   </CardContent>
                   <CardFooter className="flex justify-end">
-                    <Button onClick={openEditSubscription}>Alterar assinatura</Button>
+                    <Button onClick={openEditSubscription} disabled={updateSubscriptionMutation.isPending}>Alterar assinatura</Button>
                   </CardFooter>
                 </Card>
               </TabsContent>
@@ -753,18 +758,16 @@ export default function UsersManagement() {
                             userPayments.map((payment) => (
                               <TableRow key={payment.id}>
                                 <TableCell>{formatDate(payment.date)}</TableCell>
-                                <TableCell>{payment.amount}</TableCell>
+                                <TableCell>R$ {payment.amount.toFixed(2)}</TableCell>
                                 <TableCell>
                                   {payment.method === 'card' ? 'Cartão de crédito' : 
                                    payment.method === 'pix' ? 'PIX' : 
+                                   payment.method === 'bankslip' ? 'Boleto' :
                                    payment.method || 'N/A'}
                                 </TableCell>
                                 <TableCell>
                                   <Badge className={payment.status === 'success' ? 'bg-green-500' : payment.status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'}>
-                                    {payment.status === 'success' ? 'Sucesso' : 
-                                     payment.status === 'failed' ? 'Falha' : 
-                                     payment.status === 'pending' ? 'Pendente' :
-                                     'N/A'}
+                                    {payment.status ? payment.status.charAt(0).toUpperCase() + payment.status.slice(1) : 'N/A'}
                                   </Badge>
                                 </TableCell>
                               </TableRow>
@@ -780,9 +783,9 @@ export default function UsersManagement() {
                       </Table>
                     )}
                   </CardContent>
-                  {selectedUser && selectedUser.subscription_status === 'pending' && (
+                  {selectedUser && (selectedUser.subscription_status === 'pending' || selectedUser.subscription_status === 'inactive') && (
                     <CardFooter className="flex justify-end">
-                      <Button onClick={() => sendPaymentLink(selectedUser.id, selectedUser.full_name)}>
+                      <Button onClick={() => sendPaymentLink(selectedUser.id, selectedUser.full_name || selectedUser.email)}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Reenviar link de pagamento
                       </Button>
@@ -801,15 +804,15 @@ export default function UsersManagement() {
           <DialogHeader>
             <DialogTitle>Alterar assinatura</DialogTitle>
             <DialogDescription>
-              Modificar o plano ou status da assinatura de {selectedUser?.full_name}
+              Modificar o plano ou status da assinatura de {selectedUser?.full_name || 'usuário'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <h3 className="text-sm font-medium">Plano de assinatura</h3>
               <Select 
-                value={subscriptionEditData.type} 
-                onValueChange={(value) => setSubscriptionEditData({ ...subscriptionEditData, type: value })}
+                value={subscriptionEditData.type || ''} 
+                onValueChange={(value) => setSubscriptionEditData({ ...subscriptionEditData, type: value as User['subscription_type'] })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar plano" />
@@ -824,8 +827,8 @@ export default function UsersManagement() {
             <div className="space-y-2">
               <h3 className="text-sm font-medium">Status</h3>
               <Select 
-                value={subscriptionEditData.status} 
-                onValueChange={(value) => setSubscriptionEditData({ ...subscriptionEditData, status: value as 'active' | 'inactive' | 'pending' })}
+                value={subscriptionEditData.status || ''} 
+                onValueChange={(value) => setSubscriptionEditData({ ...subscriptionEditData, status: value as User['subscription_status'] })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar status" />
@@ -834,14 +837,16 @@ export default function UsersManagement() {
                   <SelectItem value="active">Ativo</SelectItem>
                   <SelectItem value="pending">Pendente</SelectItem>
                   <SelectItem value="inactive">Inativo</SelectItem>
+                  <SelectItem value="trialing">Em Teste (Trial)</SelectItem>
+                  <SelectItem value="canceled">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditSubscriptionOpen(false)}>Cancelar</Button>
-            <Button onClick={saveSubscriptionChanges}>
-              <Save className="mr-2 h-4 w-4" />
+            <Button variant="outline" onClick={() => setIsEditSubscriptionOpen(false)}  disabled={updateSubscriptionMutation.isPending}>Cancelar</Button>
+            <Button onClick={saveSubscriptionChanges} disabled={updateSubscriptionMutation.isPending || !subscriptionEditData.type || !subscriptionEditData.status}>
+              {updateSubscriptionMutation.isPending ? <RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Salvar alterações
             </Button>
           </DialogFooter>
@@ -854,7 +859,7 @@ export default function UsersManagement() {
           <DialogHeader>
             <DialogTitle>Editar dados do usuário</DialogTitle>
             <DialogDescription>
-              Atualizar informações pessoais de {selectedUser?.full_name}
+              Atualizar informações pessoais de {selectedUser?.full_name || 'usuário'}
             </DialogDescription>
           </DialogHeader>
           <Form {...userForm}>
@@ -862,6 +867,7 @@ export default function UsersManagement() {
               <FormField
                 control={userForm.control}
                 name="full_name"
+                rules={{ required: "Nome completo é obrigatório" }}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome completo</FormLabel>
@@ -879,12 +885,13 @@ export default function UsersManagement() {
               <FormField
                 control={userForm.control}
                 name="email"
+                rules={{ required: "Email é obrigatório", pattern: { value: /^\S+@\S+$/i, message: "Email inválido" } }}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <div className="flex items-center border rounded-md pr-3">
-                        <Input className="border-0 focus-visible:ring-0" {...field} />
+                        <Input type="email" className="border-0 focus-visible:ring-0" {...field} />
                         <Mail className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </FormControl>
@@ -909,13 +916,12 @@ export default function UsersManagement() {
                   </FormItem>
                 )}
               />
-              
               <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setIsEditUserDialogOpen(false)}>
+                <Button variant="outline" type="button" onClick={() => setIsEditUserDialogOpen(false)} disabled={updateUserMutation.isPending}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  <Save className="mr-2 h-4 w-4" />
+                <Button type="submit" disabled={updateUserMutation.isPending}>
+                  {updateUserMutation.isPending ? <RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Salvar alterações
                 </Button>
               </DialogFooter>
@@ -930,14 +936,15 @@ export default function UsersManagement() {
           <DialogHeader>
             <DialogTitle>Enviar Email</DialogTitle>
             <DialogDescription>
-              Envie um email para {selectedUser?.full_name}
+              Envie um email para {selectedUser?.full_name || 'usuário'}
             </DialogDescription>
           </DialogHeader>
           <Form {...emailForm}>
             <form onSubmit={emailForm.handleSubmit(sendEmail)} className="space-y-4">
-              <FormField
+               <FormField
                 control={emailForm.control}
                 name="subject"
+                rules={{ required: "Assunto é obrigatório" }}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Assunto</FormLabel>
@@ -952,6 +959,7 @@ export default function UsersManagement() {
               <FormField
                 control={emailForm.control}
                 name="message"
+                rules={{ required: "Mensagem é obrigatória" }}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Mensagem</FormLabel>
@@ -966,7 +974,6 @@ export default function UsersManagement() {
                   </FormItem>
                 )}
               />
-              
               <DialogFooter>
                 <Button variant="outline" type="button" onClick={() => setIsEmailDialogOpen(false)}>
                   Cancelar
@@ -987,12 +994,17 @@ export default function UsersManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>Desativar usuário</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja desativar a conta de {selectedUser?.full_name}? Esta ação pode ser revertida posteriormente.
+              Tem certeza que deseja desativar a conta de {selectedUser?.full_name || 'este usuário'}? Esta ação pode ser revertida posteriormente (reativando a assinatura ou status).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={deactivateUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogCancel disabled={deactivateUserMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={deactivateUserHandler} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deactivateUserMutation.isPending}
+            >
+              {deactivateUserMutation.isPending ? <RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> : null}
               Sim, desativar
             </AlertDialogAction>
           </AlertDialogFooter>
