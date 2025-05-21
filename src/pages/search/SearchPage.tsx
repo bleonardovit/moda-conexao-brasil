@@ -29,6 +29,7 @@ import type { Supplier, Category } from '@/types';
 import { searchSuppliers, getSuppliers } from '@/services/supplierService';
 import { useQuery } from '@tanstack/react-query';
 import { getCategories } from '@/services/categoryService';
+import { useAuth } from '@/hooks/useAuth';
 
 // Filter options
 const PAYMENT_METHODS = [
@@ -46,7 +47,9 @@ const SHIPPING_METHODS = [
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  
+  const { user } = useAuth();
+  const userId = user?.id;
+
   // State for categories
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<{ label: string; value: string }[]>([{ label: 'Todas as Categorias', value: 'all' }]);
@@ -58,7 +61,6 @@ export default function SearchPage() {
   
   const [stateFilter, setStateFilter] = useState('all');
   const [cityFilter, setCityFilter] = useState('all');
-  // Fix: explicitly type minOrderRange as a tuple with two numbers
   const [minOrderRange, setMinOrderRange] = useState<[number, number]>([0, 1000]);
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
   const [requiresCnpj, setRequiresCnpj] = useState<string | null>(null);
@@ -74,8 +76,8 @@ export default function SearchPage() {
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
-        // Fetch categories
-        const categoriesData = await getCategories();
+        // Fetch categories - assuming getCategories might need userId if RLS applies
+        const categoriesData = await getCategories(userId);
         setAllCategories(categoriesData);
         const catOptions = [
           { label: 'Todas as Categorias', value: 'all' },
@@ -84,13 +86,10 @@ export default function SearchPage() {
         setCategoryOptions(catOptions);
 
         // Fetch all suppliers to derive states and cities
-        // Consider fetching only state and city fields if performance becomes an issue
-        const allSuppliersData = await getSuppliers(); 
+        const allSuppliersData = await getSuppliers(userId);
         
-        // Filter out hidden suppliers before generating options
         const visibleSuppliers = allSuppliersData.filter(s => !s.hidden);
 
-        // Populate state options
         const uniqueStates = Array.from(new Set(visibleSuppliers.map(s => s.state).filter(Boolean)));
         const stOptions = [
           { label: 'Todos os Estados', value: 'all' },
@@ -98,8 +97,6 @@ export default function SearchPage() {
         ];
         setStateOptions(stOptions);
 
-        // Populate city options
-        // TODO: Consider making city options dependent on selected state for better UX
         const uniqueCities = Array.from(new Set(visibleSuppliers.map(s => s.city).filter(Boolean)));
         const cOptions = [
           { label: 'Todas as Cidades', value: 'all' },
@@ -117,19 +114,18 @@ export default function SearchPage() {
       }
     };
     fetchFilterOptions();
-  }, [toast]);
+  }, [toast, userId]);
 
   // Query suppliers from the database with filters
   const { data: suppliers = [], isLoading, error } = useQuery({
     queryKey: ['suppliers', searchTerm, categoryFilter, stateFilter, cityFilter, 
                minOrderRange, selectedPaymentMethods, requiresCnpj, 
-               selectedShippingMethods, hasWebsite], // categoryFilter é ID aqui
+               selectedShippingMethods, hasWebsite, userId], // Added userId to queryKey
     queryFn: async () => {
       try {
-        // Pass categoryFilter (ID) como categoryId para searchSuppliers
         return await searchSuppliers({
           searchTerm,
-          categoryId: categoryFilter !== 'all' ? categoryFilter : undefined, // Mudou para categoryId
+          categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
           state: stateFilter !== 'all' ? stateFilter : undefined,
           city: cityFilter !== 'all' ? cityFilter : undefined,
           minOrderRange,
@@ -137,7 +133,7 @@ export default function SearchPage() {
           requiresCnpj: requiresCnpj !== null ? requiresCnpj === 'true' : null,
           shippingMethods: selectedShippingMethods,
           hasWebsite: hasWebsite !== null ? hasWebsite === 'true' : null
-        });
+        }, userId);
       } catch (error) {
         console.error("Error fetching suppliers:", error);
         throw error;
@@ -311,9 +307,9 @@ export default function SearchPage() {
                         <SelectValue placeholder="Selecione um estado" />
                       </SelectTrigger>
                       <SelectContent>
-                        {stateOptions.map(state => (
-                          <SelectItem key={state.value} value={state.value}>
-                            {state.label}
+                        {stateOptions.map(stateOpt => (
+                          <SelectItem key={stateOpt.value} value={stateOpt.value}>
+                            {stateOpt.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -331,9 +327,9 @@ export default function SearchPage() {
                         <SelectValue placeholder="Selecione uma cidade" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cityOptions.map(city => (
-                          <SelectItem key={city.value} value={city.value}>
-                            {city.label}
+                        {cityOptions.map(cityOpt => (
+                          <SelectItem key={cityOpt.value} value={cityOpt.value}>
+                            {cityOpt.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -392,7 +388,7 @@ export default function SearchPage() {
                           name="requires-cnpj"
                           checked={requiresCnpj === 'true'}
                           onChange={() => setRequiresCnpj('true')}
-                          className="text-primary"
+                          className="text-primary focus:ring-primary"
                         />
                         <Label htmlFor="cnpj-yes" className="text-sm">Sim</Label>
                       </div>
@@ -403,7 +399,7 @@ export default function SearchPage() {
                           name="requires-cnpj"
                           checked={requiresCnpj === 'false'}
                           onChange={() => setRequiresCnpj('false')}
-                          className="text-primary"
+                          className="text-primary focus:ring-primary"
                         />
                         <Label htmlFor="cnpj-no" className="text-sm">Não</Label>
                       </div>
@@ -414,7 +410,7 @@ export default function SearchPage() {
                           name="requires-cnpj"
                           checked={requiresCnpj === null}
                           onChange={() => setRequiresCnpj(null)}
-                          className="text-primary"
+                          className="text-primary focus:ring-primary"
                         />
                         <Label htmlFor="cnpj-all" className="text-sm">Ambos</Label>
                       </div>
@@ -454,7 +450,7 @@ export default function SearchPage() {
                           name="has-website"
                           checked={hasWebsite === 'true'}
                           onChange={() => setHasWebsite('true')}
-                          className="text-primary"
+                          className="text-primary focus:ring-primary"
                         />
                         <Label htmlFor="website-yes" className="text-sm">Sim</Label>
                       </div>
@@ -465,7 +461,7 @@ export default function SearchPage() {
                           name="has-website"
                           checked={hasWebsite === 'false'}
                           onChange={() => setHasWebsite('false')}
-                          className="text-primary"
+                          className="text-primary focus:ring-primary"
                         />
                         <Label htmlFor="website-no" className="text-sm">Não</Label>
                       </div>
@@ -476,7 +472,7 @@ export default function SearchPage() {
                           name="has-website"
                           checked={hasWebsite === null}
                           onChange={() => setHasWebsite(null)}
-                          className="text-primary"
+                          className="text-primary focus:ring-primary"
                         />
                         <Label htmlFor="website-all" className="text-sm">Ambos</Label>
                       </div>
@@ -519,7 +515,7 @@ export default function SearchPage() {
                       
                       {selectedPaymentMethods.length > 0 && (
                         <Badge variant="secondary" className="flex items-center gap-1">
-                          Pagamento: {selectedPaymentMethods.length} selecionados
+                          Pagamento: {selectedPaymentMethods.map(pm => PAYMENT_METHODS.find(p => p.value === pm)?.label).join(', ')}
                           <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedPaymentMethods([])} />
                         </Badge>
                       )}
@@ -533,7 +529,7 @@ export default function SearchPage() {
                       
                       {selectedShippingMethods.length > 0 && (
                         <Badge variant="secondary" className="flex items-center gap-1">
-                          Envio: {selectedShippingMethods.length} selecionados
+                          Envio: {selectedShippingMethods.map(sm => SHIPPING_METHODS.find(s => s.value === sm)?.label).join(', ')}
                           <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedShippingMethods([])} />
                         </Badge>
                       )}
@@ -566,8 +562,8 @@ export default function SearchPage() {
                   <p>Carregando fornecedores...</p>
                 </div>
               ) : error ? (
-                <div className="mt-4 rounded-md border border-border p-8 text-center">
-                  <p className="text-red-500">Erro ao carregar fornecedores. Tente novamente.</p>
+                <div className="mt-4 rounded-md border border-destructive bg-destructive/10 p-4 text-center">
+                  <p className="text-destructive-foreground">Erro ao carregar fornecedores. Tente novamente.</p>
                 </div>
               ) : suppliers.length > 0 ? (
                 <div className="space-y-4">
@@ -578,16 +574,18 @@ export default function SearchPage() {
                           <img 
                             src={supplier.images && supplier.images.length > 0 
                               ? supplier.images[0] 
-                              : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'}
+                              : 'https://via.placeholder.com/300x200?text=Sem+imagem'}
                             alt={supplier.name}
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <CardContent className="sm:w-2/3 md:w-3/4 p-4">
+                        <CardContent className="sm:w-2/3 md:w-3/4 p-4 flex flex-col">
                           <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-lg font-bold flex items-center">
-                                {supplier.name}
+                                <Link to={`/suppliers/${supplier.id}`} className="hover:underline">
+                                  {supplier.name}
+                                </Link>
                                 {supplier.featured && (
                                   <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" />
                                 )}
@@ -597,7 +595,7 @@ export default function SearchPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-8 w-8 shrink-0"
                               onClick={(e) => handleToggleFavorite(supplier, e)}
                             >
                               <Heart 
@@ -606,11 +604,13 @@ export default function SearchPage() {
                             </Button>
                           </div>
                           
-                          <p className="text-sm mb-4 line-clamp-2">{supplier.description}</p>
+                          <p className="text-sm mb-4 line-clamp-2 flex-grow min-h-[40px]">{supplier.description}</p>
                           
                           <div className="flex flex-wrap gap-2 mb-3">
-                            {supplier.categories.map(category => {
-                              const categoryColors: Record<string, string> = {
+                            {supplier.categories.map(categoryId => {
+                               const category = allCategories.find(c => c.id === categoryId);
+                               const categoryName = category ? category.name : categoryId;
+                               const categoryColors: Record<string, string> = {
                                 'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
                                 'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
                                 'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
@@ -620,11 +620,11 @@ export default function SearchPage() {
                               
                               return (
                                 <Badge 
-                                  key={category} 
+                                  key={categoryId} 
                                   variant="outline"
-                                  className={categoryColors[category] || ''}
+                                  className={categoryColors[categoryName] || 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200'}
                                 >
-                                  {category}
+                                  {categoryName}
                                 </Badge>
                               );
                             })}
@@ -641,7 +641,7 @@ export default function SearchPage() {
                             </div>
                           </div>
                           
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 mt-auto">
                             {supplier.instagram && (
                               <Button size="sm" variant="outline" asChild>
                                 <a href={`https://instagram.com/${supplier.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
@@ -673,19 +673,25 @@ export default function SearchPage() {
                 </div>
               ) : (
                 <div className="mt-4 rounded-md border border-border p-8 text-center">
-                  <p className="text-muted-foreground">Nenhum resultado encontrado</p>
-                  <Button 
-                    variant="link" 
-                    onClick={resetFilters}
-                  >
-                    Limpar filtros
-                  </Button>
+                  <p className="text-muted-foreground">Nenhum resultado encontrado para sua busca.</p>
+                  {activeFiltersCount > 0 && (
+                    <Button 
+                      variant="link" 
+                      onClick={resetFilters}
+                      className="mt-2"
+                    >
+                      Limpar filtros e tentar novamente
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
           ) : (
             <div className="mt-6 rounded-md border border-border p-8 text-center">
-              <p className="text-muted-foreground">Digite algo para pesquisar</p>
+              <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">
+                Use a barra de pesquisa acima ou os filtros para encontrar fornecedores.
+              </p>
             </div>
           )}
         </div>

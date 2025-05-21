@@ -9,7 +9,7 @@ import {
   Share2, 
   Star,
   Heart,
-  Mail,
+  // Mail, // Not used
   MapPin,
   Clock
 } from 'lucide-react';
@@ -33,7 +33,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Input } from '@/components/ui/input';
+// import { Input } from '@/components/ui/input'; // Not used
 import type { Supplier, Review, Category } from '@/types';
 import { getSupplierById } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
@@ -45,10 +45,10 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 
 const reviewFormSchema = z.object({
-  rating: z.number().min(1).max(5),
+  rating: z.number().min(1, { message: "Avaliação mínima é 1 estrela."}).max(5, { message: "Avaliação máxima é 5 estrelas."}),
   comment: z.string().min(5, {
     message: "A avaliação precisa ter pelo menos 5 caracteres.",
-  }),
+  }).max(500, { message: "O comentário não pode exceder 500 caracteres."}),
 });
 
 type ReviewFormValues = z.infer<typeof reviewFormSchema>;
@@ -58,6 +58,8 @@ export default function SupplierDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAuthenticated = !!user;
+  const userId = user?.id; // Get userId (string | undefined)
+
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
@@ -86,12 +88,13 @@ export default function SupplierDetail() {
         setError(null);
         setReviews([]);
         try {
-          const fetchedSupplier = await getSupplierById(supplierId);
+          // Assuming getSupplierById might also need userId for RLS on suppliers
+          const fetchedSupplier = await getSupplierById(supplierId, userId); 
           if (fetchedSupplier) {
             setSupplier(fetchedSupplier);
             setLoadingReviews(true);
             try {
-              const fetchedReviews = await getReviewsBySupplierId(supplierId);
+              const fetchedReviews = await getReviewsBySupplierId(supplierId, userId); // Pass userId
               setReviews(fetchedReviews);
             } catch (reviewError) {
               console.error("Erro ao buscar reviews:", reviewError);
@@ -115,19 +118,20 @@ export default function SupplierDetail() {
       setLoading(false);
       setReviews([]);
     }
-  }, [supplierId, toast]);
+  }, [supplierId, toast, userId]); // Added userId to dependency array
   
   useEffect(() => {
     const fetchAllCategories = async () => {
       try {
-        const categoriesData = await getCategories();
+        // Assuming getCategories might also need userId if RLS applies
+        const categoriesData = await getCategories(userId); // Pass userId
         setAllCategories(categoriesData);
       } catch (err) {
         console.error("Erro ao buscar todas as categorias:", err);
       }
     };
     fetchAllCategories();
-  }, []);
+  }, [userId]); // Added userId to dependency array
 
   const getCategoryNameFromId = (categoryId: string): string => {
     const foundCategory = allCategories.find(cat => cat.id === categoryId);
@@ -193,6 +197,7 @@ export default function SupplierDetail() {
       }
     } catch (error) {
       console.error("Erro ao compartilhar:", error);
+      toast({ title: "Erro ao compartilhar", description: "Não foi possível compartilhar o link.", variant: "destructive"});
     }
   };
   
@@ -213,7 +218,7 @@ export default function SupplierDetail() {
     };
 
     try {
-      const newReviewFromDb = await createReview(reviewDataToSave, user.id);
+      const newReviewFromDb = await createReview(reviewDataToSave, user.id); // user.id is guaranteed by isAuthenticated check
       setReviews(prevReviews => [newReviewFromDb, ...prevReviews]);
       setIsReviewDialogOpen(false);
       toast({
@@ -221,7 +226,7 @@ export default function SupplierDetail() {
         description: "Obrigado por compartilhar sua opinião!",
         duration: 2000,
       });
-      form.reset();
+      form.reset({ rating: 0, comment: ""}); // Reset form with default values
       setSelectedRating(0);
     } catch (err: any) {
       console.error("Erro ao salvar review:", err);
@@ -270,7 +275,8 @@ export default function SupplierDetail() {
     );
   }
 
-  const formatPaymentMethods = (methods: string[]) => {
+  const formatPaymentMethods = (methods?: string[]) => {
+    if (!methods || methods.length === 0) return 'Não informado';
     const mapping: Record<string, string> = {
       'pix': 'PIX',
       'card': 'Cartão',
@@ -279,7 +285,8 @@ export default function SupplierDetail() {
     return methods.map(m => mapping[m] || m).join(', ');
   };
   
-  const formatShippingMethods = (methods: string[]) => {
+  const formatShippingMethods = (methods?: string[]) => {
+    if (!methods || methods.length === 0) return 'Não informado';
     const mapping: Record<string, string> = {
       'correios': 'Correios',
       'transporter': 'Transportadora',
@@ -289,6 +296,7 @@ export default function SupplierDetail() {
   };
   
   const isNew = () => {
+    if (!supplier.created_at) return false;
     const createdDate = new Date(supplier.created_at);
     const currentDate = new Date();
     const diffTime = Math.abs(currentDate.getTime() - createdDate.getTime());
@@ -303,7 +311,7 @@ export default function SupplierDetail() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => navigate('/suppliers')}
+            onClick={() => navigate(-1)} // Go back to previous page
           >
             <ArrowLeft className="mr-1 h-4 w-4" />
             Voltar
@@ -314,20 +322,22 @@ export default function SupplierDetail() {
               variant="outline"
               size="icon"
               onClick={goToPreviousSupplier}
-              disabled
+              disabled // Feature not implemented
               className="h-8 w-8"
             >
               <ArrowLeft className="h-4 w-4" />
+               <span className="sr-only">Fornecedor Anterior</span>
             </Button>
             
             <Button
               variant="outline"
               size="icon"
               onClick={goToNextSupplier}
-              disabled
+              disabled // Feature not implemented
               className="h-8 w-8"
             >
               <ArrowRight className="h-4 w-4" />
+              <span className="sr-only">Próximo Fornecedor</span>
             </Button>
           </div>
         </div>
@@ -340,33 +350,41 @@ export default function SupplierDetail() {
               <p>{supplier.city}, {supplier.state}</p>
             </div>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
-              Código: {supplier.code}
+              Código: {supplier.code || 'N/A'}
             </p>
             
             {isNew() && (
-              <Badge className="mt-2 bg-green-500 hover:bg-green-600">Novo</Badge>
+              <Badge className="mt-2 bg-green-500 hover:bg-green-600 text-white">Novo</Badge>
             )}
           </div>
           <Button 
-            variant={isFavorite(supplier.id) ? "secondary" : "outline"} 
+            variant={isFavorite(supplier.id) ? "default" : "outline"} 
             size="icon"
             onClick={handleToggleFavorite}
+            className="shrink-0"
           >
             <Heart 
-              className={`h-5 w-5 ${isFavorite(supplier.id) ? "fill-secondary-foreground" : ""}`} 
+              className={`h-5 w-5 ${isFavorite(supplier.id) ? "fill-destructive text-destructive-foreground" : ""}`} 
             />
+            <span className="sr-only">{isFavorite(supplier.id) ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}</span>
           </Button>
         </div>
         
         <div className="mt-4 relative">
           <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-            <img
-              src={supplier.images[activeImageIndex]}
-              alt={`${supplier.name} - Imagem ${activeImageIndex + 1}`}
-              className="h-full w-full object-contain transition-all"
-            />
+            {supplier.images && supplier.images.length > 0 ? (
+              <img
+                src={supplier.images[activeImageIndex]}
+                alt={`${supplier.name} - Imagem ${activeImageIndex + 1}`}
+                className="h-full w-full object-contain transition-all"
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-gray-200 text-gray-500">
+                Sem imagem
+              </div>
+            )}
             
-            {supplier.images.length > 1 && (
+            {supplier.images && supplier.images.length > 1 && (
               <>
                 <Button 
                   variant="ghost" 
@@ -375,6 +393,7 @@ export default function SupplierDetail() {
                   className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/40 hover:bg-background/60 rounded-full h-8 w-8"
                 >
                   <ArrowLeft className="h-4 w-4" />
+                   <span className="sr-only">Imagem Anterior</span>
                 </Button>
                 <Button 
                   variant="ghost" 
@@ -383,19 +402,20 @@ export default function SupplierDetail() {
                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/40 hover:bg-background/60 rounded-full h-8 w-8"
                 >
                   <ArrowRight className="h-4 w-4" />
+                  <span className="sr-only">Próxima Imagem</span>
                 </Button>
               </>
             )}
           </div>
           
-          {supplier.images.length > 1 && (
+          {supplier.images && supplier.images.length > 1 && (
             <div className="mt-2 flex gap-2 overflow-auto pb-2">
               {supplier.images.map((image, index) => (
                 <button
                   key={index}
                   type="button"
-                  className={`relative h-16 w-16 overflow-hidden rounded-md ${
-                    index === activeImageIndex ? 'ring-2 ring-primary' : ''
+                  className={`relative h-16 w-16 overflow-hidden rounded-md shrink-0 ${
+                    index === activeImageIndex ? 'ring-2 ring-primary ring-offset-2' : 'opacity-70 hover:opacity-100'
                   }`}
                   onClick={() => setActiveImageIndex(index)}
                 >
@@ -410,9 +430,10 @@ export default function SupplierDetail() {
           )}
           
           {reviews.length > 0 && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 text-white px-2 py-1 rounded-md">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-medium">{averageRating.toFixed(1)}</span>
+            <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 text-white px-2 py-1 rounded-md text-xs">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              <span className="font-medium">{averageRating.toFixed(1)}</span>
+              <span>({reviews.length})</span>
             </div>
           )}
         </div>
@@ -434,7 +455,7 @@ export default function SupplierDetail() {
           {supplier.whatsapp && (
             <Button variant="outline" asChild>
               <a 
-                href={`https://wa.me/${supplier.whatsapp.replace(/\D/g, '')}`} 
+                href={`https://wa.me/${supplier.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá, vi seu contato para ${supplier.name} no Guia de Fornecedores e gostaria de mais informações.`)}`}
                 target="_blank" 
                 rel="noopener noreferrer"
               >
@@ -447,7 +468,7 @@ export default function SupplierDetail() {
           {supplier.website && (
             <Button variant="outline" asChild>
               <a 
-                href={supplier.website} 
+                href={supplier.website.startsWith('http') ? supplier.website : `https://${supplier.website}`}
                 target="_blank" 
                 rel="noopener noreferrer"
               >
@@ -475,8 +496,8 @@ export default function SupplierDetail() {
           <TabsContent value="info" className="space-y-4 py-4">
             <div>
               <h3 className="font-medium mb-2">Descrição</h3>
-              <p className="text-sm text-muted-foreground">
-                {supplier.description}
+              <p className="text-sm text-muted-foreground whitespace-pre-line">
+                {supplier.description || 'Nenhuma descrição fornecida.'}
               </p>
             </div>
             
@@ -484,28 +505,32 @@ export default function SupplierDetail() {
             
             <div>
               <h3 className="font-medium mb-2">Categorias</h3>
-              <div className="flex flex-wrap gap-2">
-                {supplier.categories.map(categoryId => {
-                  const categoryName = getCategoryNameFromId(categoryId);
-                  const categoryColors: Record<string, string> = {
-                    'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                    'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                    'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-                    'Acessórios': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
-                    'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
-                  };
-                  
-                  return (
-                    <Badge 
-                      key={categoryId}
-                      variant="outline"
-                      className={categoryColors[categoryName] || 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200'}
-                    >
-                      {categoryName}
-                    </Badge>
-                  );
-                })}
-              </div>
+              {supplier.categories && supplier.categories.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {supplier.categories.map(categoryId => {
+                    const categoryName = getCategoryNameFromId(categoryId);
+                    const categoryColors: Record<string, string> = {
+                      'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+                      'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                      'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+                      'Acessórios': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
+                      'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
+                    };
+                    
+                    return (
+                      <Badge 
+                        key={categoryId}
+                        variant="outline"
+                        className={`font-normal ${categoryColors[categoryName] || 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200'}`}
+                      >
+                        {categoryName}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhuma categoria informada.</p>
+              )}
             </div>
             
             <Separator />
@@ -515,10 +540,13 @@ export default function SupplierDetail() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 <span>
-                  {new Date(supplier.created_at).toLocaleDateString('pt-BR', {
-                    year: 'numeric',
-                    month: 'long'
-                  })}
+                  {supplier.created_at 
+                    ? new Date(supplier.created_at).toLocaleDateString('pt-BR', {
+                        year: 'numeric',
+                        month: 'long'
+                      })
+                    : 'Data não informada'
+                  }
                 </span>
               </div>
             </div>
@@ -531,7 +559,7 @@ export default function SupplierDetail() {
                   <CardTitle className="text-base">Pedido Mínimo</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-xl font-semibold">{supplier.min_order}</p>
+                  <p className="text-xl font-semibold">{supplier.min_order || 'Não informado'}</p>
                 </CardContent>
               </Card>
               
@@ -576,13 +604,13 @@ export default function SupplierDetail() {
                         className={`h-5 w-5 ${
                           star <= Math.round(averageRating) 
                             ? 'text-yellow-400 fill-yellow-400' 
-                            : 'text-gray-300'
+                            : 'text-gray-300 dark:text-gray-600'
                         }`}
                       />
                     ))}
                   </div>
                   <div className="text-sm text-muted-foreground mb-4">
-                    {loading ? 'Carregando...' : (loadingReviews ? 'Carregando avaliações...' : `${reviews.length} avaliações`)}
+                    {loadingReviews ? 'Carregando...' : `${reviews.length} ${reviews.length === 1 ? 'avaliação' : 'avaliações'}`}
                   </div>
                   
                   <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
@@ -593,7 +621,7 @@ export default function SupplierDetail() {
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Avalie {supplier.name}</DialogTitle>
+                        <DialogTitle>Avalie {supplier?.name || 'este fornecedor'}</DialogTitle>
                         <DialogDescription>
                           Compartilhe sua experiência com este fornecedor
                         </DialogDescription>
@@ -605,7 +633,7 @@ export default function SupplierDetail() {
                             name="rating"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Sua avaliação</FormLabel>
+                                <FormLabel>Sua avaliação <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                   <div className="flex items-center gap-1">
                                     {[1, 2, 3, 4, 5].map((star) => (
@@ -618,14 +646,16 @@ export default function SupplierDetail() {
                                           setSelectedRating(star);
                                           field.onChange(star);
                                         }}
+                                        className="h-8 w-8"
                                       >
                                         <Star
                                           className={`h-6 w-6 ${
                                             star <= selectedRating
                                               ? 'text-yellow-400 fill-yellow-400'
-                                              : 'text-muted-foreground'
+                                              : 'text-muted-foreground hover:text-yellow-400'
                                           }`}
                                         />
+                                        <span className="sr-only">{star} estrela{star > 1 ? 's' : ''}</span>
                                       </Button>
                                     ))}
                                   </div>
@@ -639,11 +669,12 @@ export default function SupplierDetail() {
                             name="comment"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Seu comentário</FormLabel>
+                                <FormLabel>Seu comentário <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                   <Textarea
                                     placeholder="Conte sua experiência com este fornecedor..."
                                     {...field}
+                                    rows={4}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -654,11 +685,17 @@ export default function SupplierDetail() {
                             <Button 
                               type="button" 
                               variant="outline"
-                              onClick={() => setIsReviewDialogOpen(false)}
+                              onClick={() => {
+                                setIsReviewDialogOpen(false);
+                                form.reset({ rating: 0, comment: ""});
+                                setSelectedRating(0);
+                              }}
                             >
                               Cancelar
                             </Button>
-                            <Button type="submit">Enviar avaliação</Button>
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                              {form.formState.isSubmitting ? "Enviando..." : "Enviar avaliação"}
+                            </Button>
                           </div>
                         </form>
                       </Form>
@@ -671,17 +708,17 @@ export default function SupplierDetail() {
                     <h4 className="text-sm font-medium">Distribuição das avaliações</h4>
                     {[5, 4, 3, 2, 1].map((rating) => (
                       <div key={rating} className="flex items-center gap-2">
-                        <div className="flex items-center w-10">
-                          <span className="text-xs">{rating}</span>
+                        <div className="flex items-center w-10 text-xs">
+                          <span>{rating}</span>
                           <Star className="h-3 w-3 ml-1 text-yellow-400 fill-yellow-400" />
                         </div>
                         <div className="h-2 flex-1 bg-muted-foreground/20 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-yellow-400" 
+                            className="h-full bg-yellow-400 transition-all duration-300" 
                             style={{width: `${ratingPercentages[rating - 1]}%`}}
                           ></div>
                         </div>
-                        <span className="text-xs w-8 text-right">
+                        <span className="text-xs w-8 text-right tabular-nums">
                           {ratingPercentages[rating - 1]}%
                         </span>
                       </div>
@@ -705,9 +742,9 @@ export default function SupplierDetail() {
                 {reviews.length > 0 && (
                   <div className="space-y-4">
                     {reviews.map(review => (
-                      <div key={review.id} className="border-b pb-4">
+                      <div key={review.id} className="border-b pb-4 last:border-b-0">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="font-medium">{review.user_name}</div>
+                          <div className="font-medium text-sm">{review.user_name || 'Usuário anônimo'}</div>
                           <div className="flex">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Star 
@@ -715,15 +752,15 @@ export default function SupplierDetail() {
                                 className={`h-4 w-4 ${
                                   star <= review.rating 
                                     ? 'text-yellow-400 fill-yellow-400' 
-                                    : 'text-gray-300'
+                                    : 'text-gray-300 dark:text-gray-600'
                                 }`}
                               />
                             ))}
                           </div>
                         </div>
-                        <p className="text-sm">{review.comment}</p>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">{review.comment}</p>
                         <div className="text-xs text-muted-foreground mt-2">
-                          {new Date(review.created_at).toLocaleDateString('pt-BR')}
+                          {new Date(review.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric'})}
                         </div>
                       </div>
                     ))}
@@ -736,8 +773,12 @@ export default function SupplierDetail() {
         
         <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">Fornecedores similares</h2>
+           <div className="text-sm text-muted-foreground">
+            (Funcionalidade de fornecedores similares em desenvolvimento)
+          </div>
+          {/* 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* MOCK_SUPPLIERS.filter(s => 
+             MOCK_SUPPLIERS.filter(s => 
               s.id !== supplier.id && 
               s.categories.some(c => supplier.categories.includes(c))
             ).slice(0, 2).map(similar => (
@@ -773,8 +814,9 @@ export default function SupplierDetail() {
                   </div>
                 </div>
               </Card>
-            )) */}
+            ))
           </div>
+          */}
         </div>
       </div>
     </AppLayout>

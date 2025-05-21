@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Heart, Instagram, Link as LinkIcon, Star } from 'lucide-react';
+import { Search, Heart, Instagram, Star } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { useFavorites } from '@/hooks/use-favorites';
@@ -12,10 +12,12 @@ import { toast as sonnerToast } from "@/components/ui/sonner";
 import type { Supplier, Category } from '@/types';
 import { getSuppliers, getSupplierCategories } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Favorites() {
   const [searchTerm, setSearchTerm] = useState('');
   const { favorites: favoriteIds, removeFavorite, isLoading: isLoadingFavorites } = useFavorites();
+  const { user } = useAuth();
 
   const [allSuppliers, setAllSuppliers] = useState<Supplier[]>([]);
   const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
@@ -26,10 +28,24 @@ export default function Favorites() {
     const fetchData = async () => {
       setIsLoadingSuppliers(true);
       setIsLoadingCategories(true);
+
+      if (!user?.id) {
+        console.warn("Favorites: User not authenticated. Cannot load favorites.");
+        sonnerToast.error("Autenticação necessária", {
+          description: "Você precisa estar logado para ver seus favoritos."
+        });
+        setIsLoadingSuppliers(false);
+        setIsLoadingCategories(false);
+        setAllSuppliers([]);
+        setAllCategoriesFetched([]);
+        return;
+      }
+      const userId = user.id;
+
       try {
         const [suppliersData, categoriesData] = await Promise.all([
-          getSuppliers(),
-          getCategories()
+          getSuppliers(userId),
+          getCategories(userId)
         ]);
 
         setAllCategoriesFetched(categoriesData);
@@ -57,7 +73,7 @@ export default function Favorites() {
     };
 
     fetchData();
-  }, []);
+  }, [user]);
 
   const getCategoryNameFromId = (categoryId: string): string => {
     const foundCategory = allCategoriesFetched.find(cat => cat.id === categoryId);
