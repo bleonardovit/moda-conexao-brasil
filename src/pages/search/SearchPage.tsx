@@ -23,20 +23,20 @@ import { useToast } from '@/hooks/use-toast';
 import { Heart, Instagram, Link as LinkIcon, Star } from 'lucide-react';
 import { useFavorites } from '@/hooks/use-favorites';
 import { Link } from 'react-router-dom';
-import type { Supplier, Category, SearchFilters } from '@/types';
+import type { Supplier, Category, SearchFilters, PaymentMethod, ShippingMethod } from '@/types';
 import { searchSuppliers, getSuppliers } from '@/services/supplierService';
 import { useQuery } from '@tanstack/react-query';
 import { getCategories } from '@/services/categoryService';
 import { useAuth } from '@/hooks/useAuth';
 
 // Filter options
-const PAYMENT_METHODS = [
+const PAYMENT_METHODS_OPTIONS: { label: string; value: PaymentMethod }[] = [
   { label: 'PIX', value: 'pix' },
   { label: 'Cartão', value: 'card' },
   { label: 'Boleto', value: 'bankslip' }
 ];
 
-const SHIPPING_METHODS = [
+const SHIPPING_METHODS_OPTIONS: { label: string; value: ShippingMethod }[] = [
   { label: 'Correios', value: 'correios' },
   { label: 'Transportadora', value: 'transporter' },
   { label: 'Entrega local', value: 'delivery' }
@@ -60,9 +60,9 @@ export default function SearchPage() {
   const [stateFilter, setStateFilter] = useState('all');
   const [cityFilter, setCityFilter] = useState('all');
   const [minOrderRange, setMinOrderRange] = useState<[number, number]>([0, 1000]);
-  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<PaymentMethod[]>([]);
   const [requiresCnpj, setRequiresCnpj] = useState<string | null>(null);
-  const [selectedShippingMethods, setSelectedShippingMethods] = useState<string[]>([]);
+  const [selectedShippingMethods, setSelectedShippingMethods] = useState<ShippingMethod[]>([]);
   const [hasWebsite, setHasWebsite] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<{[key: string]: boolean}>({});
 
@@ -122,7 +122,7 @@ export default function SearchPage() {
   const { data: suppliers = [], isLoading, error } = useQuery<Supplier[], Error>({
     queryKey: ['suppliers', searchTerm, categoryFilter, stateFilter, cityFilter, 
                minOrderRange, selectedPaymentMethods, requiresCnpj, 
-               selectedShippingMethods, hasWebsite, userId],
+               selectedShippingMethods, hasWebsite],
     queryFn: async () => {
       // Construct filters object for searchSuppliers
       const filters: SearchFilters = {
@@ -137,7 +137,7 @@ export default function SearchPage() {
         hasWebsite: hasWebsite !== null ? hasWebsite === 'true' : undefined,
       };
       try {
-        return await searchSuppliers(filters, userId);
+        return await searchSuppliers(filters); 
       } catch (searchError) {
         console.error("Error fetching suppliers in queryFn:", searchError);
         toast({
@@ -178,7 +178,7 @@ export default function SearchPage() {
   const activeFiltersCount = Object.values(activeFilters).filter(Boolean).length;
 
   // Handle payment method change
-  const handlePaymentMethodChange = (method: string) => {
+  const handlePaymentMethodChange = (method: PaymentMethod) => {
     setSelectedPaymentMethods(prev => {
       if (prev.includes(method)) {
         return prev.filter(m => m !== method);
@@ -189,7 +189,7 @@ export default function SearchPage() {
   };
 
   // Handle shipping method change
-  const handleShippingMethodChange = (method: string) => {
+  const handleShippingMethodChange = (method: ShippingMethod) => {
     setSelectedShippingMethods(prev => {
       if (prev.includes(method)) {
         return prev.filter(m => m !== method);
@@ -253,13 +253,14 @@ export default function SearchPage() {
           <div className="flex flex-col gap-4">
             <h1 className="text-2xl font-bold text-foreground">Pesquisar Fornecedores</h1>
             
-            <div className="relative">
-              <Search className="h-4 w-4 text-muted-foreground" title="Buscar" />
+            <div className="relative flex items-center">
+              <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
               <Input
                 placeholder="Pesquisar por nome, descrição..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
+                aria-label="Campo de pesquisa de fornecedores"
               />
             </div>
             
@@ -380,7 +381,7 @@ export default function SearchPage() {
                     <div className="space-y-2">
                       <Label>Forma de pagamento</Label>
                       <div className="space-y-2 mt-2">
-                        {PAYMENT_METHODS.map(method => (
+                        {PAYMENT_METHODS_OPTIONS.map(method => (
                           <div key={method.value} className="flex items-center space-x-2">
                             <Checkbox 
                               id={`payment-${method.value}`} 
@@ -429,7 +430,7 @@ export default function SearchPage() {
                     <div className="space-y-2">
                       <Label>Forma de envio</Label>
                       <div className="space-y-2 mt-2">
-                        {SHIPPING_METHODS.map(method => (
+                        {SHIPPING_METHODS_OPTIONS.map(method => (
                           <div key={method.value} className="flex items-center space-x-2">
                             <Checkbox 
                               id={`shipping-${method.value}`} 
@@ -510,7 +511,7 @@ export default function SearchPage() {
                         
                         {selectedPaymentMethods.length > 0 && (
                           <Badge variant="secondary" className="flex items-center gap-1">
-                            Pagamento: {selectedPaymentMethods.map(pm => PAYMENT_METHODS.find(p => p.value === pm)?.label).join(', ')}
+                            Pagamento: {selectedPaymentMethods.map(pm => PAYMENT_METHODS_OPTIONS.find(p => p.value === pm)?.label).join(', ')}
                             <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setSelectedPaymentMethods([])} />
                           </Badge>
                         )}
@@ -524,7 +525,7 @@ export default function SearchPage() {
                         
                         {selectedShippingMethods.length > 0 && (
                           <Badge variant="secondary" className="flex items-center gap-1">
-                            Envio: {selectedShippingMethods.map(sm => SHIPPING_METHODS.find(s => s.value === sm)?.label).join(', ')}
+                            Envio: {selectedShippingMethods.map(sm => SHIPPING_METHODS_OPTIONS.find(s => s.value === sm)?.label).join(', ')}
                             <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setSelectedShippingMethods([])} />
                           </Badge>
                         )}
@@ -592,7 +593,7 @@ export default function SearchPage() {
                                   {supplier.name}
                                 </Link>
                                 {supplier.featured && (
-                                  <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" titleAccess='Destaque' />
+                                  <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" aria-label='Destaque' />
                                 )}
                               </h3>
                               <p className="text-sm text-muted-foreground">{supplier.city}, {supplier.state}</p>
@@ -602,7 +603,7 @@ export default function SearchPage() {
                               size="icon"
                               className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-500"
                               onClick={(e) => handleToggleFavorite(supplier, e)}
-                              title={isFavorite(supplier.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                              aria-label={isFavorite(supplier.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
                             >
                               <Heart 
                                 className={`h-5 w-5 transition-colors ${isFavorite(supplier.id) ? "fill-red-500 text-red-500" : ""}`}

@@ -1,19 +1,21 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier, SearchFilters, Review } from '@/types'; // Added Review
+import type { Supplier, SearchFilters, Review, PaymentMethod, ShippingMethod, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
+
+// Helper to ensure data matches Supplier type, especially for array enums
+const mapRawSupplierToSupplier = (rawSupplier: any): Supplier => {
+  return {
+    ...rawSupplier,
+    payment_methods: (rawSupplier.payment_methods || []) as PaymentMethod[],
+    shipping_methods: (rawSupplier.shipping_methods || []) as ShippingMethod[],
+    categories: (rawSupplier.categories || []) as string[], // Assuming categories are already string IDs
+    images: (rawSupplier.images || []) as string[],
+  } as Supplier;
+};
 
 // Fetch all suppliers, optionally filtered by user if RLS is on user_id
 export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   console.log(`supplierService: Fetching all suppliers. UserID: ${userId}`);
   let query = supabase.from('suppliers').select('*').order('created_at', { ascending: false });
-
-  // If your RLS for suppliers depends on a user_id column or similar,
-  // and you want to fetch all for admin or specific for user, handle logic here.
-  // For now, this fetches all suppliers and relies on RLS to filter if userId is implicitly used by Supabase.
-  // If userId is explicitly needed for a join or filter:
-  // if (userId) {
-  //   query = query.eq('user_id_column', userId); // Example
-  // }
 
   const { data, error } = await query;
 
@@ -23,26 +25,17 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   }
   console.log("supplierService: Suppliers fetched successfully:", data?.length);
   
-  // Add empty categories array since the database doesn't have this column
-  const suppliersWithCategories = data?.map(supplier => ({
-    ...supplier,
-    categories: [] as string[]
-  })) || [];
-  
-  return suppliersWithCategories;
+  return (data || []).map(mapRawSupplierToSupplier);
 };
 
 // Fetch a single supplier by ID, optionally considering userId for RLS
 export const getSupplierById = async (id: string, userId?: string): Promise<Supplier | null> => {
   console.log(`supplierService: Fetching supplier by ID: ${id}. UserID: ${userId}`);
-  // RLS should handle visibility based on the authenticated user (userId is implicitly used by Supabase policies)
-  // If you need to explicitly use userId in the query for some reason (e.g. a join on a user-specific table related to suppliers),
-  // you would modify the query here.
   const { data, error } = await supabase
     .from('suppliers')
     .select('*')
     .eq('id', id)
-    .maybeSingle(); // Use maybeSingle to return null if not found, instead of an empty array
+    .maybeSingle(); 
 
   if (error) {
     console.error(`Error fetching supplier with ID ${id}:`, error.message);
@@ -50,15 +43,7 @@ export const getSupplierById = async (id: string, userId?: string): Promise<Supp
   }
   console.log(`supplierService: Supplier ${id} fetched successfully.`);
   
-  // Add empty categories array if the supplier exists
-  if (data) {
-    return {
-      ...data,
-      categories: [] as string[]
-    };
-  }
-  
-  return null;
+  return data ? mapRawSupplierToSupplier(data) : null;
 };
 
 // Search suppliers with filters
@@ -67,14 +52,16 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
   let query = supabase.from('suppliers').select('*');
 
   if (filters.searchTerm) {
-    // Using or for searching in name or description. Adjust based on your FTS setup or preference.
-    // For basic text search, ilike is simpler. For advanced, use textSearch with a tsvector column.
     query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
   }
+  // Category filtering is more complex and typically handled by joining or post-filtering if categories are in a separate table.
+  // The current setup assumes 'categories' is an array of IDs on the supplier, but suppliers_categories join table is used for relations.
+  // For direct filtering on an array column:
   if (filters.categoryId) {
-    // This will need to be handled differently since categories is not directly in the suppliers table
-    // We'll need to join with suppliers_categories or handle this post-query
-    console.log("Category filtering will be handled post-query");
+     // If categories were stored as array on supplier: query = query.contains('categories', [filters.categoryId]);
+     // Since we use a join table, this filtering should ideally happen in a more complex query or post-fetch.
+     // For now, this filter won't apply directly at the DB level for the 'suppliers' table alone if using suppliers_categories.
+     console.warn("Category filtering in searchSuppliers might need adjustment based on join table logic. Current query doesn't directly filter by categoryId on 'suppliers' table.");
   }
   if (filters.state) {
     query = query.eq('state', filters.state);
@@ -83,12 +70,8 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
     query = query.eq('city', filters.city);
   }
   if (filters.minOrderRange) {
-    // Assuming min_order is stored as a number or text that can be cast.
-    // This is a simplified example; actual min_order filtering can be complex.
-    // query = query.gte('min_order_numeric', filters.minOrderRange[0]); 
-    // query = query.lte('min_order_numeric', filters.minOrderRange[1]);
-    // For text `min_order` like "R$ 100,00", you'd need to parse and compare, or store numerically.
-    // Placeholder: console.log("Min order range filter needs specific implementation based on data type of 'min_order'");
+    // This needs a numeric column or parsing. Assuming min_order is text.
+    // console.log("Min order range filter needs specific implementation based on data type of 'min_order'");
   }
   if (filters.paymentMethods && filters.paymentMethods.length > 0) {
     query = query.overlaps('payment_methods', filters.paymentMethods);
@@ -100,18 +83,14 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
     query = query.overlaps('shipping_methods', filters.shippingMethods);
   }
   if (filters.hasWebsite !== null && filters.hasWebsite !== undefined) {
-    // This assumes 'website' column is populated or NULL.
-    // If 'true', check for non-empty website. If 'false', check for NULL or empty.
     if (filters.hasWebsite) {
       query = query.not('website', 'is', null).neq('website', '');
     } else {
-      query = query.or('website.is.null,website.eq.'); // website is null OR website is empty string
+      query = query.or('website.is.null,website.eq.');
     }
   }
   
-  // Always filter out hidden suppliers for general search
   query = query.eq('hidden', false);
-
   query = query.order('featured', { ascending: false })
                .order('created_at', { ascending: false });
 
@@ -123,13 +102,7 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
   }
   console.log("supplierService: Suppliers search completed. Found:", data?.length);
   
-  // Add empty categories array to each supplier
-  const suppliersWithCategories = data?.map(supplier => ({
-    ...supplier,
-    categories: [] as string[]
-  })) || [];
-  
-  return suppliersWithCategories;
+  return (data || []).map(mapRawSupplierToSupplier);
 };
 
 
@@ -156,36 +129,24 @@ export const getSupplierCategories = async (supplierId: string): Promise<string[
 };
 
 // Create a new supplier
-export const createSupplier = async (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'categories'>): Promise<Supplier> => {
-  console.log("supplierService: Creating a new supplier:", supplier);
+export const createSupplier = async (supplierInput: SupplierCreationPayload): Promise<Supplier> => {
+  console.log("supplierService: Creating a new supplier:", supplierInput);
   
-  // Extract categories before inserting into suppliers table
-  const categories = supplier.categories ? [...supplier.categories] : [];
+  const { categories, ...baseSupplierData } = supplierInput;
   
-  // Create a new object without the categories field for the database insert
-  const supplierData = {
-    code: supplier.code,
-    name: supplier.name,
-    description: supplier.description,
-    images: supplier.images || [],
-    instagram: supplier.instagram,
-    whatsapp: supplier.whatsapp,
-    website: supplier.website,
-    min_order: supplier.min_order,
-    payment_methods: supplier.payment_methods,
-    requires_cnpj: supplier.requires_cnpj,
-    avg_price: supplier.avg_price,
-    shipping_methods: supplier.shipping_methods,
-    custom_shipping_method: supplier.custom_shipping_method,
-    city: supplier.city,
-    state: supplier.state,
-    featured: supplier.featured || false,
-    hidden: supplier.hidden || false
+  const supplierDataForTable = {
+    ...baseSupplierData,
+    images: baseSupplierData.images || [], // Ensure images is an array
+    payment_methods: baseSupplierData.payment_methods || [], // Ensure payment_methods is an array
+    shipping_methods: baseSupplierData.shipping_methods || [], // Ensure shipping_methods is an array
+    // featured and hidden defaults are handled by DB or should be explicit here if not in payload
+    featured: baseSupplierData.featured || false,
+    hidden: baseSupplierData.hidden || false,
   };
 
-  const { data, error } = await supabase
+  const { data: newSupplierData, error } = await supabase
     .from('suppliers')
-    .insert([supplierData])
+    .insert([supplierDataForTable])
     .select()
     .single();
 
@@ -194,20 +155,20 @@ export const createSupplier = async (supplier: Omit<Supplier, 'id' | 'created_at
     throw new Error(`Failed to create supplier: ${error.message}`);
   }
   
-  console.log("supplierService: Supplier created successfully:", data);
-  
-  // Add the categories back to the return value
-  const newSupplier: Supplier = {
-    ...data,
-    categories: categories
-  };
+  const createdSupplierId = newSupplierData.id;
   
   // If there are categories, associate them with the supplier
-  if (categories.length > 0) {
-    await associateSupplierWithCategories(newSupplier.id, categories);
+  if (categories && categories.length > 0) {
+    await associateSupplierWithCategories(createdSupplierId, categories);
   }
   
-  return newSupplier;
+  // Fetch the complete supplier data, including any DB defaults and the potentially updated categories
+  const finalSupplier = await getSupplierById(createdSupplierId);
+  if (!finalSupplier) {
+      throw new Error('Failed to retrieve supplier after creation.');
+  }
+  console.log("supplierService: Supplier created successfully:", finalSupplier);
+  return finalSupplier;
 };
 
 // Helper function to associate supplier with categories
@@ -233,49 +194,47 @@ const associateSupplierWithCategories = async (supplierId: string, categoryIds: 
 };
 
 // Update an existing supplier
-export const updateSupplier = async (id: string, updates: Partial<Omit<Supplier, 'id' | 'created_at' | 'updated_at'>>): Promise<Supplier | null> => {
+export const updateSupplier = async (id: string, updates: SupplierUpdatePayload): Promise<Supplier | null> => {
   console.log(`supplierService: Updating supplier with ID: ${id}`, updates);
   
-  // Extract categories before updating suppliers table
-  const categories = updates.categories ? [...updates.categories] : undefined;
-  
-  // Create a new object without the categories field for the database update
-  const { categories: _, ...supplierUpdates } = updates;
+  const { categories, ...supplierUpdatesForTable } = updates;
 
-  const { data, error } = await supabase
-    .from('suppliers')
-    .update(supplierUpdates)
-    .eq('id', id)
-    .select()
-    .single();
+  if (Object.keys(supplierUpdatesForTable).length > 0) {
+    const { data: updatedDataBase, error } = await supabase
+      .from('suppliers')
+      .update(supplierUpdatesForTable)
+      .eq('id', id)
+      .select()
+      .single();
 
-  if (error) {
-    console.error(`Error updating supplier with ID ${id}:`, error.message);
-    throw new Error(`Failed to update supplier: ${error.message}`);
+    if (error) {
+      console.error(`Error updating supplier base data with ID ${id}:`, error.message);
+      throw new Error(`Failed to update supplier base data: ${error.message}`);
+    }
   }
   
-  // If categories were provided, update the associations
-  if (categories) {
-    // Delete existing category associations
+  // If categories were provided (even an empty array, meaning clear them), update the associations
+  if (categories !== undefined) { // Check for undefined, as an empty array is a valid update (remove all categories)
     await supabase
       .from('suppliers_categories')
       .delete()
       .eq('supplier_id', id);
       
-    // Add new category associations
-    await associateSupplierWithCategories(id, categories);
+    if (categories.length > 0) {
+      await associateSupplierWithCategories(id, categories);
+    }
   }
   
-  // Get current categories for the supplier
-  const currentCategories = await getSupplierCategories(id);
-  
-  console.log(`supplierService: Supplier ${id} updated successfully:`, data);
-  
-  // Add the categories to the return value
-  return {
-    ...data,
-    categories: categories || currentCategories
-  };
+  // Fetch the complete supplier data after updates
+  const finalSupplier = await getSupplierById(id);
+  if (!finalSupplier) {
+      // This case should ideally not happen if the update was for an existing ID
+      console.error(`Failed to retrieve supplier ${id} after update.`);
+      return null; 
+  }
+
+  console.log(`supplierService: Supplier ${id} updated successfully:`, finalSupplier);
+  return finalSupplier;
 };
 
 // Delete a supplier
