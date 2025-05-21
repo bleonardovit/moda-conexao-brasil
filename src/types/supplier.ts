@@ -1,4 +1,3 @@
-
 // Types for suppliers
 
 export type PaymentMethod = 'pix' | 'card' | 'bankslip';
@@ -91,4 +90,3 @@ export interface Review {
   comment?: string;
   created_at: string;
 }
-

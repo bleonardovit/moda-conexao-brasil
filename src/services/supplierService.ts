@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Supplier, SearchFilters, Review, PaymentMethod, ShippingMethod, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
 
