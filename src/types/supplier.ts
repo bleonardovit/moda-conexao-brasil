@@ -1,3 +1,4 @@
+
 // Types for suppliers
 
 export type PaymentMethod = 'pix' | 'card' | 'bankslip';
@@ -34,7 +35,7 @@ export interface SupplierCreationPayload {
                   // Runtime validation for presence and non-emptiness is done in supplierService.
   name?: string; // Changed to optional, will be validated at runtime.
   description?: string; // Changed to optional, will be validated at runtime.
-  images: string[];
+  images?: string[]; // Changed to optional, will be defaulted to [] if not provided.
   instagram?: string;
   whatsapp?: string;
   website?: string;
@@ -90,3 +91,4 @@ export interface Review {
   comment?: string;
   created_at: string;
 }
+
