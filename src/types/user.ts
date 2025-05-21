@@ -1,36 +1,36 @@
 
-// Types for users
+export type UserRole = 'user' | 'admin';
+export type SubscriptionStatus = 'active' | 'inactive' | 'pending' | 'canceled' | 'trialing';
+export type SubscriptionType = 'monthly' | 'yearly' | undefined;
+export type TrialStatus = 'not_started' | 'active' | 'expired' | 'converted';
+
 export interface User {
   id: string;
   email: string;
-  full_name: string;
+  full_name?: string;
+  avatar_url?: string;
   phone?: string;
-  city?: string; // Novo campo
-  state?: string; // Novo campo
-  subscription_status: 'active' | 'inactive' | 'pending';
-  subscription_type?: 'monthly' | 'yearly';
-  subscription_start_date?: string;
-  subscription_history?: SubscriptionEvent[];
+  city?: string;
+  state?: string;
+  role?: UserRole;
+  created_at?: string;
+  updated_at?: string;
   last_login?: string;
-  role: 'user' | 'admin';
+  subscription_status?: SubscriptionStatus;
+  subscription_id?: string;
+  subscription_type?: SubscriptionType;
+  subscription_start_date?: string;
+  subscription_end_date?: string;
+  trial_status?: TrialStatus;
+  trial_start_date?: string | null;
+  trial_end_date?: string | null;
 }
 
-// Types for subscription events
-export interface SubscriptionEvent {
-  id: string;
-  user_id: string;
-  event_type: 'created' | 'renewed' | 'cancelled' | 'changed' | 'payment_failed';
-  date: string;
-  details?: string;
+export interface UserProfileUpdate {
+  full_name?: string;
+  avatar_url?: string;
+  phone?: string;
+  city?: string;
+  state?: string;
 }
 
-// Types for payments
-export interface Payment {
-  id: string;
-  user_id: string;
-  amount: string;
-  date: string;
-  status: 'success' | 'failed' | 'pending';
-  method: 'card' | 'pix' | 'bankslip';
-  details?: string;
-}

@@ -3,37 +3,32 @@ import type { Supplier, Category } from '@/types';
 import { SupplierFormValues } from '@/lib/validators/supplier-form';
 import { checkFeatureAccess } from './featureAccessService';
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from './trialService';
-import { getCurrentUserId } from '@/hooks/useAuth'; // Supondo que esta função exista e retorne o ID do usuário logado ou null/undefined
 
 // Get all suppliers - MODIFIED for trial
-export const getSuppliers = async (): Promise<Supplier[]> => {
+export const getSuppliers = async (userId: string | null | undefined): Promise<Supplier[]> => {
   try {
-    const userId = await getCurrentUserId(); // Função hipotética para obter o ID do usuário logado
     let accessResult;
     if (userId) {
         accessResult = await checkFeatureAccess(userId, 'suppliers_list_view');
     } else {
-        // Comportamento para usuários não logados - pode ser 'none' ou 'limited_blurred' dependendo das regras
         accessResult = await checkFeatureAccess(null, 'suppliers_list_view');
     }
 
     let query = supabase.from('suppliers').select('*').eq('hidden', false);
 
-    if (userId && accessResult.access === 'limited_count') {
-      const allowedSupplierIds = await getAllowedSuppliersForTrial(userId);
-      if (allowedSupplierIds.length > 0) {
-        query = query.in('id', allowedSupplierIds);
-      } else {
-        // No suppliers allowed for trial user or error fetching them, return empty
-        return [];
-      }
-    } else if (accessResult.access === 'none' || accessResult.access === 'limited_blurred') {
-        // For 'limited_blurred', we fetch all, blurring happens on frontend
-        // For 'none', we should ideally return empty, but current logic fetches all and relies on frontend.
-        // For simplicity here, if not 'limited_count', we fetch all non-hidden.
-        // Frontend will handle blurring or complete hiding based on accessResult.
+    if (userId && accessResult.access === 'limited_count' && accessResult.allowedIds && accessResult.allowedIds.length > 0) {
+        query = query.in('id', accessResult.allowedIds);
+    } else if (userId && accessResult.access === 'limited_count' && (!accessResult.allowedIds || accessResult.allowedIds.length === 0)) {
+        const trialAllowedSupplierIds = await getAllowedSuppliersForTrial(userId);
+        if (trialAllowedSupplierIds.length > 0) {
+            query = query.in('id', trialAllowedSupplierIds);
+        } else {
+            return []; // No suppliers allowed for trial user or error fetching them
+        }
+    } else if (accessResult.access === 'none') {
+        return []; // No access
     }
-    // For 'full' access, no additional ID filtering is needed beyond 'hidden'.
+    // For 'full' or 'limited_blurred', fetch all non-hidden, frontend handles blurring/hiding.
 
     const { data: suppliersData, error: suppliersError } = await query;
 
@@ -83,20 +78,20 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
 
 // Search suppliers with filters - MODIFIED for trial
 export const searchSuppliers = async (
+  userId: string | null | undefined, // Added userId parameter
   filters: {
     searchTerm?: string;
     categoryId?: string;
     state?: string;
     city?: string;
     minOrderRange?: [number, number];
-    paymentMethods?: string[];
+    paymentMethods?: string[]; // Corrected type
     requiresCnpj?: boolean | null;
-    shippingMethods?: string[];
+    shippingMethods?: string[]; // Corrected type
     hasWebsite?: boolean | null;
   }
 ): Promise<Supplier[]> => {
   try {
-    const userId = await getCurrentUserId();
     let accessResult;
      if (userId) {
         accessResult = await checkFeatureAccess(userId, 'suppliers_list_view');
@@ -110,15 +105,12 @@ export const searchSuppliers = async (
     if (filters.searchTerm) {
       const searchAccess = userId ? await checkFeatureAccess(userId, 'search_bar') : await checkFeatureAccess(null, 'search_bar');
       if (searchAccess.access !== 'full') {
-         // If search is not allowed, effectively ignore search term or return empty based on policy
-         // For now, we'll proceed without search if not full access, which might show all allowed items.
-         // A stricter approach would be to return [] or show a message.
          console.log("Search functionality is limited/disabled for this user.");
       } else {
         query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
       }
     }
-    // ... (keep other existing filters: state, city, requiresCnpj, hasWebsite, paymentMethods, shippingMethods)
+    
     if (filters.state && filters.state !== 'all') {
       query = query.eq('state', filters.state);
     }
@@ -135,11 +127,11 @@ export const searchSuppliers = async (
         query = query.is('website', null);
       }
     }
-    if (filters.paymentMethods && filters.paymentMethods.length > 0) {
-      query = query.overlaps('payment_methods', filters.payment_methods);
+    if (filters.paymentMethods && filters.paymentMethods.length > 0) { // Corrected: filters.paymentMethods
+      query = query.overlaps('payment_methods', filters.paymentMethods); // Corrected: filters.paymentMethods
     }
-    if (filters.shippingMethods && filters.shippingMethods.length > 0) {
-      query = query.overlaps('shipping_methods', filters.shipping_methods);
+    if (filters.shippingMethods && filters.shippingMethods.length > 0) { // Corrected: filters.shippingMethods
+      query = query.overlaps('shipping_methods', filters.shippingMethods); // Corrected: filters.shippingMethods
     }
 
 
@@ -160,18 +152,20 @@ export const searchSuppliers = async (
       }
     }
     
-    // Apply trial limitations
-    if (userId && accessResult.access === 'limited_count') {
-      const allowedSupplierIds = await getAllowedSuppliersForTrial(userId);
-      if (allowedSupplierIds.length > 0) {
-        query = query.in('id', allowedSupplierIds);
-      } else {
-        return []; // No suppliers allowed for this trial user
-      }
+    // Apply trial limitations / access control
+    if (userId && accessResult.access === 'limited_count' && accessResult.allowedIds && accessResult.allowedIds.length > 0) {
+        query = query.in('id', accessResult.allowedIds);
+    } else if (userId && accessResult.access === 'limited_count' && (!accessResult.allowedIds || accessResult.allowedIds.length === 0)) {
+        const trialAllowedSupplierIds = await getAllowedSuppliersForTrial(userId);
+        if (trialAllowedSupplierIds.length > 0) {
+            query = query.in('id', trialAllowedSupplierIds);
+        } else {
+            return [];
+        }
     } else if (accessResult.access === 'none') {
-        return []; // Explicitly no access
+        return []; 
     }
-    // For 'limited_blurred' or 'full', all matching non-hidden suppliers are fetched by the query constructed so far.
+    // For 'limited_blurred' or 'full', all matching non-hidden suppliers are fetched.
 
     const { data: filteredSuppliersData, error: suppliersErrorAfterFilters } = await query;
 
@@ -206,9 +200,8 @@ export const searchSuppliers = async (
 };
 
 // Get supplier by ID - MODIFIED for trial
-export const getSupplierById = async (id: string): Promise<Supplier | null> => {
+export const getSupplierById = async (id: string, userId: string | null | undefined): Promise<Supplier | null> => { // Added userId parameter
   try {
-    const userId = await getCurrentUserId();
     let detailsAccess;
     if(userId) {
         detailsAccess = await checkFeatureAccess(userId, 'supplier_details_view');
@@ -216,27 +209,32 @@ export const getSupplierById = async (id: string): Promise<Supplier | null> => {
         detailsAccess = await checkFeatureAccess(null, 'supplier_details_view');
     }
 
-
     if (detailsAccess.access === 'none') {
-      console.log(`User ${userId} does not have access to view details for supplier ${id}. Message: ${detailsAccess.message}`);
-      // Optionally, you could throw an error with detailsAccess.message or return a specific structure.
-      // For now, returning null indicates access denial or not found. Frontend can use the message.
+      console.log(`User ${userId ?? 'Anonymous'} does not have access to view details for supplier ${id}. Message: ${detailsAccess.message}`);
       return null; 
     }
     
-    // For 'limited_count' (trial users), they can only view details if the supplier is in their allowed list.
-    if (userId && detailsAccess.access === 'limited_count') { // This rule might be 'none' for trial details usually
+    if (userId && detailsAccess.access === 'limited_count') { 
+      if (detailsAccess.allowedIds && detailsAccess.allowedIds.length > 0) {
+        if (!detailsAccess.allowedIds.includes(id)) {
+          console.log(`User ${userId} tried to access disallowed supplier detail ${id} based on rule.`);
+          return null;
+        }
+      } else {
         const trialInfo = await getUserTrialInfo(userId);
         if (trialInfo?.status === 'active') {
-            const allowedIds = await getAllowedSuppliersForTrial(userId);
-            if (!allowedIds.includes(id)) {
-                console.log(`Trial user ${userId} attempted to view details for non-allowed supplier ${id}.`);
-                return null; // Or throw specific error/message
+            const allowedTrialSupplierIds = await getAllowedSuppliersForTrial(userId);
+            if (!allowedTrialSupplierIds.includes(id)) {
+                console.log(`Trial user ${userId} attempted to view details for non-allowed supplier ${id} (not in their general trial list).`);
+                return null; 
             }
+        } else if (trialInfo?.status !== 'active' && trialInfo?.status !== 'converted') {
+           console.log(`User ${userId} (not active trial/subscribed) denied access to supplier ${id} under limited_count rule for details.`);
+           return null;
         }
+      }
     }
-    // If 'full' access, or 'limited_blurred' (where details might still be accessible if directly navigated to), proceed.
-
+    
     console.log(`Fetching supplier with ID: ${id}`);
     if (!id) {
       console.error('Invalid supplier ID provided');
@@ -247,7 +245,7 @@ export const getSupplierById = async (id: string): Promise<Supplier | null> => {
       .from('suppliers')
       .select('*')
       .eq('id', id)
-      .eq('hidden', false) // Ensure hidden suppliers cannot be fetched even by ID
+      .eq('hidden', false) 
       .maybeSingle();
 
     if (error) {
@@ -286,10 +284,10 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
       whatsapp: supplier.whatsapp || null,
       website: supplier.website || null,
       min_order: supplier.min_order || null,
-      payment_methods: supplier.payment_methods || [],
+      paymentMethods: supplier.paymentMethods || [], // Corrected
       requires_cnpj: supplier.requires_cnpj || false,
       avg_price: supplier.avg_price || null,
-      shipping_methods: supplier.shipping_methods || [],
+      shippingMethods: supplier.shippingMethods || [], // Corrected
       custom_shipping_method: supplier.custom_shipping_method || null,
       city: supplier.city || '',
       state: supplier.state || '',
@@ -342,12 +340,22 @@ export const updateSupplier = async (id: string, supplier: Partial<SupplierFormV
     const updatedSupplierData = { ...supplier };
     delete updatedSupplierData.categories; // Remove categories from the direct update payload
     
+    // Map to database column names if necessary, e.g. paymentMethods to payment_methods
+    const dbSupplierData: Partial<any> = { ...updatedSupplierData };
+    if (updatedSupplierData.paymentMethods) {
+        dbSupplierData.payment_methods = updatedSupplierData.paymentMethods;
+        delete dbSupplierData.paymentMethods;
+    }
+    if (updatedSupplierData.shippingMethods) {
+        dbSupplierData.shipping_methods = updatedSupplierData.shippingMethods;
+        delete dbSupplierData.shippingMethods;
+    }
+    
     const updatedSupplier = {
-      ...updatedSupplierData,
+      ...dbSupplierData,
       updated_at: new Date().toISOString(),
     };
     
-
     // Update the supplier in the database
     const { data, error } = await supabase
       .from('suppliers')
