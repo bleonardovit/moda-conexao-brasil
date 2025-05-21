@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { FeatureAccessLevel } from '@/types/featureAccess';
+import type { UserRole, SubscriptionStatus, SubscriptionType } from '@/types/user'; // Import UserRole, SubscriptionStatus, SubscriptionType
 
 // Get trial information for a user
 export const getUserTrialInfo = async (userId: string) => {
@@ -234,24 +234,51 @@ export const endUserTrial = async (userId: string, converted: boolean = false) =
 // Auto-start trial for new users
 export const autoStartTrialForUser = async (userId: string) => {
   try {
-    // Check if user already has trial status
-    const { data, error } = await supabase
+    // Check user's current profile status including role and subscription
+    const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
-      .select('trial_status')
+      .select('trial_status, role, subscription_status, subscription_type')
       .eq('id', userId)
       .single();
     
-    if (error) {
-      console.error('Error checking user trial status:', error);
-      return false;
+    if (profileError) {
+      console.error('Error checking user profile for auto trial start:', profileError);
+      // If profile not found, it might be a new user still being created,
+      // but safer not to proceed if there's an error.
+      return false; 
     }
     
-    // Only start trial if user doesn't have an active trial
-    if (data?.trial_status === 'not_started') {
+    if (!userProfile) {
+      console.warn(`Profile not found for user ${userId} during auto trial start check.`);
+      return false; // Cannot proceed without profile info
+    }
+
+    const { trial_status, role, subscription_status, subscription_type } = userProfile;
+
+    // Do not start trial if:
+    // 1. User is an admin
+    // 2. User already has an active subscription
+    // 3. User already has a defined subscription type (even if not 'active', e.g. 'canceled' but was previously subscribed)
+    // 4. User's trial_status is anything other than 'not_started'
+    if (role === 'admin') {
+      console.log(`User ${userId} is an admin. Skipping auto trial start.`);
+      return true; // No action needed, not an error
+    }
+
+    if (subscription_status === 'active' && subscription_type) {
+      console.log(`User ${userId} has an active subscription (${subscription_type}). Skipping auto trial start.`);
+      return true; // No action needed, not an error
+    }
+    
+    // Check if trial_status is 'not_started'. Only proceed if it is.
+    if (trial_status === 'not_started') {
+      console.log(`User ${userId} has trial_status 'not_started' and no active subscription/admin role. Attempting to start trial.`);
       return await startUserTrial(userId);
+    } else {
+      console.log(`User ${userId} trial_status is '${trial_status}'. No auto trial start needed.`);
+      return true; // Trial already started, expired, or converted. No action needed.
     }
     
-    return true;
   } catch (error) {
     console.error('Error in autoStartTrialForUser:', error);
     return false;
