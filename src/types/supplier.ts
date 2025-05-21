@@ -33,7 +33,7 @@ export interface SupplierCreationPayload {
   code?: string;  // Changed to optional for type compatibility with form values.
                   // Runtime validation for presence and non-emptiness is done in supplierService.
   name?: string; // Changed to optional, will be validated at runtime.
-  description: string;
+  description?: string; // Changed to optional, will be validated at runtime.
   images: string[];
   instagram?: string;
   whatsapp?: string;

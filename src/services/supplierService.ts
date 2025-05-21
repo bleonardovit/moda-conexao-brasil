@@ -153,14 +153,21 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     console.error('Error creating supplier: Name is required and cannot be empty.');
     throw new Error('Supplier name is required and cannot be empty.');
   }
+
+  // Runtime validation for 'description'
+  if (!supplierInput.description || supplierInput.description.trim() === '') {
+    console.error('Error creating supplier: Description is required and cannot be empty.');
+    throw new Error('Supplier description is required and cannot be empty.');
+  }
   
   const { categories, ...baseSupplierData } = supplierInput;
   
-  // Ensure code and name are passed correctly after validation
+  // Ensure code, name, and description are passed correctly after validation
   const supplierDataForTable = {
     ...baseSupplierData,
     code: supplierInput.code, // Explicitly use the validated code
     name: supplierInput.name, // Explicitly use the validated name
+    description: supplierInput.description, // Explicitly use the validated description
     images: baseSupplierData.images || [],
     payment_methods: baseSupplierData.payment_methods || [],
     shipping_methods: baseSupplierData.shipping_methods || [],
