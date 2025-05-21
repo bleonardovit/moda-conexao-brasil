@@ -1,16 +1,18 @@
+
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useToast } from "@/hooks/use-toast"
-import { Icons } from "@/components/icons"
+import { ChevronLeft, Building, UserPlus, Loader2 } from "lucide-react" // Changed from Icons
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/hooks/useAuth"
+// import { useAuth } from "@/hooks/useAuth" // supabase will be imported directly
+import { supabase } from "@/integrations/supabase/client"; // Import supabase directly
 import { startUserTrial } from '@/services/trialService';
 
 const FormSchema = z.object({
@@ -27,25 +29,31 @@ const FormSchema = z.object({
 
 const Register = () => {
   const { toast } = useToast()
-  const { supabase } = useAuth()
+  // const { supabase } = useAuth() // Removed: supabase not exposed by useAuth
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null) // Keep local error state for direct Supabase calls
 
   const {
     register,
-    handleSubmit,
+    handleSubmit: reactHookFormHandleSubmit, // Renamed to avoid conflict
     formState: { errors },
   } = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+    }
   })
 
-  const handleSubmit = async (values: z.infer<typeof FormSchema>) => {
+  // Renamed this function to avoid conflict with react-hook-form's handleSubmit
+  const onFormSubmit = async (values: z.infer<typeof FormSchema>) => {
     setIsSubmitting(true);
     setError(null);
     
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({ // Use supabase directly
         email: values.email,
         password: values.password,
         options: {
@@ -55,7 +63,7 @@ const Register = () => {
         }
       });
       
-      if (error) throw error;
+      if (signUpError) throw signUpError;
       
       if (data?.user) {
         // Auto-start trial for new user
@@ -67,13 +75,18 @@ const Register = () => {
         });
         
         navigate("/auth/login");
+      } else if (!data.session && !data.user) {
+        // Handle cases like user already exists but email not confirmed if needed
+        // For now, assuming any non-error without user means something unexpected
+        throw new Error("Não foi possível criar a conta. O usuário pode já existir ou o email precisa ser confirmado.");
       }
-    } catch (error: any) {
-      console.log('Error signing up:', error)
-      setError(error.message || "Ocorreu um erro ao criar a conta.");
+    } catch (err: any) {
+      console.log('Error signing up:', err)
+      const errorMessage = err.message || "Ocorreu um erro ao criar a conta.";
+      setError(errorMessage);
       toast({
         title: "Erro ao criar a conta",
-        description: error.message || "Ocorreu um erro ao criar a conta.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -90,13 +103,13 @@ const Register = () => {
           "text-muted-foreground hover:text-brand-600"
         )}
       >
-        <Icons.chevronLeft className="mr-2 h-4 w-4" />
+        <ChevronLeft className="mr-2 h-4 w-4" /> {/* Changed from Icons.chevronLeft */}
         Voltar
       </Link>
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex">
         <div className="absolute inset-0 bg-zinc-900/80" />
         <div className="relative z-20 flex items-center text-lg font-medium">
-          <Icons.logo className="mr-2 h-6 w-6" />
+          <Building className="mr-2 h-6 w-6" /> {/* Changed from Icons.logo */}
           Fornecedores
         </div>
         <div className="relative z-20 mt-auto">
@@ -112,7 +125,7 @@ const Register = () => {
       <div className="lg:p-8">
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
           <div className="flex flex-col space-y-2 text-center">
-            <Icons.logo className="mx-auto h-6 w-6" />
+            <UserPlus className="mx-auto h-6 w-6" /> {/* Changed from Icons.logo */}
             <h1 className="text-2xl font-semibold tracking-tight">
               Crie sua conta
             </h1>
@@ -120,13 +133,15 @@ const Register = () => {
               Entre com suas credenciais abaixo
             </p>
           </div>
-          <form onSubmit={handleSubmit(handleSubmit)} className="space-y-4">
+          {/* Updated form onSubmit to use the renamed reactHookFormHandleSubmit and onFormSubmit */}
+          <form onSubmit={reactHookFormHandleSubmit(onFormSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nome</Label>
               <Input
                 id="name"
                 placeholder="Seu nome"
                 type="text"
+                autoComplete="name"
                 required
                 {...register("name")}
               />
@@ -140,6 +155,7 @@ const Register = () => {
                 id="email"
                 placeholder="seuemail@email.com"
                 type="email"
+                autoComplete="email"
                 required
                 {...register("email")}
               />
@@ -153,6 +169,7 @@ const Register = () => {
                 id="password"
                 placeholder="Senha"
                 type="password"
+                autoComplete="new-password"
                 required
                 {...register("password")}
               />
@@ -162,9 +179,12 @@ const Register = () => {
                 </p>
               )}
             </div>
+            {error && (
+              <p className="text-sm text-red-500 text-center">{error}</p>
+            )}
             <Button disabled={isSubmitting} type="submit" className="w-full">
               {isSubmitting && (
-                <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> /* Changed from Icons.spinner */
               )}
               Criar conta
             </Button>
@@ -182,3 +202,4 @@ const Register = () => {
 }
 
 export default Register
+
