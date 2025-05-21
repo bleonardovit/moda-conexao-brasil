@@ -1,5 +1,4 @@
 
-
 // Types for suppliers
 
 export type PaymentMethod = 'pix' | 'card' | 'bankslip';
@@ -18,7 +17,7 @@ export interface Supplier {
   min_order?: string;
   payment_methods: PaymentMethod[];
   requires_cnpj: boolean;
-  avg_price: AvgPrice;
+  avg_price: AvgPrice; // Kept as required for the main Supplier type
   shipping_methods: ShippingMethod[];
   custom_shipping_method?: string;
   city: string;
@@ -32,7 +31,8 @@ export interface Supplier {
 
 // Payload for creating a supplier
 export interface SupplierCreationPayload {
-  code: string;  // This must be required
+  code?: string;  // Changed to optional for type compatibility with form values.
+                  // Runtime validation for presence and non-emptiness is done in supplierService.
   name: string;
   description: string;
   images: string[];
@@ -42,7 +42,7 @@ export interface SupplierCreationPayload {
   min_order?: string;
   payment_methods: PaymentMethod[];
   requires_cnpj: boolean;
-  avg_price?: AvgPrice; // Changed to optional to match form values
+  avg_price?: AvgPrice; // Kept optional as per previous change
   shipping_methods: ShippingMethod[];
   custom_shipping_method?: string;
   city: string;

@@ -141,11 +141,19 @@ export const getSupplierCategories = async (supplierId: string): Promise<string[
 // Create a new supplier
 export const createSupplier = async (supplierInput: SupplierCreationPayload): Promise<Supplier> => {
   console.log("supplierService: Creating a new supplier:", supplierInput);
+
+  // Runtime validation for 'code'
+  if (!supplierInput.code || supplierInput.code.trim() === '') {
+    console.error('Error creating supplier: Code is required and cannot be empty.');
+    throw new Error('Supplier code is required and cannot be empty.');
+  }
   
   const { categories, ...baseSupplierData } = supplierInput;
   
+  // Ensure code is passed correctly after validation
   const supplierDataForTable = {
     ...baseSupplierData,
+    code: supplierInput.code, // Explicitly use the validated code
     images: baseSupplierData.images || [],
     payment_methods: baseSupplierData.payment_methods || [],
     shipping_methods: baseSupplierData.shipping_methods || [],
@@ -161,6 +169,10 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
 
   if (error) {
     console.error('Error creating supplier:', error.message);
+    // Check if the error is due to unique constraint violation for 'code'
+    if (error.message.includes('duplicate key value violates unique constraint "suppliers_code_key"')) {
+      throw new Error(`Failed to create supplier: Code '${supplierInput.code}' already exists.`);
+    }
     throw new Error(`Failed to create supplier: ${error.message}`);
   }
   
@@ -174,6 +186,8 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   // Fetch the complete supplier data, including any DB defaults and the potentially updated categories
   const finalSupplier = await getSupplierById(createdSupplierId);
   if (!finalSupplier) {
+    // This case should ideally not happen if creation was successful
+    console.error('Critical error: Failed to retrieve supplier immediately after creation.');
     throw new Error('Failed to retrieve supplier after creation.');
   }
   console.log("supplierService: Supplier created successfully:", finalSupplier);
