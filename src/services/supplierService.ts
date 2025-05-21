@@ -170,7 +170,8 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     description: supplierInput.description, // Explicitly use the validated description
     images: baseSupplierData.images || [],
     payment_methods: baseSupplierData.payment_methods || [], // Default to empty array
-    shipping_methods: baseSupplierData.shipping_methods || [],
+    requires_cnpj: baseSupplierData.requires_cnpj ?? false, // Default to false if not provided
+    shipping_methods: baseSupplierData.shipping_methods || [], // Assuming this might also become optional or needs default
     featured: baseSupplierData.featured || false,
     hidden: baseSupplierData.hidden || false,
   };
@@ -194,8 +195,9 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   const createdSupplierId = newSupplierData.id;
   
   // If there are categories, associate them with the supplier
-  if (categories && categories.length > 0) {
-    await associateSupplierWithCategories(createdSupplierId, categories);
+  // Ensure categories exist and is an array before attempting to associate
+  if (supplierInput.categories && supplierInput.categories.length > 0) {
+    await associateSupplierWithCategories(createdSupplierId, supplierInput.categories);
   }
   
   // Fetch the complete supplier data, including any DB defaults and the potentially updated categories

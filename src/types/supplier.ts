@@ -41,7 +41,7 @@ export interface SupplierCreationPayload {
   website?: string;
   min_order?: string;
   payment_methods?: PaymentMethod[]; // Changed to optional
-  requires_cnpj: boolean;
+  requires_cnpj?: boolean; // Changed to optional
   avg_price?: AvgPrice; // Kept optional as per previous change
   shipping_methods: ShippingMethod[];
   custom_shipping_method?: string;
