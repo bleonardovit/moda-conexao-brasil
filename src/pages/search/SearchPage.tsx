@@ -254,7 +254,7 @@ export default function SearchPage() {
             <h1 className="text-2xl font-bold text-foreground">Pesquisar Fornecedores</h1>
             
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="h-4 w-4 text-muted-foreground" title="Buscar" />
               <Input
                 placeholder="Pesquisar por nome, descrição..."
                 value={searchTerm}
@@ -654,7 +654,7 @@ export default function SearchPage() {
                           
                           <div className="mt-auto flex flex-wrap gap-2">
                             {supplier.instagram && (
-                              <Button size="xs" variant="outline" asChild className="text-xs">
+                              <Button size="sm" variant="outline" asChild className="text-xs">
                                 <a href={`https://instagram.com/${supplier.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
                                   <Instagram className="mr-1 h-3 w-3" />
                                   Instagram
@@ -663,7 +663,7 @@ export default function SearchPage() {
                             )}
                             
                             {supplier.website && (
-                              <Button size="xs" variant="outline" asChild className="text-xs">
+                              <Button size="sm" variant="outline" asChild className="text-xs">
                                 <a href={supplier.website.startsWith('http') ? supplier.website : `https://${supplier.website}`} target="_blank" rel="noopener noreferrer">
                                   <LinkIcon className="mr-1 h-3 w-3" />
                                   Site
@@ -671,7 +671,7 @@ export default function SearchPage() {
                               </Button>
                             )}
                             
-                            <Button size="xs" asChild className="text-xs flex-1 sm:flex-none">
+                            <Button size="sm" asChild className="text-xs flex-1 sm:flex-none">
                               <Link to={`/suppliers/${supplier.id}`}>
                                 Ver Detalhes
                               </Link>

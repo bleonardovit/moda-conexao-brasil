@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier, SearchFilters } from '@/types'; // Added SearchFilters
+import type { Supplier, SearchFilters, Review } from '@/types'; // Added Review
 
 // Fetch all suppliers, optionally filtered by user if RLS is on user_id
 export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
@@ -21,7 +22,14 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
     throw new Error(`Failed to fetch suppliers: ${error.message}`);
   }
   console.log("supplierService: Suppliers fetched successfully:", data?.length);
-  return data || [];
+  
+  // Add empty categories array since the database doesn't have this column
+  const suppliersWithCategories = data?.map(supplier => ({
+    ...supplier,
+    categories: [] as string[]
+  })) || [];
+  
+  return suppliersWithCategories;
 };
 
 // Fetch a single supplier by ID, optionally considering userId for RLS
@@ -41,12 +49,21 @@ export const getSupplierById = async (id: string, userId?: string): Promise<Supp
     throw new Error(`Failed to fetch supplier: ${error.message}`);
   }
   console.log(`supplierService: Supplier ${id} fetched successfully.`);
-  return data;
+  
+  // Add empty categories array if the supplier exists
+  if (data) {
+    return {
+      ...data,
+      categories: [] as string[]
+    };
+  }
+  
+  return null;
 };
 
 // Search suppliers with filters
-export const searchSuppliers = async (filters: SearchFilters, userId?: string): Promise<Supplier[]> => {
-  console.log("supplierService: Searching suppliers with filters:", filters, "UserID:", userId);
+export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[]> => {
+  console.log("supplierService: Searching suppliers with filters:", filters);
   let query = supabase.from('suppliers').select('*');
 
   if (filters.searchTerm) {
@@ -55,7 +72,9 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
     query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
   }
   if (filters.categoryId) {
-    query = query.contains('categories', [filters.categoryId]);
+    // This will need to be handled differently since categories is not directly in the suppliers table
+    // We'll need to join with suppliers_categories or handle this post-query
+    console.log("Category filtering will be handled post-query");
   }
   if (filters.state) {
     query = query.eq('state', filters.state);
@@ -103,34 +122,70 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
     throw new Error(`Failed to search suppliers: ${error.message}`);
   }
   console.log("supplierService: Suppliers search completed. Found:", data?.length);
-  return data || [];
+  
+  // Add empty categories array to each supplier
+  const suppliersWithCategories = data?.map(supplier => ({
+    ...supplier,
+    categories: [] as string[]
+  })) || [];
+  
+  return suppliersWithCategories;
 };
 
 
 // Fetch categories for a specific supplier
 export const getSupplierCategories = async (supplierId: string): Promise<string[]> => {
   console.log(`supplierService: Fetching categories for supplier ID: ${supplierId}`);
+  
+  // Since we don't have a direct categories column in suppliers,
+  // we need to query the suppliers_categories join table
   const { data, error } = await supabase
-    .from('suppliers')
-    .select('categories')
-    .eq('id', supplierId)
-    .single();
+    .from('suppliers_categories')
+    .select('category_id')
+    .eq('supplier_id', supplierId);
 
   if (error) {
     console.error(`Error fetching categories for supplier ${supplierId}:`, error.message);
-    // Consider if this should throw or return empty array on error/not found
     return []; 
   }
-  console.log(`supplierService: Categories for supplier ${supplierId} fetched:`, data?.categories);
-  return data?.categories || [];
+  
+  // Extract category IDs from the result
+  const categoryIds = data?.map(row => row.category_id) || [];
+  console.log(`supplierService: Categories for supplier ${supplierId} fetched:`, categoryIds);
+  return categoryIds;
 };
 
 // Create a new supplier
-export const createSupplier = async (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>): Promise<Supplier> => {
+export const createSupplier = async (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'categories'>): Promise<Supplier> => {
   console.log("supplierService: Creating a new supplier:", supplier);
+  
+  // Extract categories before inserting into suppliers table
+  const categories = supplier.categories ? [...supplier.categories] : [];
+  
+  // Create a new object without the categories field for the database insert
+  const supplierData = {
+    code: supplier.code,
+    name: supplier.name,
+    description: supplier.description,
+    images: supplier.images || [],
+    instagram: supplier.instagram,
+    whatsapp: supplier.whatsapp,
+    website: supplier.website,
+    min_order: supplier.min_order,
+    payment_methods: supplier.payment_methods,
+    requires_cnpj: supplier.requires_cnpj,
+    avg_price: supplier.avg_price,
+    shipping_methods: supplier.shipping_methods,
+    custom_shipping_method: supplier.custom_shipping_method,
+    city: supplier.city,
+    state: supplier.state,
+    featured: supplier.featured || false,
+    hidden: supplier.hidden || false
+  };
+
   const { data, error } = await supabase
     .from('suppliers')
-    .insert([supplier])
+    .insert([supplierData])
     .select()
     .single();
 
@@ -138,16 +193,58 @@ export const createSupplier = async (supplier: Omit<Supplier, 'id' | 'created_at
     console.error('Error creating supplier:', error.message);
     throw new Error(`Failed to create supplier: ${error.message}`);
   }
+  
   console.log("supplierService: Supplier created successfully:", data);
-  return data;
+  
+  // Add the categories back to the return value
+  const newSupplier: Supplier = {
+    ...data,
+    categories: categories
+  };
+  
+  // If there are categories, associate them with the supplier
+  if (categories.length > 0) {
+    await associateSupplierWithCategories(newSupplier.id, categories);
+  }
+  
+  return newSupplier;
+};
+
+// Helper function to associate supplier with categories
+const associateSupplierWithCategories = async (supplierId: string, categoryIds: string[]): Promise<void> => {
+  console.log(`supplierService: Associating supplier ${supplierId} with categories:`, categoryIds);
+  
+  // Create array of category associations
+  const categoryAssociations = categoryIds.map(categoryId => ({
+    supplier_id: supplierId,
+    category_id: categoryId
+  }));
+  
+  // Insert into the join table
+  const { error } = await supabase
+    .from('suppliers_categories')
+    .insert(categoryAssociations);
+    
+  if (error) {
+    console.error('Error associating supplier with categories:', error.message);
+    // We don't throw here to prevent failing the main supplier creation/update
+    // But we log it for debugging purposes
+  }
 };
 
 // Update an existing supplier
-export const updateSupplier = async (id: string, updates: Partial<Supplier>): Promise<Supplier | null> => {
+export const updateSupplier = async (id: string, updates: Partial<Omit<Supplier, 'id' | 'created_at' | 'updated_at'>>): Promise<Supplier | null> => {
   console.log(`supplierService: Updating supplier with ID: ${id}`, updates);
+  
+  // Extract categories before updating suppliers table
+  const categories = updates.categories ? [...updates.categories] : undefined;
+  
+  // Create a new object without the categories field for the database update
+  const { categories: _, ...supplierUpdates } = updates;
+
   const { data, error } = await supabase
     .from('suppliers')
-    .update(updates)
+    .update(supplierUpdates)
     .eq('id', id)
     .select()
     .single();
@@ -156,13 +253,42 @@ export const updateSupplier = async (id: string, updates: Partial<Supplier>): Pr
     console.error(`Error updating supplier with ID ${id}:`, error.message);
     throw new Error(`Failed to update supplier: ${error.message}`);
   }
+  
+  // If categories were provided, update the associations
+  if (categories) {
+    // Delete existing category associations
+    await supabase
+      .from('suppliers_categories')
+      .delete()
+      .eq('supplier_id', id);
+      
+    // Add new category associations
+    await associateSupplierWithCategories(id, categories);
+  }
+  
+  // Get current categories for the supplier
+  const currentCategories = await getSupplierCategories(id);
+  
   console.log(`supplierService: Supplier ${id} updated successfully:`, data);
-  return data;
+  
+  // Add the categories to the return value
+  return {
+    ...data,
+    categories: categories || currentCategories
+  };
 };
 
 // Delete a supplier
 export const deleteSupplier = async (id: string): Promise<boolean> => {
   console.log(`supplierService: Deleting supplier with ID: ${id}`);
+  
+  // First delete category associations
+  await supabase
+    .from('suppliers_categories')
+    .delete()
+    .eq('supplier_id', id);
+    
+  // Then delete the supplier
   const { error } = await supabase
     .from('suppliers')
     .delete()
@@ -174,4 +300,38 @@ export const deleteSupplier = async (id: string): Promise<boolean> => {
   }
   console.log(`supplierService: Supplier ${id} deleted successfully.`);
   return true;
+};
+
+// Toggle supplier featured status
+export const toggleSupplierFeatured = async (id: string, featured: boolean): Promise<void> => {
+  console.log(`supplierService: Toggling featured status of supplier ${id} to ${featured}`);
+  
+  const { error } = await supabase
+    .from('suppliers')
+    .update({ featured })
+    .eq('id', id);
+    
+  if (error) {
+    console.error(`Error toggling featured status for supplier ${id}:`, error.message);
+    throw new Error(`Failed to update featured status: ${error.message}`);
+  }
+  
+  console.log(`supplierService: Featured status for supplier ${id} updated successfully.`);
+};
+
+// Toggle supplier visibility
+export const toggleSupplierVisibility = async (id: string, hidden: boolean): Promise<void> => {
+  console.log(`supplierService: Toggling visibility of supplier ${id} to hidden=${hidden}`);
+  
+  const { error } = await supabase
+    .from('suppliers')
+    .update({ hidden })
+    .eq('id', id);
+    
+  if (error) {
+    console.error(`Error toggling visibility for supplier ${id}:`, error.message);
+    throw new Error(`Failed to update visibility: ${error.message}`);
+  }
+  
+  console.log(`supplierService: Visibility for supplier ${id} updated successfully.`);
 };
