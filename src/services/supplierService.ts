@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { Supplier, SearchFilters, Review, PaymentMethod, ShippingMethod, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
 
@@ -147,13 +148,20 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     console.error('Error creating supplier: Code is required and cannot be empty.');
     throw new Error('Supplier code is required and cannot be empty.');
   }
+
+  // Runtime validation for 'name'
+  if (!supplierInput.name || supplierInput.name.trim() === '') {
+    console.error('Error creating supplier: Name is required and cannot be empty.');
+    throw new Error('Supplier name is required and cannot be empty.');
+  }
   
   const { categories, ...baseSupplierData } = supplierInput;
   
-  // Ensure code is passed correctly after validation
+  // Ensure code and name are passed correctly after validation
   const supplierDataForTable = {
     ...baseSupplierData,
     code: supplierInput.code, // Explicitly use the validated code
+    name: supplierInput.name, // Explicitly use the validated name
     images: baseSupplierData.images || [],
     payment_methods: baseSupplierData.payment_methods || [],
     shipping_methods: baseSupplierData.shipping_methods || [],
@@ -173,6 +181,7 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     if (error.message.includes('duplicate key value violates unique constraint "suppliers_code_key"')) {
       throw new Error(`Failed to create supplier: Code '${supplierInput.code}' already exists.`);
     }
+    // Consider similar checks for other unique constraints if 'name' becomes one.
     throw new Error(`Failed to create supplier: ${error.message}`);
   }
   
