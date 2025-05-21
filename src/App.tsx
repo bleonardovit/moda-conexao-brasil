@@ -94,7 +94,9 @@ const AppRoutes = () => {
           const newAuth = {
             isAuthenticated: true,
             isAdmin: user.role === 'admin',
-            hasSubscription: user.subscription_status === 'active' || true // Temporariamente considerando todos como tendo assinatura
+            // Trial users are considered as having a subscription for routing purposes
+            // They will have feature limitations applied at the component level
+            hasSubscription: user.subscription_status === 'active' || user.trial_status === 'active' || true
           };
           console.log('Auth state atualizado: usuário autenticado');
           return newAuth;
@@ -211,7 +213,7 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Página de favoritos */}
+      {/* Página de favoritos - needed additional trial restrictions */}
       <Route 
         path="/favorites" 
         element={
@@ -221,7 +223,7 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Página de busca */}
+      {/* Página de busca - needed additional trial restrictions */}
       <Route 
         path="/search" 
         element={

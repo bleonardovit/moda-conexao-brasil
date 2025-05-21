@@ -5,7 +5,9 @@ import {
   getUserTrialInfo, 
   isFeatureAccessibleInTrial, 
   getAllowedSuppliersForTrial, 
-  isSupplierAllowedForTrial 
+  isSupplierAllowedForTrial,
+  checkAndUpdateTrialStatus,
+  autoStartTrialForUser
 } from '@/services/trialService';
 
 export interface TrialStatus {
@@ -34,6 +36,12 @@ export function useTrialStatus(): TrialStatus {
       }
 
       try {
+        // Auto-start trial for new users
+        await autoStartTrialForUser(user.id);
+        
+        // Check if trial has expired and update status
+        await checkAndUpdateTrialStatus(user.id);
+
         const trialInfo = await getUserTrialInfo(user.id);
         
         if (trialInfo && trialInfo.trial_status === 'active') {

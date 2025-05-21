@@ -230,3 +230,56 @@ export const endUserTrial = async (userId: string, converted: boolean = false) =
     return false;
   }
 };
+
+// Auto-start trial for new users
+export const autoStartTrialForUser = async (userId: string) => {
+  try {
+    // Check if user already has trial status
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('trial_status')
+      .eq('id', userId)
+      .single();
+    
+    if (error) {
+      console.error('Error checking user trial status:', error);
+      return false;
+    }
+    
+    // Only start trial if user doesn't have an active trial
+    if (data?.trial_status === 'not_started') {
+      return await startUserTrial(userId);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in autoStartTrialForUser:', error);
+    return false;
+  }
+};
+
+// Check if trial has expired and update status
+export const checkAndUpdateTrialStatus = async (userId: string) => {
+  try {
+    const trialInfo = await getUserTrialInfo(userId);
+    
+    if (!trialInfo || trialInfo.trial_status !== 'active') {
+      return; // No active trial to check
+    }
+    
+    if (trialInfo.trial_end_date) {
+      const endDate = new Date(trialInfo.trial_end_date);
+      const now = new Date();
+      
+      if (now > endDate) {
+        // Trial has expired, update status
+        await supabase
+          .from('profiles')
+          .update({ trial_status: 'expired' })
+          .eq('id', userId);
+      }
+    }
+  } catch (error) {
+    console.error('Error in checkAndUpdateTrialStatus:', error);
+  }
+};
