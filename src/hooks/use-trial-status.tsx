@@ -1,108 +1,111 @@
 
-import { useState, useEffect } from 'react';
-import { useAuth } from './useAuth';
-import { getUserTrialInfo, getAllowedSuppliersForTrial, isSupplierAllowedForTrial } from '@/services/trialService';
-import type { UserTrialInfo, TrialStatus } from '@/types';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { 
+  getUserTrialInfo, 
+  isFeatureAccessibleInTrial, 
+  getAllowedSuppliersForTrial, 
+  isSupplierAllowedForTrial 
+} from '@/services/trialService';
 
-interface TrialStatusState {
-  status: TrialStatus;
+export interface TrialStatus {
   isInTrial: boolean;
-  trialInfo: UserTrialInfo | null;
   daysRemaining: number;
   hoursRemaining: number;
+  hasExpired: boolean;
   allowedSupplierIds: string[];
   isSupplierAllowed: (supplierId: string) => Promise<boolean>;
-  isLoading: boolean;
+  isFeatureAllowed: (featureKey: string) => Promise<boolean>;
 }
 
-export function useTrialStatus(): TrialStatusState {
-  const { user } = useAuth();
-  const [trialInfo, setTrialInfo] = useState<UserTrialInfo | null>(null);
+export function useTrialStatus(): TrialStatus {
+  const { user, isAuthenticated } = useAuth();
+  const [isInTrial, setIsInTrial] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState(0);
+  const [hoursRemaining, setHoursRemaining] = useState(0);
+  const [hasExpired, setHasExpired] = useState(false);
   const [allowedSupplierIds, setAllowedSupplierIds] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Calculate remaining time
-  const calculateTimeRemaining = () => {
-    if (!trialInfo || !trialInfo.endDate) {
-      return { days: 0, hours: 0 };
-    }
+  useEffect(() => {
+    const checkTrialStatus = async () => {
+      if (!isAuthenticated || !user?.id) {
+        setIsInTrial(false);
+        return;
+      }
 
-    const now = new Date();
-    const endDate = new Date(trialInfo.endDate);
-    const diffTime = Math.max(0, endDate.getTime() - now.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-    return { days: diffDays, hours: diffHours };
-  };
-
-  const { days: daysRemaining, hours: hoursRemaining } = calculateTimeRemaining();
-
-  // Check if supplier is allowed for this trial user
-  const checkIsSupplierAllowed = async (supplierId: string): Promise<boolean> => {
-    if (!user?.id) return false;
+      try {
+        const trialInfo = await getUserTrialInfo(user.id);
+        
+        if (trialInfo && trialInfo.trial_status === 'active') {
+          setIsInTrial(true);
+          
+          // Calculate days and hours remaining
+          if (trialInfo.trial_end_date) {
+            const endDate = new Date(trialInfo.trial_end_date);
+            const now = new Date();
+            const diff = endDate.getTime() - now.getTime();
+            
+            if (diff > 0) {
+              const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+              const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+              
+              setDaysRemaining(days);
+              setHoursRemaining(hours);
+              setHasExpired(false);
+            } else {
+              setDaysRemaining(0);
+              setHoursRemaining(0);
+              setHasExpired(true);
+            }
+          }
+          
+          // Get allowed suppliers
+          const allowedSuppliers = await getAllowedSuppliersForTrial(user.id);
+          setAllowedSupplierIds(allowedSuppliers);
+        } else {
+          setIsInTrial(false);
+        }
+      } catch (error) {
+        console.error('Error checking trial status:', error);
+        setIsInTrial(false);
+      }
+    };
     
+    checkTrialStatus();
+    
+    // Set up interval to update the time remaining
+    const interval = setInterval(checkTrialStatus, 60 * 1000); // Update every minute
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user?.id]);
+  
+  const isSupplierAllowed = useCallback(async (supplierId: string): Promise<boolean> => {
+    if (!isAuthenticated || !user?.id || !isInTrial) return true;
     try {
-      // If user has an active subscription, always return true
-      if (user.subscription_status === 'active' || user.subscription_status === 'trialing') {
-        return true;
-      }
-      
-      // If not in trial, return false
-      if (trialInfo?.status !== 'active') {
-        return false;
-      }
-
       return await isSupplierAllowedForTrial(user.id, supplierId);
     } catch (error) {
       console.error('Error checking supplier access:', error);
       return false;
     }
-  };
-
-  useEffect(() => {
-    const fetchTrialInfo = async () => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const info = await getUserTrialInfo(user.id);
-        setTrialInfo(info);
-
-        // Only fetch allowed suppliers if user is in trial
-        if (info?.status === 'active') {
-          const allowedIds = await getAllowedSuppliersForTrial(user.id);
-          setAllowedSupplierIds(allowedIds);
-        }
-      } catch (error) {
-        console.error('Error fetching trial info:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível obter informações sobre o período de teste.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTrialInfo();
-    // Set up a timer to refresh trial status every hour
-    const timer = setInterval(fetchTrialInfo, 60 * 60 * 1000);
-    return () => clearInterval(timer);
-  }, [user?.id]);
-
+  }, [isAuthenticated, user?.id, isInTrial]);
+  
+  const isFeatureAllowed = useCallback(async (featureKey: string): Promise<boolean> => {
+    if (!isAuthenticated || !user?.id || !isInTrial) return true;
+    try {
+      return await isFeatureAccessibleInTrial(user.id, featureKey);
+    } catch (error) {
+      console.error('Error checking feature access:', error);
+      return false;
+    }
+  }, [isAuthenticated, user?.id, isInTrial]);
+  
   return {
-    status: trialInfo?.status || 'not_started',
-    isInTrial: trialInfo?.status === 'active',
-    trialInfo,
+    isInTrial,
     daysRemaining,
     hoursRemaining,
+    hasExpired,
     allowedSupplierIds,
-    isSupplierAllowed: checkIsSupplierAllowed,
-    isLoading
+    isSupplierAllowed,
+    isFeatureAllowed
   };
 }

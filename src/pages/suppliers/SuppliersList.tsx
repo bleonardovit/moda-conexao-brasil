@@ -8,9 +8,9 @@ import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart, Lock } from '
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { useFavorites } from '@/hooks/use-favorites';
-import { useTrialStatus } from '@/hooks/use-trial-status'; // Add this import
-import { TrialBanner } from '@/components/trial/TrialBanner'; // Add this import
-import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard'; // Add this import
+import { useTrialStatus } from '@/hooks/use-trial-status';
+import { TrialBanner } from '@/components/trial/TrialBanner';
+import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from "@/hooks/use-toast";
 import type { Supplier, Category } from '@/types';
@@ -185,6 +185,12 @@ export default function SuppliersList() {
   // Add trial status hook
   const { isInTrial, allowedSupplierIds, isSupplierAllowed } = useTrialStatus();
   const [supplierAccessMap, setSupplierAccessMap] = useState<Record<string, boolean>>({});
+
+  // Function to check if supplier is accessible in trial mode
+  const isSupplierAccessible = (supplierId: string): boolean => {
+    if (!isInTrial) return true; // If not in trial, all suppliers are accessible
+    return supplierAccessMap[supplierId] === true;
+  };
 
   // Add effect to check which suppliers are allowed for trial users
   useEffect(() => {

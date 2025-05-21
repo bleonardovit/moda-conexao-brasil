@@ -31,7 +31,7 @@ export interface Supplier {
 
 // Payload for creating a supplier
 export interface SupplierCreationPayload {
-  code: string;
+  code: string;  // This must be required
   name: string;
   description: string;
   images: string[];
@@ -78,4 +78,15 @@ export interface SearchFilters {
   requiresCnpj?: boolean | null;
   shippingMethods?: ShippingMethod[];
   hasWebsite?: boolean | null;
+}
+
+// Type for supplier reviews (moved from review.ts to avoid duplication)
+export interface Review {
+  id: string;
+  user_id: string;
+  user_name: string;
+  supplier_id: string;
+  rating: number;
+  comment?: string;
+  created_at: string;
 }
