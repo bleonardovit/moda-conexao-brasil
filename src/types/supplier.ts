@@ -40,7 +40,7 @@ export interface SupplierCreationPayload {
   whatsapp?: string;
   website?: string;
   min_order?: string;
-  payment_methods: PaymentMethod[];
+  payment_methods?: PaymentMethod[]; // Changed to optional
   requires_cnpj: boolean;
   avg_price?: AvgPrice; // Kept optional as per previous change
   shipping_methods: ShippingMethod[];

@@ -169,7 +169,7 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     name: supplierInput.name, // Explicitly use the validated name
     description: supplierInput.description, // Explicitly use the validated description
     images: baseSupplierData.images || [],
-    payment_methods: baseSupplierData.payment_methods || [],
+    payment_methods: baseSupplierData.payment_methods || [], // Default to empty array
     shipping_methods: baseSupplierData.shipping_methods || [],
     featured: baseSupplierData.featured || false,
     hidden: baseSupplierData.hidden || false,
