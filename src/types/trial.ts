@@ -1,5 +1,7 @@
 
-export type TrialStatus = 'not_started' | 'active' | 'expired' | 'converted';
+import type { TrialStatus } from './user'; // Import TrialStatus from user.ts
+
+// export type TrialStatus = 'not_started' | 'active' | 'expired' | 'converted'; // Removed duplicate
 
 export interface UserTrialInfo {
   userId: string;
