@@ -169,9 +169,9 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     name: supplierInput.name, // Explicitly use the validated name
     description: supplierInput.description, // Explicitly use the validated description
     images: baseSupplierData.images || [],
-    payment_methods: baseSupplierData.payment_methods || [], // Default to empty array
-    requires_cnpj: baseSupplierData.requires_cnpj ?? false, // Default to false if not provided
-    shipping_methods: baseSupplierData.shipping_methods || [], // Assuming this might also become optional or needs default
+    payment_methods: baseSupplierData.payment_methods || [], 
+    requires_cnpj: baseSupplierData.requires_cnpj ?? false, 
+    shipping_methods: baseSupplierData.shipping_methods || [], // Default to empty array
     featured: baseSupplierData.featured || false,
     hidden: baseSupplierData.hidden || false,
   };

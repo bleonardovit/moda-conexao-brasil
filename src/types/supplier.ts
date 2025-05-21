@@ -43,7 +43,7 @@ export interface SupplierCreationPayload {
   payment_methods?: PaymentMethod[]; // Changed to optional
   requires_cnpj?: boolean; // Changed to optional
   avg_price?: AvgPrice; // Kept optional as per previous change
-  shipping_methods: ShippingMethod[];
+  shipping_methods?: ShippingMethod[]; // Changed to optional
   custom_shipping_method?: string;
   city: string;
   state: string;
