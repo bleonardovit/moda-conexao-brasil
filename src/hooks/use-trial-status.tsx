@@ -19,7 +19,7 @@ export interface TrialStatus {
 }
 
 export function useTrialStatus(): TrialStatus {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [isInTrial, setIsInTrial] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [hoursRemaining, setHoursRemaining] = useState(0);
@@ -28,7 +28,7 @@ export function useTrialStatus(): TrialStatus {
 
   useEffect(() => {
     const checkTrialStatus = async () => {
-      if (!isAuthenticated || !user?.id) {
+      if (!user?.id) {
         setIsInTrial(false);
         return;
       }
@@ -77,27 +77,27 @@ export function useTrialStatus(): TrialStatus {
     const interval = setInterval(checkTrialStatus, 60 * 1000); // Update every minute
     
     return () => clearInterval(interval);
-  }, [isAuthenticated, user?.id]);
+  }, [user?.id]);
   
   const isSupplierAllowed = useCallback(async (supplierId: string): Promise<boolean> => {
-    if (!isAuthenticated || !user?.id || !isInTrial) return true;
+    if (!user?.id || !isInTrial) return true;
     try {
       return await isSupplierAllowedForTrial(user.id, supplierId);
     } catch (error) {
       console.error('Error checking supplier access:', error);
       return false;
     }
-  }, [isAuthenticated, user?.id, isInTrial]);
+  }, [user?.id, isInTrial]);
   
   const isFeatureAllowed = useCallback(async (featureKey: string): Promise<boolean> => {
-    if (!isAuthenticated || !user?.id || !isInTrial) return true;
+    if (!user?.id || !isInTrial) return true;
     try {
       return await isFeatureAccessibleInTrial(user.id, featureKey);
     } catch (error) {
       console.error('Error checking feature access:', error);
       return false;
     }
-  }, [isAuthenticated, user?.id, isInTrial]);
+  }, [user?.id, isInTrial]);
   
   return {
     isInTrial,

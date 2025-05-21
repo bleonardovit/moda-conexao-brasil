@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import type { FeatureAccessLevel } from '@/types/featureAccess';
 
 // Get trial information for a user
 export const getUserTrialInfo = async (userId: string) => {
@@ -188,10 +189,12 @@ export const isFeatureAccessibleInTrial = async (userId: string, featureKey: str
     }
 
     // Process based on access level
-    switch (data?.trial_access_level) {
+    const accessLevel = data?.trial_access_level as FeatureAccessLevel;
+    switch (accessLevel) {
       case 'none':
         return false; // No access in trial
-      case 'limited':
+      case 'limited_count':
+      case 'limited_blurred':
         // For limited access, we would need additional logic based on the feature
         // This is a simplified example - expand as needed
         return true;
