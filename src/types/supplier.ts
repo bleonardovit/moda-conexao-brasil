@@ -45,9 +45,9 @@ export interface SupplierCreationPayload {
   avg_price?: AvgPrice; // Kept optional as per previous change
   shipping_methods?: ShippingMethod[]; // Changed to optional
   custom_shipping_method?: string;
-  city: string;
-  state: string;
-  categories: string[];
+  city?: string; // Changed to optional, will be validated at runtime
+  state?: string; // Changed to optional, will be validated at runtime
+  categories?: string[]; // Changed to optional
   featured?: boolean;
   hidden?: boolean;
 }

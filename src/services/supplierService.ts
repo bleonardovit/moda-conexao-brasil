@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { Supplier, SearchFilters, Review, PaymentMethod, ShippingMethod, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
 
@@ -159,21 +160,37 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     console.error('Error creating supplier: Description is required and cannot be empty.');
     throw new Error('Supplier description is required and cannot be empty.');
   }
+
+  // Runtime validation for 'city'
+  if (!supplierInput.city || supplierInput.city.trim() === '') {
+    console.error('Error creating supplier: City is required and cannot be empty.');
+    throw new Error('Supplier city is required and cannot be empty.');
+  }
+
+  // Runtime validation for 'state'
+  if (!supplierInput.state || supplierInput.state.trim() === '') {
+    console.error('Error creating supplier: State is required and cannot be empty.');
+    throw new Error('Supplier state is required and cannot be empty.');
+  }
   
   const { categories, ...baseSupplierData } = supplierInput;
   
-  // Ensure code, name, and description are passed correctly after validation
+  // Ensure required fields are passed correctly after validation
   const supplierDataForTable = {
     ...baseSupplierData,
-    code: supplierInput.code, // Explicitly use the validated code
-    name: supplierInput.name, // Explicitly use the validated name
-    description: supplierInput.description, // Explicitly use the validated description
+    code: supplierInput.code, 
+    name: supplierInput.name, 
+    description: supplierInput.description,
+    city: supplierInput.city, // Explicitly use the validated city
+    state: supplierInput.state, // Explicitly use the validated state
     images: baseSupplierData.images || [],
     payment_methods: baseSupplierData.payment_methods || [], 
     requires_cnpj: baseSupplierData.requires_cnpj ?? false, 
-    shipping_methods: baseSupplierData.shipping_methods || [], // Default to empty array
+    shipping_methods: baseSupplierData.shipping_methods || [], 
     featured: baseSupplierData.featured || false,
     hidden: baseSupplierData.hidden || false,
+    // avg_price will be included from baseSupplierData if present, otherwise DB default or it's nullable
+    // custom_shipping_method will be included from baseSupplierData if present
   };
 
   const { data: newSupplierData, error } = await supabase
@@ -184,26 +201,21 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
 
   if (error) {
     console.error('Error creating supplier:', error.message);
-    // Check if the error is due to unique constraint violation for 'code'
     if (error.message.includes('duplicate key value violates unique constraint "suppliers_code_key"')) {
       throw new Error(`Failed to create supplier: Code '${supplierInput.code}' already exists.`);
     }
-    // Consider similar checks for other unique constraints if 'name' becomes one.
     throw new Error(`Failed to create supplier: ${error.message}`);
   }
   
   const createdSupplierId = newSupplierData.id;
   
   // If there are categories, associate them with the supplier
-  // Ensure categories exist and is an array before attempting to associate
   if (supplierInput.categories && supplierInput.categories.length > 0) {
     await associateSupplierWithCategories(createdSupplierId, supplierInput.categories);
   }
   
-  // Fetch the complete supplier data, including any DB defaults and the potentially updated categories
   const finalSupplier = await getSupplierById(createdSupplierId);
   if (!finalSupplier) {
-    // This case should ideally not happen if creation was successful
     console.error('Critical error: Failed to retrieve supplier immediately after creation.');
     throw new Error('Failed to retrieve supplier after creation.');
   }
