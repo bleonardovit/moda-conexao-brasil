@@ -224,6 +224,7 @@ export const getSupplierById = async (id: string, userId: string | null | undefi
           return null;
         }
       } else { // No specific allowedIds from rule, rely on general trial status
+        // The following line causes a build error if getUserProfileForAccessCheck is not exported from featureAccessService.ts
         const userProfile = await getUserProfileForAccessCheck(userId); // Fetch profile
         
         // Check subscription status first as it overrides trial
@@ -286,14 +287,16 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
     
     const categories = supplier.categories || [];
     
-    const newSupplierData = { ...supplier };
-    // Remove categories from the direct insert payload as it's handled separately
-    delete (newSupplierData as any).categories; 
+    // Exclude categories from the direct insert payload, it's handled separately.
+    const { categories: _categories, ...supplierDataForInsert } = supplier;
 
     const newSupplierPayload = {
-      ...newSupplierData, // spread all properties from SupplierFormValues
-      code: supplier.code || `SUP-${Date.now()}`, // Ensure code is present
-      // Ensure all required fields in 'suppliers' table are covered by SupplierFormValues or have defaults
+      ...supplierDataForInsert, // Spread all properties from SupplierFormValues (minus categories)
+      name: supplier.name, // Ensure required field 'name' is present
+      description: supplier.description, // Ensure required field 'description' is present
+      city: supplier.city, // Ensure required field 'city' is present
+      state: supplier.state, // Ensure required field 'state' is present
+      code: supplier.code || `SUP-${Date.now()}`, 
       images: supplier.images || [],
       payment_methods: supplier.payment_methods || [], // Expect snake_case from form values
       shipping_methods: supplier.shipping_methods || [], // Expect snake_case from form values
@@ -306,7 +309,7 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
 
     const { data, error } = await supabase
       .from('suppliers')
-      .insert(newSupplierPayload)
+      .insert(newSupplierPayload) // newSupplierPayload should now match expected type
       .select()
       .single();
 
