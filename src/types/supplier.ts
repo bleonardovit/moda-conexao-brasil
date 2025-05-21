@@ -1,4 +1,3 @@
-
 // Types for suppliers
 export interface Supplier {
   id: string;
@@ -46,4 +45,18 @@ export interface SupplierImportHistory {
   imported_by?: string;
   imported_at: string;
   error_details?: Record<string, string[]>;
+}
+
+// Type for supplier search filters
+export interface SearchFilters {
+  searchTerm?: string;
+  categoryId?: string;
+  state?: string;
+  city?: string;
+  minOrderRange?: [number, number];
+  paymentMethods?: string[];
+  requiresCnpj?: boolean | null;
+  shippingMethods?: string[];
+  hasWebsite?: boolean | null;
+  // Add other potential filters here, e.g., ratingRange
 }

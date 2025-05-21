@@ -12,20 +12,18 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
   Collapsible, 
   CollapsibleContent, 
-  CollapsibleTrigger 
 } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { Heart, Instagram, Link as LinkIcon, Star } from 'lucide-react';
 import { useFavorites } from '@/hooks/use-favorites';
 import { Link } from 'react-router-dom';
-import type { Supplier, Category } from '@/types';
+import type { Supplier, Category, SearchFilters } from '@/types';
 import { searchSuppliers, getSuppliers } from '@/services/supplierService';
 import { useQuery } from '@tanstack/react-query';
 import { getCategories } from '@/services/categoryService';
@@ -65,19 +63,18 @@ export default function SearchPage() {
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
   const [requiresCnpj, setRequiresCnpj] = useState<string | null>(null);
   const [selectedShippingMethods, setSelectedShippingMethods] = useState<string[]>([]);
-  const [ratingRange, setRatingRange] = useState<[number, number]>([0, 5]);
   const [hasWebsite, setHasWebsite] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<{[key: string]: boolean}>({});
 
-  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const { toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
 
   // Fetch categories, states, and cities for filter options on component mount
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
-        // Fetch categories - assuming getCategories might need userId if RLS applies
-        const categoriesData = await getCategories(userId);
+        // Fetch categories
+        const categoriesData = await getCategories(); // Call without userId
         setAllCategories(categoriesData);
         const catOptions = [
           { label: 'Todas as Categorias', value: 'all' },
@@ -86,7 +83,7 @@ export default function SearchPage() {
         setCategoryOptions(catOptions);
 
         // Fetch all suppliers to derive states and cities
-        const allSuppliersData = await getSuppliers(userId);
+        const allSuppliersData = await getSuppliers(userId); // Pass userId
         
         const visibleSuppliers = allSuppliersData.filter(s => !s.hidden);
 
@@ -97,7 +94,12 @@ export default function SearchPage() {
         ];
         setStateOptions(stOptions);
 
-        const uniqueCities = Array.from(new Set(visibleSuppliers.map(s => s.city).filter(Boolean)));
+        // Filter cities based on selected state
+        const citiesForSelectedState = stateFilter === 'all' 
+          ? visibleSuppliers 
+          : visibleSuppliers.filter(s => s.state === stateFilter);
+        
+        const uniqueCities = Array.from(new Set(citiesForSelectedState.map(s => s.city).filter(Boolean)));
         const cOptions = [
           { label: 'Todas as Cidades', value: 'all' },
           ...uniqueCities.sort().map(city => ({ label: city, value: city }))
@@ -114,29 +116,36 @@ export default function SearchPage() {
       }
     };
     fetchFilterOptions();
-  }, [toast, userId]);
+  }, [toast, userId, stateFilter]);
 
   // Query suppliers from the database with filters
-  const { data: suppliers = [], isLoading, error } = useQuery({
+  const { data: suppliers = [], isLoading, error } = useQuery<Supplier[], Error>({
     queryKey: ['suppliers', searchTerm, categoryFilter, stateFilter, cityFilter, 
                minOrderRange, selectedPaymentMethods, requiresCnpj, 
-               selectedShippingMethods, hasWebsite, userId], // Added userId to queryKey
+               selectedShippingMethods, hasWebsite, userId],
     queryFn: async () => {
+      // Construct filters object for searchSuppliers
+      const filters: SearchFilters = {
+        searchTerm: searchTerm || undefined,
+        categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
+        state: stateFilter !== 'all' ? stateFilter : undefined,
+        city: cityFilter !== 'all' ? cityFilter : undefined,
+        minOrderRange: (minOrderRange[0] > 0 || minOrderRange[1] < 1000) ? minOrderRange : undefined,
+        paymentMethods: selectedPaymentMethods.length > 0 ? selectedPaymentMethods : undefined,
+        requiresCnpj: requiresCnpj !== null ? requiresCnpj === 'true' : undefined,
+        shippingMethods: selectedShippingMethods.length > 0 ? selectedShippingMethods : undefined,
+        hasWebsite: hasWebsite !== null ? hasWebsite === 'true' : undefined,
+      };
       try {
-        return await searchSuppliers({
-          searchTerm,
-          categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
-          state: stateFilter !== 'all' ? stateFilter : undefined,
-          city: cityFilter !== 'all' ? cityFilter : undefined,
-          minOrderRange,
-          paymentMethods: selectedPaymentMethods,
-          requiresCnpj: requiresCnpj !== null ? requiresCnpj === 'true' : null,
-          shippingMethods: selectedShippingMethods,
-          hasWebsite: hasWebsite !== null ? hasWebsite === 'true' : null
-        }, userId);
-      } catch (error) {
-        console.error("Error fetching suppliers:", error);
-        throw error;
+        return await searchSuppliers(filters, userId);
+      } catch (searchError) {
+        console.error("Error fetching suppliers in queryFn:", searchError);
+        toast({
+          title: "Erro ao buscar fornecedores",
+          description: (searchError as Error).message || "Ocorreu um problema na busca.",
+          variant: "destructive",
+        });
+        return [];
       }
     }
   });
@@ -192,6 +201,7 @@ export default function SearchPage() {
 
   // Reset all filters
   const resetFilters = () => {
+    setSearchTerm('');
     setCategoryFilter('all');
     setStateFilter('all');
     setCityFilter('all');
@@ -199,7 +209,6 @@ export default function SearchPage() {
     setSelectedPaymentMethods([]);
     setRequiresCnpj(null);
     setSelectedShippingMethods([]);
-    setRatingRange([0, 5]);
     setHasWebsite(null);
     toast({
       title: "Filtros limpos",
@@ -218,396 +227,395 @@ export default function SearchPage() {
     e.preventDefault();
     e.stopPropagation();
     
+    const currentlyFavorite = isFavorite(supplier.id);
     toggleFavorite(supplier.id);
     
-    const action = isFavorite(supplier.id) ? 'removido dos' : 'adicionado aos';
+    const action = currentlyFavorite ? 'removido dos' : 'adicionado aos';
+    const title = currentlyFavorite ? "Removido dos favoritos" : "Adicionado aos favoritos";
     
     toast({
-      title: isFavorite(supplier.id) ? "Removido dos favoritos" : "Adicionado aos favoritos",
-      description: `${supplier.name} foi ${action} seus favoritos`,
+      title: title,
+      description: `${supplier.name} foi ${action} seus favoritos.`,
       duration: 2000,
     });
   };
+  
+  useEffect(() => {
+    if (stateFilter !== 'all') {
+        setCityFilter('all'); 
+    }
+  }, [stateFilter]);
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4">
-          <h1 className="text-2xl font-bold text-foreground">Pesquisar</h1>
-          
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Pesquisar fornecedores, produtos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-              autoFocus
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={isFilterOpen ? "bg-accent text-accent-foreground" : ""}
-            >
-              <Filter className="mr-2 h-4 w-4" />
-              Filtros
-              {activeFiltersCount > 0 && (
-                <Badge variant="secondary" className="ml-2">{activeFiltersCount}</Badge>
-              )}
-            </Button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4">
+            <h1 className="text-2xl font-bold text-foreground">Pesquisar Fornecedores</h1>
             
-            <span className="text-sm text-muted-foreground">
-              {isLoading ? "Carregando..." : `${suppliers.length} resultados encontrados`}
-            </span>
-          </div>
-
-          <Collapsible open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-            <CollapsibleContent>
-              <div className="bg-muted/50 rounded-md p-4 space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-medium">Refinar busca</h3>
-                  <Button variant="ghost" size="sm" onClick={resetFilters}>
-                    Limpar filtros
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Category filter */}
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Categoria</Label>
-                    <Select 
-                      value={categoryFilter} 
-                      onValueChange={setCategoryFilter}
-                    >
-                      <SelectTrigger id="category">
-                        <SelectValue placeholder="Selecionar categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* State filter */}
-                  <div className="space-y-2">
-                    <Label htmlFor="state">Estado</Label>
-                    <Select 
-                      value={stateFilter} 
-                      onValueChange={setStateFilter}
-                    >
-                      <SelectTrigger id="state">
-                        <SelectValue placeholder="Selecione um estado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stateOptions.map(stateOpt => (
-                          <SelectItem key={stateOpt.value} value={stateOpt.value}>
-                            {stateOpt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* City filter */}
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Cidade</Label>
-                    <Select 
-                      value={cityFilter} 
-                      onValueChange={setCityFilter}
-                    >
-                      <SelectTrigger id="city">
-                        <SelectValue placeholder="Selecione uma cidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cityOptions.map(cityOpt => (
-                          <SelectItem key={cityOpt.value} value={cityOpt.value}>
-                            {cityOpt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Min order range filter */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="min-order">Pedido mínimo</Label>
-                      <span className="text-sm text-muted-foreground">
-                        {formatCurrency(minOrderRange[0])} - {formatCurrency(minOrderRange[1])}
-                      </span>
-                    </div>
-                    <Slider 
-                      id="min-order"
-                      defaultValue={[0, 1000]} 
-                      max={1000} 
-                      step={50}
-                      value={minOrderRange}
-                      onValueChange={(value) => setMinOrderRange(value as [number, number])} 
-                      className="py-4"
-                    />
-                  </div>
-
-                  {/* Payment methods filter */}
-                  <div className="space-y-2">
-                    <Label>Forma de pagamento</Label>
-                    <div className="space-y-2 mt-2">
-                      {PAYMENT_METHODS.map(method => (
-                        <div key={method.value} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`payment-${method.value}`} 
-                            checked={selectedPaymentMethods.includes(method.value)}
-                            onCheckedChange={() => handlePaymentMethodChange(method.value)}
-                          />
-                          <label 
-                            htmlFor={`payment-${method.value}`}
-                            className="text-sm"
-                          >
-                            {method.label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* CNPJ filter */}
-                  <div className="space-y-2">
-                    <Label>Exige CNPJ?</Label>
-                    <div className="flex space-x-4 mt-2">
-                      <div className="flex items-center space-x-2">
-                        <input 
-                          type="radio" 
-                          id="cnpj-yes" 
-                          name="requires-cnpj"
-                          checked={requiresCnpj === 'true'}
-                          onChange={() => setRequiresCnpj('true')}
-                          className="text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="cnpj-yes" className="text-sm">Sim</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input 
-                          type="radio" 
-                          id="cnpj-no" 
-                          name="requires-cnpj"
-                          checked={requiresCnpj === 'false'}
-                          onChange={() => setRequiresCnpj('false')}
-                          className="text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="cnpj-no" className="text-sm">Não</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input 
-                          type="radio" 
-                          id="cnpj-all" 
-                          name="requires-cnpj"
-                          checked={requiresCnpj === null}
-                          onChange={() => setRequiresCnpj(null)}
-                          className="text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="cnpj-all" className="text-sm">Ambos</Label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Shipping methods filter */}
-                  <div className="space-y-2">
-                    <Label>Forma de envio</Label>
-                    <div className="space-y-2 mt-2">
-                      {SHIPPING_METHODS.map(method => (
-                        <div key={method.value} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`shipping-${method.value}`} 
-                            checked={selectedShippingMethods.includes(method.value)}
-                            onCheckedChange={() => handleShippingMethodChange(method.value)}
-                          />
-                          <label 
-                            htmlFor={`shipping-${method.value}`}
-                            className="text-sm"
-                          >
-                            {method.label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Website filter */}
-                  <div className="space-y-2">
-                    <Label>Tem site?</Label>
-                    <div className="flex space-x-4 mt-2">
-                      <div className="flex items-center space-x-2">
-                        <input 
-                          type="radio" 
-                          id="website-yes" 
-                          name="has-website"
-                          checked={hasWebsite === 'true'}
-                          onChange={() => setHasWebsite('true')}
-                          className="text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="website-yes" className="text-sm">Sim</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input 
-                          type="radio" 
-                          id="website-no" 
-                          name="has-website"
-                          checked={hasWebsite === 'false'}
-                          onChange={() => setHasWebsite('false')}
-                          className="text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="website-no" className="text-sm">Não</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input 
-                          type="radio" 
-                          id="website-all" 
-                          name="has-website"
-                          checked={hasWebsite === null}
-                          onChange={() => setHasWebsite(null)}
-                          className="text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="website-all" className="text-sm">Ambos</Label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Active filters badges */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar por nome, descrição..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className={isFilterOpen ? "bg-accent text-accent-foreground" : ""}
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Filtros
                 {activeFiltersCount > 0 && (
-                  <div className="space-y-2">
-                    <Label>Filtros ativos</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {categoryFilter !== 'all' && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          Categoria: {allCategories.find(c => c.id === categoryFilter)?.name || categoryFilter}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setCategoryFilter('all')} />
-                        </Badge>
-                      )}
-                      
-                      {stateFilter !== 'all' && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          Estado: {stateOptions.find(s => s.value === stateFilter)?.label || stateFilter}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setStateFilter('all')} />
-                        </Badge>
-                      )}
+                  <Badge variant="secondary" className="ml-2">{activeFiltersCount}</Badge>
+                )}
+              </Button>
+              
+              <span className="text-sm text-muted-foreground">
+                {isLoading ? "Carregando..." : `${suppliers.length} ${suppliers.length === 1 ? "resultado" : "resultados"} encontrado${suppliers.length === 1 ? "" : "s"}`}
+              </span>
+            </div>
 
-                      {cityFilter !== 'all' && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          Cidade: {cityOptions.find(c => c.value === cityFilter)?.label || cityFilter}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setCityFilter('all')} />
-                        </Badge>
-                      )}
-                      
-                      {(minOrderRange[0] > 0 || minOrderRange[1] < 1000) && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          Pedido mín: {formatCurrency(minOrderRange[0])} - {formatCurrency(minOrderRange[1])}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setMinOrderRange([0, 1000])} />
-                        </Badge>
-                      )}
-                      
-                      {selectedPaymentMethods.length > 0 && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          Pagamento: {selectedPaymentMethods.map(pm => PAYMENT_METHODS.find(p => p.value === pm)?.label).join(', ')}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedPaymentMethods([])} />
-                        </Badge>
-                      )}
-                      
-                      {requiresCnpj !== null && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          CNPJ: {requiresCnpj === 'true' ? 'Sim' : 'Não'}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setRequiresCnpj(null)} />
-                        </Badge>
-                      )}
-                      
-                      {selectedShippingMethods.length > 0 && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          Envio: {selectedShippingMethods.map(sm => SHIPPING_METHODS.find(s => s.value === sm)?.label).join(', ')}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedShippingMethods([])} />
-                        </Badge>
-                      )}
-                      
-                      {hasWebsite !== null && (
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          Site: {hasWebsite === 'true' ? 'Sim' : 'Não'}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setHasWebsite(null)} />
-                        </Badge>
-                      )}
+            <Collapsible open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+              <CollapsibleContent className="animate-collapsible-down">
+                <div className="bg-muted/50 rounded-md p-4 space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium">Refinar busca</h3>
+                    <Button variant="ghost" size="sm" onClick={resetFilters}>
+                      Limpar filtros
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Category filter */}
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Categoria</Label>
+                      <Select 
+                        value={categoryFilter} 
+                        onValueChange={setCategoryFilter}
+                      >
+                        <SelectTrigger id="category">
+                          <SelectValue placeholder="Selecionar categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categoryOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* State filter */}
+                    <div className="space-y-2">
+                      <Label htmlFor="state">Estado</Label>
+                      <Select 
+                        value={stateFilter} 
+                        onValueChange={(value) => {
+                            setStateFilter(value);
+                            // City filter will be reset by the useEffect hook for stateFilter
+                        }}
+                      >
+                        <SelectTrigger id="state">
+                          <SelectValue placeholder="Selecione um estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {stateOptions.map(stateOpt => (
+                            <SelectItem key={stateOpt.value} value={stateOpt.value}>
+                              {stateOpt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* City filter */}
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Cidade</Label>
+                      <Select 
+                        value={cityFilter} 
+                        onValueChange={setCityFilter}
+                        disabled={stateFilter === 'all' && cityOptions.length <= 1}
+                      >
+                        <SelectTrigger id="city">
+                          <SelectValue placeholder={stateFilter === 'all' ? "Selecione um estado primeiro" : "Selecione uma cidade"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cityOptions.map(cityOpt => (
+                            <SelectItem key={cityOpt.value} value={cityOpt.value}>
+                              {cityOpt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Min order range filter */}
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="min-order">Pedido mínimo</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {formatCurrency(minOrderRange[0])} - {formatCurrency(minOrderRange[1])}
+                          {minOrderRange[1] === 1000 && '+'}
+                        </span>
+                      </div>
+                      <Slider 
+                        id="min-order"
+                        max={1000} 
+                        step={50}
+                        value={minOrderRange}
+                        onValueChange={(value) => setMinOrderRange(value as [number, number])} 
+                        className="py-4"
+                      />
+                    </div>
+
+                    {/* Payment methods filter */}
+                    <div className="space-y-2">
+                      <Label>Forma de pagamento</Label>
+                      <div className="space-y-2 mt-2">
+                        {PAYMENT_METHODS.map(method => (
+                          <div key={method.value} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`payment-${method.value}`} 
+                              checked={selectedPaymentMethods.includes(method.value)}
+                              onCheckedChange={() => handlePaymentMethodChange(method.value)}
+                            />
+                            <label 
+                              htmlFor={`payment-${method.value}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {method.label}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* CNPJ filter */}
+                    <div className="space-y-2">
+                      <Label>Exige CNPJ?</Label>
+                      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-2">
+                        {[
+                          { label: 'Sim', value: 'true' },
+                          { label: 'Não', value: 'false' },
+                          { label: 'Ambos', value: null }
+                        ].map(opt => (
+                          <div key={opt.value || 'null'} className="flex items-center space-x-2">
+                            <input 
+                              type="radio" 
+                              id={`cnpj-${opt.value || 'all'}`} 
+                              name="requires-cnpj"
+                              value={opt.value || ''}
+                              checked={requiresCnpj === opt.value}
+                              onChange={() => setRequiresCnpj(opt.value)}
+                              className="text-primary focus:ring-primary h-4 w-4 border-gray-300"
+                            />
+                            <Label htmlFor={`cnpj-${opt.value || 'all'}`} className="text-sm">
+                              {opt.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Shipping methods filter */}
+                    <div className="space-y-2">
+                      <Label>Forma de envio</Label>
+                      <div className="space-y-2 mt-2">
+                        {SHIPPING_METHODS.map(method => (
+                          <div key={method.value} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`shipping-${method.value}`} 
+                              checked={selectedShippingMethods.includes(method.value)}
+                              onCheckedChange={() => handleShippingMethodChange(method.value)}
+                            />
+                            <label 
+                              htmlFor={`shipping-${method.value}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {method.label}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Website filter */}
+                    <div className="space-y-2">
+                      <Label>Tem site?</Label>
+                       <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-2">
+                        {[
+                          { label: 'Sim', value: 'true' },
+                          { label: 'Não', value: 'false' },
+                          { label: 'Ambos', value: null }
+                        ].map(opt => (
+                          <div key={opt.value || 'null-site'} className="flex items-center space-x-2">
+                            <input 
+                              type="radio" 
+                              id={`website-${opt.value || 'all'}`} 
+                              name="has-website"
+                              value={opt.value || ''}
+                              checked={hasWebsite === opt.value}
+                              onChange={() => setHasWebsite(opt.value)}
+                              className="text-primary focus:ring-primary h-4 w-4 border-gray-300"
+                            />
+                            <Label htmlFor={`website-${opt.value || 'all'}`} className="text-sm">
+                              {opt.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Active filters badges */}
+                  {activeFiltersCount > 0 && (
+                    <div className="space-y-2 pt-4 border-t border-border">
+                      <Label>Filtros ativos:</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {categoryFilter !== 'all' && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            Categoria: {allCategories.find(c => c.id === categoryFilter)?.name || categoryFilter}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setCategoryFilter('all')} />
+                          </Badge>
+                        )}
+                        
+                        {stateFilter !== 'all' && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            Estado: {stateOptions.find(s => s.value === stateFilter)?.label || stateFilter}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setStateFilter('all')} />
+                          </Badge>
+                        )}
+
+                        {cityFilter !== 'all' && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            Cidade: {cityOptions.find(c => c.value === cityFilter)?.label || cityFilter}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setCityFilter('all')} />
+                          </Badge>
+                        )}
+                        
+                        {(minOrderRange[0] > 0 || minOrderRange[1] < 1000) && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            Pedido mín: {formatCurrency(minOrderRange[0])} - {formatCurrency(minOrderRange[1])}{minOrderRange[1] === 1000 && '+'}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setMinOrderRange([0, 1000])} />
+                          </Badge>
+                        )}
+                        
+                        {selectedPaymentMethods.length > 0 && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            Pagamento: {selectedPaymentMethods.map(pm => PAYMENT_METHODS.find(p => p.value === pm)?.label).join(', ')}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setSelectedPaymentMethods([])} />
+                          </Badge>
+                        )}
+                        
+                        {requiresCnpj !== null && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            CNPJ: {requiresCnpj === 'true' ? 'Exige' : 'Não exige'}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setRequiresCnpj(null)} />
+                          </Badge>
+                        )}
+                        
+                        {selectedShippingMethods.length > 0 && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            Envio: {selectedShippingMethods.map(sm => SHIPPING_METHODS.find(s => s.value === sm)?.label).join(', ')}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setSelectedShippingMethods([])} />
+                          </Badge>
+                        )}
+                        
+                        {hasWebsite !== null && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            Site: {hasWebsite === 'true' ? 'Sim' : 'Não'}
+                            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setHasWebsite(null)} />
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+            
+            {/* Results */}
+            {(searchTerm || activeFiltersCount > 0) ? (
+              <div className="mt-6">
+                {(searchTerm && activeFiltersCount === 0) && (
+                  <p className="text-muted-foreground mb-4">
+                    Resultados para "{searchTerm}"
+                  </p>
                 )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-          
-          {/* Results */}
-          {searchTerm || activeFiltersCount > 0 ? (
-            <div className="mt-6">
-              {searchTerm && (
-                <p className="text-muted-foreground mb-4">
-                  Resultados para "{searchTerm}" 
-                  {activeFiltersCount > 0 && ` com ${activeFiltersCount} filtros aplicados`}
-                </p>
-              )}
-              
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <p>Carregando fornecedores...</p>
-                </div>
-              ) : error ? (
-                <div className="mt-4 rounded-md border border-destructive bg-destructive/10 p-4 text-center">
-                  <p className="text-destructive-foreground">Erro ao carregar fornecedores. Tente novamente.</p>
-                </div>
-              ) : suppliers.length > 0 ? (
-                <div className="space-y-4">
-                  {suppliers.map(supplier => (
-                    <Card key={supplier.id} className="overflow-hidden card-hover">
-                      <div className="sm:flex">
-                        <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
-                          <img 
+                {(searchTerm && activeFiltersCount > 0) && (
+                  <p className="text-muted-foreground mb-4">
+                    Resultados para "{searchTerm}" com {activeFiltersCount} filtro{activeFiltersCount === 1 ? "" : "s"} aplicado{activeFiltersCount === 1 ? "" : "s"}
+                  </p>
+                )}
+                {(!searchTerm && activeFiltersCount > 0) && (
+                    <p className="text-muted-foreground mb-4">
+                        Resultados para {activeFiltersCount} filtro{activeFiltersCount === 1 ? "" : "s"} aplicado{activeFiltersCount === 1 ? "" : "s"}
+                    </p>
+                )}
+                
+                {isLoading ? (
+                  <div className="flex justify-center py-8">
+                    <p>Carregando fornecedores...</p>
+                  </div>
+                ) : error ? (
+                  <div className="mt-4 rounded-md border border-destructive bg-destructive/10 p-4 text-center">
+                    <p className="text-destructive-foreground">
+                      Erro ao carregar fornecedores: {error.message}. Tente novamente.
+                    </p>
+                  </div>
+                ) : suppliers.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {suppliers.map(supplier => (
+                      <Card key={supplier.id} className="overflow-hidden card-hover flex flex-col">
+                        <Link to={`/suppliers/${supplier.id}`} className="block h-48 bg-accent">
+                           <img 
                             src={supplier.images && supplier.images.length > 0 
                               ? supplier.images[0] 
                               : 'https://via.placeholder.com/300x200?text=Sem+imagem'}
                             alt={supplier.name}
                             className="w-full h-full object-cover"
                           />
-                        </div>
-                        <CardContent className="sm:w-2/3 md:w-3/4 p-4 flex flex-col">
-                          <div className="flex items-start justify-between">
+                        </Link>
+                        <CardContent className="p-4 flex flex-col flex-grow">
+                          <div className="flex items-start justify-between mb-2">
                             <div>
-                              <h3 className="text-lg font-bold flex items-center">
+                              <h3 className="text-lg font-semibold flex items-center">
                                 <Link to={`/suppliers/${supplier.id}`} className="hover:underline">
                                   {supplier.name}
                                 </Link>
                                 {supplier.featured && (
-                                  <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" />
+                                  <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" titleAccess='Destaque' />
                                 )}
                               </h3>
-                              <p className="text-sm text-muted-foreground mb-2">{supplier.city}, {supplier.state}</p>
+                              <p className="text-sm text-muted-foreground">{supplier.city}, {supplier.state}</p>
                             </div>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 shrink-0"
+                              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-500"
                               onClick={(e) => handleToggleFavorite(supplier, e)}
+                              title={isFavorite(supplier.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
                             >
                               <Heart 
-                                className={`h-5 w-5 ${isFavorite(supplier.id) ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
+                                className={`h-5 w-5 transition-colors ${isFavorite(supplier.id) ? "fill-red-500 text-red-500" : ""}`}
                               />
                             </Button>
                           </div>
                           
-                          <p className="text-sm mb-4 line-clamp-2 flex-grow min-h-[40px]">{supplier.description}</p>
+                          <p className="text-sm text-muted-foreground mb-3 line-clamp-2 flex-grow min-h-[40px]">
+                            {supplier.description || "Sem descrição disponível."}
+                          </p>
                           
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {supplier.categories.map(categoryId => {
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {supplier.categories.slice(0, 3).map(categoryId => {
                                const category = allCategories.find(c => c.id === categoryId);
                                const categoryName = category ? category.name : categoryId;
                                const categoryColors: Record<string, string> = {
@@ -622,78 +630,82 @@ export default function SearchPage() {
                                 <Badge 
                                   key={categoryId} 
                                   variant="outline"
-                                  className={categoryColors[categoryName] || 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200'}
+                                  className={`text-xs ${categoryColors[categoryName] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}
                                 >
                                   {categoryName}
                                 </Badge>
                               );
                             })}
+                            {supplier.categories.length > 3 && (
+                                <Badge variant="outline" className="text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                    +{supplier.categories.length - 3}
+                                </Badge>
+                            )}
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground mb-4">
                             <div>
-                              <span className="font-medium">Pedido mínimo:</span> {supplier.min_order || 'Não informado'}
+                              <span className="font-medium text-foreground">Pedido mínimo:</span> {supplier.min_order || 'N/A'}
                             </div>
                             <div>
-                              <span className="font-medium">
-                                {supplier.requires_cnpj ? 'Exige CNPJ' : 'Não exige CNPJ'}
-                              </span>
+                               <span className="font-medium text-foreground">CNPJ:</span> {supplier.requires_cnpj ? 'Exige' : 'Não exige'}
                             </div>
                           </div>
                           
-                          <div className="flex flex-wrap gap-2 mt-auto">
+                          <div className="mt-auto flex flex-wrap gap-2">
                             {supplier.instagram && (
-                              <Button size="sm" variant="outline" asChild>
+                              <Button size="xs" variant="outline" asChild className="text-xs">
                                 <a href={`https://instagram.com/${supplier.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
-                                  <Instagram className="mr-1 h-4 w-4" />
+                                  <Instagram className="mr-1 h-3 w-3" />
                                   Instagram
                                 </a>
                               </Button>
                             )}
                             
                             {supplier.website && (
-                              <Button size="sm" variant="outline" asChild>
-                                <a href={supplier.website} target="_blank" rel="noopener noreferrer">
-                                  <LinkIcon className="mr-1 h-4 w-4" />
+                              <Button size="xs" variant="outline" asChild className="text-xs">
+                                <a href={supplier.website.startsWith('http') ? supplier.website : `https://${supplier.website}`} target="_blank" rel="noopener noreferrer">
+                                  <LinkIcon className="mr-1 h-3 w-3" />
                                   Site
                                 </a>
                               </Button>
                             )}
                             
-                            <Button size="sm" asChild>
+                            <Button size="xs" asChild className="text-xs flex-1 sm:flex-none">
                               <Link to={`/suppliers/${supplier.id}`}>
-                                Ver detalhes
+                                Ver Detalhes
                               </Link>
                             </Button>
                           </div>
                         </CardContent>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-4 rounded-md border border-border p-8 text-center">
-                  <p className="text-muted-foreground">Nenhum resultado encontrado para sua busca.</p>
-                  {activeFiltersCount > 0 && (
-                    <Button 
-                      variant="link" 
-                      onClick={resetFilters}
-                      className="mt-2"
-                    >
-                      Limpar filtros e tentar novamente
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="mt-6 rounded-md border border-border p-8 text-center">
-              <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                Use a barra de pesquisa acima ou os filtros para encontrar fornecedores.
-              </p>
-            </div>
-          )}
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-md border border-border bg-muted/30 p-8 text-center">
+                    <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Nenhum resultado encontrado para sua busca.</p>
+                    {(searchTerm || activeFiltersCount > 0) && (
+                      <Button 
+                        variant="link" 
+                        onClick={resetFilters}
+                        className="mt-2 text-primary"
+                      >
+                        Limpar busca e filtros
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-6 rounded-md border border-border bg-muted/30 p-8 text-center">
+                <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  Use a barra de pesquisa acima ou os filtros para encontrar fornecedores.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </AppLayout>

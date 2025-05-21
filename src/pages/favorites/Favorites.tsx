@@ -31,9 +31,9 @@ export default function Favorites() {
 
       if (!user?.id) {
         console.warn("Favorites: User not authenticated. Cannot load favorites.");
-        sonnerToast.error("Autenticação necessária", {
-          description: "Você precisa estar logado para ver seus favoritos."
-        });
+        // sonnerToast.error("Autenticação necessária", { // This was causing issues without user interaction
+        //   description: "Você precisa estar logado para ver seus favoritos."
+        // });
         setIsLoadingSuppliers(false);
         setIsLoadingCategories(false);
         setAllSuppliers([]);
@@ -44,15 +44,15 @@ export default function Favorites() {
 
       try {
         const [suppliersData, categoriesData] = await Promise.all([
-          getSuppliers(userId),
-          getCategories(userId)
+          getSuppliers(userId), // Pass userId
+          getCategories()       // Call without userId
         ]);
 
         setAllCategoriesFetched(categoriesData);
 
         const suppliersWithCategories = await Promise.all(
           suppliersData.map(async (supplier) => {
-            const categoryIdsForSupplier = await getSupplierCategories(supplier.id);
+            const categoryIdsForSupplier = await getSupplierCategories(supplier.id); // This seems fine
             return {
               ...supplier,
               categories: categoryIdsForSupplier
@@ -73,7 +73,7 @@ export default function Favorites() {
     };
 
     fetchData();
-  }, [user]);
+  }, [user]); // Removed userId from dependency array as it's derived from user
 
   const getCategoryNameFromId = (categoryId: string): string => {
     const foundCategory = allCategoriesFetched.find(cat => cat.id === categoryId);

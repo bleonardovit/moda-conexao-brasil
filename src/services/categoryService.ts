@@ -1,23 +1,39 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Category } from '@/types';
 
-// Get all categories
+// Fetch all categories
+// Removed userId parameter as per error analysis
 export const getCategories = async (): Promise<Category[]> => {
+  console.log("categoryService: Fetching all categories.");
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching categories:', error.message);
+    throw new Error(`Failed to fetch categories: ${error.message}`);
+  }
+  console.log("categoryService: Categories fetched successfully:", data.length);
+  return data || [];
+};
+
+// Get a category by ID
+export const getCategoryById = async (id: string): Promise<Category | null> => {
   try {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .order('name');
+      .eq('id', id);
 
     if (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching category:', error);
       throw error;
     }
 
-    return data || [];
+    return data && data.length > 0 ? data[0] : null;
   } catch (error) {
-    console.error('Error in getCategories:', error);
+    console.error('Error in getCategoryById:', error);
     throw error;
   }
 };
