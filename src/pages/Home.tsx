@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -18,6 +17,7 @@ import { getArticles } from '@/services/articleService';
 import { getCategories } from '@/services/categoryService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useImageEditor } from '@/hooks/use-image-editor';
+import { useAuth } from '@/hooks/useAuth';
 
 // Component for supplier card - optimized for mobile
 const SupplierCard = ({ supplier, allCategories }: { supplier: Supplier, allCategories: Category[] }) => {
@@ -158,11 +158,13 @@ export default function Home() {
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const { getImages } = useImageEditor();
   const landingImages = getImages();
+  const { user } = useAuth();
   
   // Fetch recent suppliers
   const { data: allSuppliers, isLoading: loadingSuppliers } = useQuery({
-    queryKey: ['suppliers'],
-    queryFn: getSuppliers
+    queryKey: ['suppliers', user?.id],
+    queryFn: () => getSuppliers(user?.id),
+    enabled: true,
   });
 
   // Fetch articles

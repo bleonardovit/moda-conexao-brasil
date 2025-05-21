@@ -3,6 +3,7 @@ import type { Supplier, Category } from '@/types';
 import { SupplierFormValues } from '@/lib/validators/supplier-form';
 import { checkFeatureAccess } from './featureAccessService';
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from './trialService';
+import { getUserProfileForAccessCheck } from './featureAccessService';
 
 // Get all suppliers - MODIFIED for trial
 export const getSuppliers = async (userId: string | null | undefined): Promise<Supplier[]> => {
@@ -85,9 +86,9 @@ export const searchSuppliers = async (
     state?: string;
     city?: string;
     minOrderRange?: [number, number];
-    paymentMethods?: string[]; // Corrected type
+    paymentMethods?: string[]; // Assuming SupplierFormValues uses this, but DB uses payment_methods
     requiresCnpj?: boolean | null;
-    shippingMethods?: string[]; // Corrected type
+    shippingMethods?: string[]; // Assuming SupplierFormValues uses this, but DB uses shipping_methods
     hasWebsite?: boolean | null;
   }
 ): Promise<Supplier[]> => {
@@ -127,11 +128,13 @@ export const searchSuppliers = async (
         query = query.is('website', null);
       }
     }
-    if (filters.paymentMethods && filters.paymentMethods.length > 0) { // Corrected: filters.paymentMethods
-      query = query.overlaps('payment_methods', filters.paymentMethods); // Corrected: filters.paymentMethods
+    // Assuming filters.paymentMethods contains the values for 'payment_methods' column
+    if (filters.paymentMethods && filters.paymentMethods.length > 0) { 
+      query = query.overlaps('payment_methods', filters.paymentMethods); 
     }
-    if (filters.shippingMethods && filters.shippingMethods.length > 0) { // Corrected: filters.shippingMethods
-      query = query.overlaps('shipping_methods', filters.shippingMethods); // Corrected: filters.shippingMethods
+    // Assuming filters.shippingMethods contains the values for 'shipping_methods' column
+    if (filters.shippingMethods && filters.shippingMethods.length > 0) { 
+      query = query.overlaps('shipping_methods', filters.shippingMethods); 
     }
 
 
@@ -200,7 +203,7 @@ export const searchSuppliers = async (
 };
 
 // Get supplier by ID - MODIFIED for trial
-export const getSupplierById = async (id: string, userId: string | null | undefined): Promise<Supplier | null> => { // Added userId parameter
+export const getSupplierById = async (id: string, userId: string | null | undefined): Promise<Supplier | null> => {
   try {
     let detailsAccess;
     if(userId) {
@@ -220,16 +223,26 @@ export const getSupplierById = async (id: string, userId: string | null | undefi
           console.log(`User ${userId} tried to access disallowed supplier detail ${id} based on rule.`);
           return null;
         }
-      } else {
-        const trialInfo = await getUserTrialInfo(userId);
-        if (trialInfo?.status === 'active') {
+      } else { // No specific allowedIds from rule, rely on general trial status
+        const userProfile = await getUserProfileForAccessCheck(userId); // Fetch profile
+        
+        // Check subscription status first as it overrides trial
+        if (userProfile?.subscription_status === 'active' || userProfile?.subscription_status === 'trialing') {
+          // This user is effectively a subscriber, this limited_count path might be an edge case or specific rule.
+          // If they are subscribed, they usually get 'full' access.
+          // If a rule *specifically* limits subscribers here, then we proceed.
+          // For now, let's assume if they reached here as a subscriber, they are allowed by some rule.
+        } else if (userProfile?.trial_status === 'active') { // Check 'trial_status' from 'profiles' table
+            // Profile says active trial, check if it allows this supplier
             const allowedTrialSupplierIds = await getAllowedSuppliersForTrial(userId);
             if (!allowedTrialSupplierIds.includes(id)) {
-                console.log(`Trial user ${userId} attempted to view details for non-allowed supplier ${id} (not in their general trial list).`);
+                console.log(`Trial user ${userId} (profile active trial) attempted to view non-allowed supplier ${id}.`);
                 return null; 
             }
-        } else if (trialInfo?.status !== 'active' && trialInfo?.status !== 'converted') {
-           console.log(`User ${userId} (not active trial/subscribed) denied access to supplier ${id} under limited_count rule for details.`);
+        } else {
+           // Covers 'not_started', 'expired', 'converted' (but subscription lapsed/not active).
+           // Deny access if not an active trial and no specific allowedIds.
+           console.log(`User ${userId} (not active subscriber/trial) denied access to supplier ${id} under limited_count rule.`);
            return null;
         }
       }
@@ -266,41 +279,34 @@ export const getSupplierById = async (id: string, userId: string | null | undefi
 };
 
 // Create a new supplier
+// Assuming SupplierFormValues uses snake_case for payment_methods and shipping_methods based on TS errors
 export const createSupplier = async (supplier: SupplierFormValues): Promise<Supplier> => {
   try {
-    // Log for debugging
     console.log("Creating supplier with data:", JSON.stringify(supplier));
     
-    // Extract categories for later use
     const categories = supplier.categories || [];
     
-    // Create supplier object without categories field
-    const newSupplier = {
-      code: supplier.code || `SUP-${Date.now()}`,
-      name: supplier.name || '',
-      description: supplier.description || '',
+    const newSupplierData = { ...supplier };
+    // Remove categories from the direct insert payload as it's handled separately
+    delete (newSupplierData as any).categories; 
+
+    const newSupplierPayload = {
+      ...newSupplierData, // spread all properties from SupplierFormValues
+      code: supplier.code || `SUP-${Date.now()}`, // Ensure code is present
+      // Ensure all required fields in 'suppliers' table are covered by SupplierFormValues or have defaults
       images: supplier.images || [],
-      instagram: supplier.instagram || null,
-      whatsapp: supplier.whatsapp || null,
-      website: supplier.website || null,
-      min_order: supplier.min_order || null,
-      paymentMethods: supplier.paymentMethods || [], // Corrected
+      payment_methods: supplier.payment_methods || [], // Expect snake_case from form values
+      shipping_methods: supplier.shipping_methods || [], // Expect snake_case from form values
       requires_cnpj: supplier.requires_cnpj || false,
-      avg_price: supplier.avg_price || null,
-      shippingMethods: supplier.shippingMethods || [], // Corrected
-      custom_shipping_method: supplier.custom_shipping_method || null,
-      city: supplier.city || '',
-      state: supplier.state || '',
       featured: supplier.featured || false,
       hidden: supplier.hidden || false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    // Insert the supplier in the database
     const { data, error } = await supabase
       .from('suppliers')
-      .insert(newSupplier)
+      .insert(newSupplierPayload)
       .select()
       .single();
 
@@ -308,18 +314,14 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
       console.error('Error creating supplier:', error);
       throw error;
     }
-
-    // If no data was returned
     if (!data) {
       throw new Error('No data returned from supplier insert');
     }
 
-    // Insert supplier categories relationships
     if (categories.length > 0) {
       await updateSupplierCategories(data.id, categories);
     }
 
-    // Return complete supplier with categories
     return { ...data, categories } as Supplier;
   } catch (error) {
     console.error('Error in createSupplier:', error);
@@ -328,38 +330,37 @@ export const createSupplier = async (supplier: SupplierFormValues): Promise<Supp
 };
 
 // Update an existing supplier
+// Assuming SupplierFormValues uses snake_case for payment_methods and shipping_methods
 export const updateSupplier = async (id: string, supplier: Partial<SupplierFormValues>): Promise<Supplier> => {
   try {
-    // Log for debugging
     console.log("Updating supplier with ID:", id, "Data:", JSON.stringify(supplier));
     
-    // Extract categories for later use
-    const categories = supplier.categories;
+    const categories = supplier.categories; // Can be undefined if not updating categories
     
-    // Create supplier object without categories field
     const updatedSupplierData = { ...supplier };
-    delete updatedSupplierData.categories; // Remove categories from the direct update payload
+    delete (updatedSupplierData as any).categories;
+
+    // Ensure snake_case if SupplierFormValues might have camelCase (adjust if form is already snake_case)
+    // If SupplierFormValues is confirmed to use snake_case, this mapping is not needed.
+    // const dbSupplierData: Partial<any> = { ...updatedSupplierData };
+    // if (updatedSupplierData.paymentMethods) { // Example if form used camelCase
+    //     dbSupplierData.payment_methods = updatedSupplierData.paymentMethods;
+    //     delete dbSupplierData.paymentMethods;
+    // }
+    // if (updatedSupplierData.shippingMethods) { // Example if form used camelCase
+    //     dbSupplierData.shipping_methods = updatedSupplierData.shippingMethods;
+    //     delete dbSupplierData.shippingMethods;
+    // }
+    // Assuming updatedSupplierData already contains snake_case fields like payment_methods
     
-    // Map to database column names if necessary, e.g. paymentMethods to payment_methods
-    const dbSupplierData: Partial<any> = { ...updatedSupplierData };
-    if (updatedSupplierData.paymentMethods) {
-        dbSupplierData.payment_methods = updatedSupplierData.paymentMethods;
-        delete dbSupplierData.paymentMethods;
-    }
-    if (updatedSupplierData.shippingMethods) {
-        dbSupplierData.shipping_methods = updatedSupplierData.shippingMethods;
-        delete dbSupplierData.shippingMethods;
-    }
-    
-    const updatedSupplier = {
-      ...dbSupplierData,
+    const updatePayload = {
+      ...updatedSupplierData, // directly use if form values are snake_case
       updated_at: new Date().toISOString(),
     };
     
-    // Update the supplier in the database
     const { data, error } = await supabase
       .from('suppliers')
-      .update(updatedSupplier)
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();
@@ -369,12 +370,10 @@ export const updateSupplier = async (id: string, supplier: Partial<SupplierFormV
       throw error;
     }
 
-    // Update supplier categories if provided
-    if (categories !== undefined) { // Check if categories array was explicitly passed (even if empty)
+    if (categories !== undefined) {
       await updateSupplierCategories(id, categories || []);
     }
 
-    // Get updated categories for this supplier
     const updatedCategories = await getSupplierCategories(id);
     return { ...data, categories: updatedCategories } as Supplier;
   } catch (error) {

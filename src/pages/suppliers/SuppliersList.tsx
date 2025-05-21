@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Supplier, Category } from '@/types';
 import { getSuppliers } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
+import { useAuth } from '@/hooks/useAuth';
 
 // Define states array
 const STATES = [{
@@ -89,6 +90,7 @@ export default function SuppliersList() {
   const {
     toast
   } = useToast();
+  const { user } = useAuth();
 
   // State for loading and data
   const [isLoading, setIsLoading] = useState(true);
@@ -122,7 +124,11 @@ export default function SuppliersList() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [suppliersData, categoriesData] = await Promise.all([getSuppliers(), getCategories()]);
+        // Pass userId to getSuppliers
+        const [suppliersData, categoriesData] = await Promise.all([
+          getSuppliers(user?.id), 
+          getCategories()
+        ]);
 
         // Filter out hidden suppliers for regular users
         const visibleSuppliers = suppliersData.filter(supplier => !supplier.hidden);
@@ -171,7 +177,8 @@ export default function SuppliersList() {
       }
     };
     fetchData();
-  }, [toast]);
+  }, [toast, user?.id]); // Add user.id to dependency array
+
   const filteredSuppliers = suppliers.filter(supplier => {
     // Make sure supplier.categories exists before using it
     if (!supplier.categories) {

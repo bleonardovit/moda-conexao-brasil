@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
@@ -15,6 +14,7 @@ import { getSuppliers } from '@/services/supplierService';
 import { getArticles } from '@/services/articleService';
 import type { Supplier } from '@/types';
 import type { Article } from '@/types/article';
+import { useAuth } from '@/hooks/useAuth';
 
 export function HeaderSearch() {
   const [open, setOpen] = useState(false);
@@ -23,6 +23,7 @@ export function HeaderSearch() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
 
   // Fetch suppliers and articles when search is opened
   useEffect(() => {
@@ -32,7 +33,7 @@ export function HeaderSearch() {
         try {
           // Fetch suppliers
           if (suppliers.length === 0) {
-            const suppliersData = await getSuppliers();
+            const suppliersData = await getSuppliers(user?.id);
             // Filter only visible suppliers
             setSuppliers(suppliersData ? suppliersData.filter(supplier => !supplier.hidden) : []);
           }
@@ -52,7 +53,7 @@ export function HeaderSearch() {
       
       fetchData();
     }
-  }, [open, suppliers.length, articles.length]);
+  }, [open, suppliers.length, articles.length, user?.id]);
 
   // Dynamic search for suppliers
   const filteredSuppliers = useMemo(() => {
