@@ -1,10 +1,10 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { FeatureAccessRule, AccessCheckResult, FeatureAccessLevel } from '@/types';
 import type { User } from '@/types/user'; // Assuming User type has subscription_status and trial_status
 
 // Helper function to get user profile details relevant for access checks
-async function getUserProfileForAccessCheck(userId: string): Promise<Partial<User> | null> {
+// Exporting this function to make it available for other services
+export async function getUserProfileForAccessCheck(userId: string): Promise<Partial<User> | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('subscription_status, trial_status, trial_start_date, trial_end_date, role') // Added role for completeness if needed by rules
@@ -111,4 +111,3 @@ export const checkFeatureAccess = async (userId: string | null | undefined, feat
     // allowedIds: rule.non_subscriber_access_level === 'limited_count' ? rule.non_subscriber_allowed_ids : null,
   };
 };
-
