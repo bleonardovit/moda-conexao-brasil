@@ -29,7 +29,30 @@ export interface Supplier {
   updated_at: string;
 }
 
-// Removed duplicate Review interface. It's defined in src/types/review.ts
+// Payload for creating a supplier
+export interface SupplierCreationPayload {
+  code: string;
+  name: string;
+  description: string;
+  images: string[];
+  instagram?: string;
+  whatsapp?: string;
+  website?: string;
+  min_order?: string;
+  payment_methods: PaymentMethod[];
+  requires_cnpj: boolean;
+  avg_price: AvgPrice;
+  shipping_methods: ShippingMethod[];
+  custom_shipping_method?: string;
+  city: string;
+  state: string;
+  categories: string[];
+  featured?: boolean;
+  hidden?: boolean;
+}
+
+// Payload for updating a supplier
+export type SupplierUpdatePayload = Partial<SupplierCreationPayload>;
 
 // Types for supplier import history
 export interface SupplierImportHistory {
@@ -51,17 +74,8 @@ export interface SearchFilters {
   state?: string;
   city?: string;
   minOrderRange?: [number, number];
-  paymentMethods?: PaymentMethod[]; // Use specific type
+  paymentMethods?: PaymentMethod[];
   requiresCnpj?: boolean | null;
-  shippingMethods?: ShippingMethod[]; // Use specific type
+  shippingMethods?: ShippingMethod[];
   hasWebsite?: boolean | null;
-  // Add other potential filters here, e.g., ratingRange
 }
-
-// Payload for creating a supplier. All fields from Supplier except id, created_at, updated_at.
-// Categories are included here as they are part of the creation data passed to the service.
-export type SupplierCreationPayload = Omit<Supplier, 'id' | 'created_at' | 'updated_at'>;
-
-// Payload for updating a supplier. All fields are partial.
-export type SupplierUpdatePayload = Partial<SupplierCreationPayload>;
-

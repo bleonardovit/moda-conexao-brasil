@@ -4,10 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react';
+import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart, Lock } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { useFavorites } from '@/hooks/use-favorites';
+import { useTrialStatus } from '@/hooks/use-trial-status'; // Add this import
+import { TrialBanner } from '@/components/trial/TrialBanner'; // Add this import
+import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard'; // Add this import
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from "@/hooks/use-toast";
 import type { Supplier, Category } from '@/types';
@@ -179,6 +182,26 @@ export default function SuppliersList() {
     fetchData();
   }, [toast, user?.id]); // Add user.id to dependency array
 
+  // Add trial status hook
+  const { isInTrial, allowedSupplierIds, isSupplierAllowed } = useTrialStatus();
+  const [supplierAccessMap, setSupplierAccessMap] = useState<Record<string, boolean>>({});
+
+  // Add effect to check which suppliers are allowed for trial users
+  useEffect(() => {
+    const checkSupplierAccess = async () => {
+      if (!isInTrial || suppliers.length === 0) return;
+      
+      const accessMap: Record<string, boolean> = {};
+      for (const supplier of suppliers) {
+        accessMap[supplier.id] = await isSupplierAllowed(supplier.id);
+      }
+      
+      setSupplierAccessMap(accessMap);
+    };
+    
+    checkSupplierAccess();
+  }, [suppliers, isInTrial, isSupplierAllowed]);
+
   const filteredSuppliers = suppliers.filter(supplier => {
     // Make sure supplier.categories exists before using it
     if (!supplier.categories) {
@@ -250,6 +273,9 @@ export default function SuppliersList() {
             Favoritos
           </Button>
         </div>
+        
+        {/* Add trial banner here */}
+        <TrialBanner />
         
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -341,12 +367,16 @@ export default function SuppliersList() {
           </div>}
         
         <div className="space-y-4">
-          {filteredSuppliers.length > 0 ? filteredSuppliers.map(supplier => <Card key={supplier.id} className="overflow-hidden card-hover">
+          {filteredSuppliers.length > 0 ? filteredSuppliers.map(supplier => (
+            isSupplierAccessible(supplier.id) ? (
+              // Regular supplier card for accessible suppliers
+              <Card key={supplier.id} className="overflow-hidden card-hover">
                 <div className="sm:flex">
                   <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
                     <img src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'} alt={supplier.name} className="w-full h-full object-fill" />
                   </div>
                   <CardContent className="sm:w-2/3 md:w-3/4 p-4">
+                    {/* ... keep existing code (supplier card content) */}
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="text-lg font-bold flex items-center">
@@ -417,20 +447,32 @@ export default function SuppliersList() {
                     </div>
                   </CardContent>
                 </div>
-              </Card>) : <div className="text-center py-12">
+              </Card>
+            ) : (
+              // Locked supplier card for inaccessible suppliers
+              <LockedSupplierCard 
+                key={supplier.id}
+                name={supplier.name}
+                city={supplier.city}
+                state={supplier.state}
+              />
+            )
+          )) : (
+            <div className="text-center py-12">
               <p className="text-muted-foreground">Nenhum fornecedor encontrado com os filtros selecionados.</p>
               <Button variant="link" onClick={() => {
-            setSearchTerm('');
-            setCategoryFilter('all');
-            setStateFilter('all');
-            setCityFilter('all');
-            setPriceFilter('all');
-            setCnpjFilter('all');
-            setShowOnlyFavorites(false);
-          }}>
+                setSearchTerm('');
+                setCategoryFilter('all');
+                setStateFilter('all');
+                setCityFilter('all');
+                setPriceFilter('all');
+                setCnpjFilter('all');
+                setShowOnlyFavorites(false);
+              }}>
                 Limpar filtros
               </Button>
-            </div>}
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>;

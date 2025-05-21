@@ -3,12 +3,23 @@ import type { Supplier, SearchFilters, Review, PaymentMethod, ShippingMethod, Su
 
 // Helper to ensure data matches Supplier type, especially for array enums
 const mapRawSupplierToSupplier = (rawSupplier: any): Supplier => {
+  // Make sure payment_methods and shipping_methods are of the correct type
+  const validPaymentMethods = (rawSupplier.payment_methods || []).filter(
+    (method: string) => ['pix', 'card', 'bankslip'].includes(method)
+  ) as PaymentMethod[];
+  
+  const validShippingMethods = (rawSupplier.shipping_methods || []).filter(
+    (method: string) => ['correios', 'delivery', 'transporter', 'excursion', 'air', 'custom'].includes(method)
+  ) as ShippingMethod[];
+  
   return {
     ...rawSupplier,
-    payment_methods: (rawSupplier.payment_methods || []) as PaymentMethod[],
-    shipping_methods: (rawSupplier.shipping_methods || []) as ShippingMethod[],
-    categories: (rawSupplier.categories || []) as string[], // Assuming categories are already string IDs
+    payment_methods: validPaymentMethods,
+    shipping_methods: validShippingMethods,
+    categories: (rawSupplier.categories || []) as string[],
     images: (rawSupplier.images || []) as string[],
+    // Cast to ensure type safety for Supplier object
+    avg_price: (rawSupplier.avg_price || 'medium') as 'low' | 'medium' | 'high',
   } as Supplier;
 };
 
@@ -54,21 +65,20 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
   if (filters.searchTerm) {
     query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
   }
-  // Category filtering is more complex and typically handled by joining or post-filtering if categories are in a separate table.
-  // The current setup assumes 'categories' is an array of IDs on the supplier, but suppliers_categories join table is used for relations.
-  // For direct filtering on an array column:
+  
   if (filters.categoryId) {
-     // If categories were stored as array on supplier: query = query.contains('categories', [filters.categoryId]);
-     // Since we use a join table, this filtering should ideally happen in a more complex query or post-fetch.
-     // For now, this filter won't apply directly at the DB level for the 'suppliers' table alone if using suppliers_categories.
-     console.warn("Category filtering in searchSuppliers might need adjustment based on join table logic. Current query doesn't directly filter by categoryId on 'suppliers' table.");
+    console.warn("Category filtering in searchSuppliers might need adjustment based on join table logic.");
   }
+  
   if (filters.state) {
     query = query.eq('state', filters.state);
   }
+  
   if (filters.city) {
     query = query.eq('city', filters.city);
   }
+  
+  // Other filter conditions remain the same
   if (filters.minOrderRange) {
     // This needs a numeric column or parsing. Assuming min_order is text.
     // console.log("Min order range filter needs specific implementation based on data type of 'min_order'");
@@ -136,10 +146,9 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   
   const supplierDataForTable = {
     ...baseSupplierData,
-    images: baseSupplierData.images || [], // Ensure images is an array
-    payment_methods: baseSupplierData.payment_methods || [], // Ensure payment_methods is an array
-    shipping_methods: baseSupplierData.shipping_methods || [], // Ensure shipping_methods is an array
-    // featured and hidden defaults are handled by DB or should be explicit here if not in payload
+    images: baseSupplierData.images || [],
+    payment_methods: baseSupplierData.payment_methods || [],
+    shipping_methods: baseSupplierData.shipping_methods || [],
     featured: baseSupplierData.featured || false,
     hidden: baseSupplierData.hidden || false,
   };
@@ -165,7 +174,7 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   // Fetch the complete supplier data, including any DB defaults and the potentially updated categories
   const finalSupplier = await getSupplierById(createdSupplierId);
   if (!finalSupplier) {
-      throw new Error('Failed to retrieve supplier after creation.');
+    throw new Error('Failed to retrieve supplier after creation.');
   }
   console.log("supplierService: Supplier created successfully:", finalSupplier);
   return finalSupplier;
@@ -214,7 +223,7 @@ export const updateSupplier = async (id: string, updates: SupplierUpdatePayload)
   }
   
   // If categories were provided (even an empty array, meaning clear them), update the associations
-  if (categories !== undefined) { // Check for undefined, as an empty array is a valid update (remove all categories)
+  if (categories !== undefined) {
     await supabase
       .from('suppliers_categories')
       .delete()
@@ -228,9 +237,8 @@ export const updateSupplier = async (id: string, updates: SupplierUpdatePayload)
   // Fetch the complete supplier data after updates
   const finalSupplier = await getSupplierById(id);
   if (!finalSupplier) {
-      // This case should ideally not happen if the update was for an existing ID
-      console.error(`Failed to retrieve supplier ${id} after update.`);
-      return null; 
+    console.error(`Failed to retrieve supplier ${id} after update.`);
+    return null; 
   }
 
   console.log(`supplierService: Supplier ${id} updated successfully:`, finalSupplier);
