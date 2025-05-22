@@ -3,24 +3,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+// useToast hook is not used here anymore as click handler is removed.
+// If it was used for other purposes, it should be kept. Assuming it's only for the handleLockedClick.
 
 export interface LockedSupplierCardProps {
-  name?: string;
-  city?: string;
-  state?: string;
+  // Props removidas: name, city, state
+  // O card agora é estático ou só precisa de um ID para key
 }
 
-export function LockedSupplierCard({ name, city, state }: LockedSupplierCardProps) {
-  const { toast } = useToast();
+export function LockedSupplierCard({}: LockedSupplierCardProps) {
+  // const { toast } = useToast(); // Removido se não for mais necessário
   
-  const handleLockedClick = () => {
-    toast({
-      title: "Acesso bloqueado",
-      description: "Este fornecedor não está disponível no período de teste. Assine para acessar todos os fornecedores.",
-      variant: "default",
-    });
-  };
+  // const handleLockedClick = () => { // Removido pois o card não é clicável da mesma forma
+  //   toast({
+  //     title: "Acesso bloqueado",
+  //     description: "Este fornecedor não está disponível no período de teste. Assine para acessar todos os fornecedores.",
+  //     variant: "default",
+  //   });
+  // };
 
   return (
     <Card className="overflow-hidden card-hover opacity-70 relative">
@@ -45,13 +45,13 @@ export function LockedSupplierCard({ name, city, state }: LockedSupplierCardProp
             </div>
           </div>
           
-          {/* Blurred content underneath */}
+          {/* Blurred content underneath - agora com placeholders genéricos */}
           <div className="blur-sm">
             <h3 className="text-lg font-bold">
-              {name || "Nome do fornecedor"}
+              Nome do Fornecedor
             </h3>
             <p className="text-sm text-muted-foreground mb-1">
-              {city && state ? `${city}, ${state}` : "Localização"}
+              Localização Protegida
             </p>
           </div>
         </CardContent>

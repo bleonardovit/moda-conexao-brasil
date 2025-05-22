@@ -4,11 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart, Lock } from 'lucide-react';
+import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { useFavorites } from '@/hooks/use-favorites';
-import { useTrialStatus } from '@/hooks/use-trial-status';
 import { TrialBanner } from '@/components/trial/TrialBanner';
 import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -182,32 +181,6 @@ export default function SuppliersList() {
     fetchData();
   }, [toast, user?.id]); // Add user.id to dependency array
 
-  // Add trial status hook
-  const { isInTrial, allowedSupplierIds, isSupplierAllowed } = useTrialStatus();
-  const [supplierAccessMap, setSupplierAccessMap] = useState<Record<string, boolean>>({});
-
-  // Function to check if supplier is accessible in trial mode
-  const isSupplierAccessible = (supplierId: string): boolean => {
-    if (!isInTrial) return true; // If not in trial, all suppliers are accessible
-    return supplierAccessMap[supplierId] === true;
-  };
-
-  // Add effect to check which suppliers are allowed for trial users
-  useEffect(() => {
-    const checkSupplierAccess = async () => {
-      if (!isInTrial || suppliers.length === 0) return;
-      
-      const accessMap: Record<string, boolean> = {};
-      for (const supplier of suppliers) {
-        accessMap[supplier.id] = await isSupplierAllowed(supplier.id);
-      }
-      
-      setSupplierAccessMap(accessMap);
-    };
-    
-    checkSupplierAccess();
-  }, [suppliers, isInTrial, isSupplierAllowed]);
-
   const filteredSuppliers = suppliers.filter(supplier => {
     // Make sure supplier.categories exists before using it
     if (!supplier.categories) {
@@ -374,12 +347,17 @@ export default function SuppliersList() {
         
         <div className="space-y-4">
           {filteredSuppliers.length > 0 ? filteredSuppliers.map(supplier => (
-            isSupplierAccessible(supplier.id) ? (
-              // Regular supplier card for accessible suppliers
+            supplier.isLockedForTrial ? ( // Check the new flag
+              <LockedSupplierCard key={supplier.id} />
+            ) : (
               <Card key={supplier.id} className="overflow-hidden card-hover">
                 <div className="sm:flex">
                   <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
-                    <img src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'} alt={supplier.name} className="w-full h-full object-fill" />
+                    <img 
+                      src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'} 
+                      alt={supplier.name} // Alt text will be "Fornecedor Bloqueado" if locked, which is fine.
+                      className="w-full h-full object-cover" // Changed to object-cover for better image display
+                    />
                   </div>
                   <CardContent className="sm:w-2/3 md:w-3/4 p-4">
                     {/* ... keep existing code (supplier card content) */}
@@ -454,14 +432,6 @@ export default function SuppliersList() {
                   </CardContent>
                 </div>
               </Card>
-            ) : (
-              // Locked supplier card for inaccessible suppliers
-              <LockedSupplierCard 
-                key={supplier.id}
-                name={supplier.name}
-                city={supplier.city}
-                state={supplier.state}
-              />
             )
           )) : (
             <div className="text-center py-12">

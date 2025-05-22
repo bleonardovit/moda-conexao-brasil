@@ -1,49 +1,96 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier, SearchFilters, Review, PaymentMethod, ShippingMethod, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
+import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
+// Importar serviços e tipos de trial
+import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
 
-// Helper to ensure data matches Supplier type, especially for array enums
-const mapRawSupplierToSupplier = (rawSupplier: any): Supplier => {
-  // Make sure payment_methods and shipping_methods are of the correct type
-  const validPaymentMethods = (rawSupplier.payment_methods || []).filter(
-    (method: string) => ['pix', 'card', 'bankslip'].includes(method)
-  ) as PaymentMethod[];
-  
-  const validShippingMethods = (rawSupplier.shipping_methods || []).filter(
-    (method: string) => ['correios', 'delivery', 'transporter', 'excursion', 'air', 'custom'].includes(method)
-  ) as ShippingMethod[];
-  
-  return {
+// Placeholders para dados genéricos de fornecedores bloqueados em trial
+const LOCKED_SUPPLIER_PLACEHOLDERS = {
+  name: "Fornecedor Bloqueado",
+  description: "Detalhes disponíveis apenas para assinantes.",
+  city: "Localização",
+  state: "Protegida",
+  instagram: undefined,
+  whatsapp: undefined,
+  website: undefined,
+  min_order: "-",
+  // Manter outros campos como images (para layout), code (identificador), categories (para layout) etc.
+  // avg_price pode ser genérico ou omitido
+};
+
+// Helper to map raw supplier data and sanitize if locked for trial
+const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): Supplier => {
+  const baseSupplier = {
     ...rawSupplier,
-    payment_methods: validPaymentMethods,
-    shipping_methods: validShippingMethods,
+    payment_methods: (rawSupplier.payment_methods || []).filter(
+      (method: string) => ['pix', 'card', 'bankslip'].includes(method)
+    ),
+    shipping_methods: (rawSupplier.shipping_methods || []).filter(
+      (method: string) => ['correios', 'delivery', 'transporter', 'excursion', 'air', 'custom'].includes(method)
+    ),
     categories: (rawSupplier.categories || []) as string[],
     images: (rawSupplier.images || []) as string[],
-    // Cast to ensure type safety for Supplier object
     avg_price: (rawSupplier.avg_price || 'medium') as 'low' | 'medium' | 'high',
+    isLockedForTrial: isLocked,
   } as Supplier;
+
+  if (isLocked) {
+    return {
+      ...baseSupplier,
+      name: LOCKED_SUPPLIER_PLACEHOLDERS.name,
+      description: LOCKED_SUPPLIER_PLACEHOLDERS.description,
+      city: LOCKED_SUPPLIER_PLACEHOLDERS.city,
+      state: LOCKED_SUPPLIER_PLACEHOLDERS.state,
+      instagram: LOCKED_SUPPLIER_PLACEHOLDERS.instagram,
+      whatsapp: LOCKED_SUPPLIER_PLACEHOLDERS.whatsapp,
+      website: LOCKED_SUPPLIER_PLACEHOLDERS.website,
+      min_order: LOCKED_SUPPLIER_PLACEHOLDERS.min_order,
+      // Campos que não devem ser expostos podem ser definidos como undefined ou com valores genéricos
+      // Ex:
+      // requires_cnpj: false, // Ou manter o original se não for sensível
+      // payment_methods: [],
+      // shipping_methods: [],
+      // avg_price: 'medium', // Um valor genérico
+    };
+  }
+  return baseSupplier;
 };
 
 // Fetch all suppliers, optionally filtered by user if RLS is on user_id
+// Data will be sanitized if user is in trial and supplier is not allowed
 export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   console.log(`supplierService: Fetching all suppliers. UserID: ${userId}`);
   let query = supabase.from('suppliers').select('*').order('created_at', { ascending: false });
 
-  const { data, error } = await query;
+  const { data: rawSuppliers, error } = await query;
 
   if (error) {
     console.error('Error fetching suppliers:', error.message);
     throw new Error(`Failed to fetch suppliers: ${error.message}`);
   }
-  console.log("supplierService: Suppliers fetched successfully:", data?.length);
-  
-  return (data || []).map(mapRawSupplierToSupplier);
+  console.log("supplierService: Raw suppliers fetched successfully:", rawSuppliers?.length);
+
+  let allowedSupplierIdsForTrial: string[] = [];
+  let isInActiveTrial = false;
+
+  if (userId) {
+    const trialInfo = await getUserTrialInfo(userId);
+    if (trialInfo && trialInfo.trial_status === 'active') {
+      isInActiveTrial = true;
+      allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
+    }
+  }
+
+  return (rawSuppliers || []).map(rawSupplier => {
+    const isLocked = isInActiveTrial && !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+    return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
+  });
 };
 
 // Fetch a single supplier by ID, optionally considering userId for RLS
+// Data will be sanitized if user is in trial and supplier is not allowed
 export const getSupplierById = async (id: string, userId?: string): Promise<Supplier | null> => {
   console.log(`supplierService: Fetching supplier by ID: ${id}. UserID: ${userId}`);
-  const { data, error } = await supabase
+  const { data: rawSupplier, error } = await supabase
     .from('suppliers')
     .select('*')
     .eq('id', id)
@@ -53,14 +100,28 @@ export const getSupplierById = async (id: string, userId?: string): Promise<Supp
     console.error(`Error fetching supplier with ID ${id}:`, error.message);
     throw new Error(`Failed to fetch supplier: ${error.message}`);
   }
-  console.log(`supplierService: Supplier ${id} fetched successfully.`);
   
-  return data ? mapRawSupplierToSupplier(data) : null;
+  if (!rawSupplier) {
+    return null;
+  }
+
+  let isLocked = false;
+  if (userId) {
+    const trialInfo = await getUserTrialInfo(userId);
+    if (trialInfo && trialInfo.trial_status === 'active') {
+      const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
+      if (!allowedSupplierIdsForTrial.includes(rawSupplier.id)) {
+        isLocked = true;
+      }
+    }
+  }
+  console.log(`supplierService: Supplier ${id} fetched. Is locked for trial: ${isLocked}`);
+  return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
 };
 
 // Search suppliers with filters
-export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[]> => {
-  console.log("supplierService: Searching suppliers with filters:", filters);
+export const searchSuppliers = async (filters: SearchFilters, userId?: string): Promise<Supplier[]> => {
+  console.log("supplierService: Searching suppliers with filters:", filters, "UserId:", userId);
   let query = supabase.from('suppliers').select('*');
 
   if (filters.searchTerm) {
@@ -68,7 +129,10 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
   }
   
   if (filters.categoryId) {
-    console.warn("Category filtering in searchSuppliers might need adjustment based on join table logic.");
+    // This part needs suppliers_categories join logic, not directly on suppliers table
+    // For simplicity, this part of filtering might be more complex if done purely in SQL with joins
+    // Consider fetching suppliers then filtering categories if complex, or adjust SQL query
+    console.warn("Category filtering in searchSuppliers might need adjustment based on join table logic. Currently not filtering by category in this SQL query.");
   }
   
   if (filters.state) {
@@ -79,11 +143,6 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
     query = query.eq('city', filters.city);
   }
   
-  // Other filter conditions remain the same
-  if (filters.minOrderRange) {
-    // This needs a numeric column or parsing. Assuming min_order is text.
-    // console.log("Min order range filter needs specific implementation based on data type of 'min_order'");
-  }
   if (filters.paymentMethods && filters.paymentMethods.length > 0) {
     query = query.overlaps('payment_methods', filters.paymentMethods);
   }
@@ -101,19 +160,33 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
     }
   }
   
-  query = query.eq('hidden', false);
+  query = query.eq('hidden', false); // Always filter out hidden suppliers for search results
   query = query.order('featured', { ascending: false })
                .order('created_at', { ascending: false });
 
-  const { data, error } = await query;
+  const { data: rawSuppliers, error } = await query;
 
   if (error) {
     console.error('Error searching suppliers:', error.message);
     throw new Error(`Failed to search suppliers: ${error.message}`);
   }
-  console.log("supplierService: Suppliers search completed. Found:", data?.length);
+  console.log("supplierService: Suppliers search completed. Raw found:", rawSuppliers?.length);
   
-  return (data || []).map(mapRawSupplierToSupplier);
+  let allowedSupplierIdsForTrial: string[] = [];
+  let isInActiveTrial = false;
+
+  if (userId) {
+    const trialInfo = await getUserTrialInfo(userId);
+    if (trialInfo && trialInfo.trial_status === 'active') {
+      isInActiveTrial = true;
+      allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
+    }
+  }
+
+  return (rawSuppliers || []).map(rawSupplier => {
+    const isLocked = isInActiveTrial && !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+    return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
+  });
 };
 
 

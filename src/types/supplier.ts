@@ -1,4 +1,3 @@
-
 // Types for suppliers
 
 export type PaymentMethod = 'pix' | 'card' | 'bankslip';
@@ -27,6 +26,7 @@ export interface Supplier {
   hidden: boolean;
   created_at: string;
   updated_at: string;
+  isLockedForTrial?: boolean; // Novo campo para indicar se está bloqueado no trial
 }
 
 // Payload for creating a supplier
@@ -91,4 +91,3 @@ export interface Review {
   comment?: string;
   created_at: string;
 }
-
