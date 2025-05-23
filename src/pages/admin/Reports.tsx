@@ -28,28 +28,27 @@ import {
   TrendingDown, 
   Calendar,
   FileSpreadsheet,
-  UserX, // For Blocked Users
-  UserCheck, // For Trial to Paid
+  UserX, 
+  UserCheck, 
   DollarSign
 } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { useToast } from '@/hooks/use-toast';
 import {
   ChartContainer,
-  ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import {
   Bar,
-  BarChart as RechartsBarChart, // Aliased to avoid conflict with lucide icon
+  BarChart as RechartsBarChart, 
   Line,
-  LineChart as RechartsLineChart, // Aliased
+  LineChart as RechartsLineChart, 
   Pie,
-  PieChart as RechartsPieChart, // Aliased
+  PieChart as RechartsPieChart, 
   ResponsiveContainer,
   XAxis,
   YAxis,
-  Tooltip as RechartsTooltip, // Aliased
+  Tooltip as RechartsTooltip, 
   CartesianGrid,
   Legend,
   Cell
@@ -77,18 +76,16 @@ const defaultStats: ReportData = {
 export default function Reports() {
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<'7days' | '30days' | '90days' | 'year'>('30days');
-  const [categoryFilter, setCategoryFilter] = useState('all'); // Not fully implemented in backend queries yet
-  const [locationFilter, setLocationFilter] = useState('all'); // Not fully implemented in backend queries yet
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Fetch report data based on filters
   const { data: reportData, isLoading, error } = useQuery<ReportData>({
     queryKey: ['report-data', dateRange, categoryFilter, locationFilter],
     queryFn: () => getReportData(dateRange, categoryFilter, locationFilter),
-    placeholderData: defaultStats, // Provide initial structure
+    placeholderData: defaultStats,
   });
   
-  // Function to export reports
   const exportReport = useCallback(async () => {
     try {
       toast({
@@ -96,11 +93,10 @@ export default function Reports() {
         description: "Gerando arquivo para download...",
       });
       
-      // Pass current filters to export function
       await exportReportToCSV(activeTab, dateRange, { 
         category: categoryFilter, 
         location: locationFilter,
-        tab: activeTab // Could be used by export function to tailor CSV
+        tab: activeTab 
       });
       
       toast({
@@ -116,14 +112,10 @@ export default function Reports() {
     }
   }, [dateRange, categoryFilter, locationFilter, toast, activeTab]);
   
-  // Generate pie chart data for states
-  const generatePieChartData = useCallback((data: Array<{name: string, value: number}> | undefined) => {
-    if (!data) return [];
-    return data.map(item => ({
-      name: item.name,
-      value: item.value
-    }));
-  }, []);
+  const usersByStatePieData = useMemo(() => {
+    return (reportData?.regionData.users || [])
+      .map(item => ({ name: item.state, value: item.count }));
+  }, [reportData?.regionData.users]);
 
   if (error) {
     return (
@@ -140,16 +132,12 @@ export default function Reports() {
   }
   
   const dailyNewUsersChartData = useMemo(() => {
-    // Assuming activeUsers also includes new user registrations for that day as a rough estimate
-    // Or if userStatistics provided daily new users, that would be better.
-    // For now, using a fraction of active users as a proxy for "new users" in the daily chart.
-    // This should ideally come from a dedicated daily new users metric.
     return reportData?.users.activeUsers.map((value, index) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - index));
       return {
         date: `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`,
-        count: Math.max(0, Math.floor(value * 0.1)) // Placeholder: 10% of DAU are new
+        count: Math.max(0, Math.floor(value * 0.1)) 
       };
     });
   }, [reportData?.users.activeUsers]);
@@ -165,7 +153,6 @@ export default function Reports() {
     });
   }, [reportData?.users.activeUsers]);
 
-  // Mock monthly revenue data (as real data source is not available yet)
   const monthlyRevenueData = [
       { month: "Jan", value: 5800 }, { month: "Fev", value: 6200 },
       { month: "Mar", value: 6800 }, { month: "Abr", value: 7100 },
@@ -175,21 +162,20 @@ export default function Reports() {
       { month: "Nov", value: 11200 }, { month: "Dez", value: 12000 }
   ];
 
-  const stats = reportData || defaultStats; // Use fetched data or default structure
+  const stats = reportData || defaultStats;
   
   return (
     <AdminLayout>
       <div className="space-y-4 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <h1 className="text-2xl font-bold">Dashboard & Relatórios</h1>
-          {activeTab === 'dashboard' && ( // Show export only on dashboard or make it generic
+          {activeTab === 'dashboard' && ( 
             <Button onClick={exportReport} disabled={isLoading}>
               {isLoading ? "Carregando..." : <><FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Dashboard CSV</>}
             </Button>
           )}
         </div>
         
-        {/* Tabs principais */}
         <Tabs defaultValue="dashboard" onValueChange={setActiveTab} className="space-y-4">
           <div className="border-b">
             <TabsList className="w-full justify-start rounded-none bg-transparent p-0 overflow-x-auto">
@@ -200,69 +186,59 @@ export default function Reports() {
             </TabsList>
           </div>
           
-          {/* Dashboard principal */}
           <TabsContent value="dashboard" className="space-y-6">
-            {/* Filtros (apenas visíveis no dashboard) */}
-            {activeTab === 'dashboard' && (
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Select 
-                  value={dateRange} 
-                  onValueChange={(value: '7days' | '30days' | '90days' | 'year') => setDateRange(value)}
-                >
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7days">Últimos 7 dias</SelectItem>
-                    <SelectItem value="30days">Últimos 30 dias</SelectItem>
-                    <SelectItem value="90days">Últimos 90 dias</SelectItem>
-                    <SelectItem value="year">Este ano</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Select 
-                  value={categoryFilter} 
-                  onValueChange={setCategoryFilter}
-                >
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Categoria (Fornecedor)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas categorias</SelectItem>
-                    {/* These categories should ideally come from backend or a shared constant */}
-                    <SelectItem value="casual">Casual</SelectItem>
-                    <SelectItem value="fitness">Fitness</SelectItem>
-                    <SelectItem value="plussize">Plus Size</SelectItem>
-                    <SelectItem value="praia">Praia</SelectItem>
-                    <SelectItem value="acessorios">Acessórios</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Select 
-                  value={locationFilter} 
-                  onValueChange={setLocationFilter}
-                >
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Localização (Usuário/Fornecedor)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos estados</SelectItem>
-                    {/* These states should ideally come from a shared constant like brazilian-states.ts */}
-                    <SelectItem value="SP">São Paulo</SelectItem>
-                    <SelectItem value="RJ">Rio de Janeiro</SelectItem>
-                    <SelectItem value="MG">Minas Gerais</SelectItem>
-                    <SelectItem value="BA">Bahia</SelectItem>
-                    <SelectItem value="RS">Rio Grande do Sul</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            
-            {/* KPIGrid can be refactored or replaced by individual cards below */}
-            {/* <KPIGrid /> */} 
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Select 
+                value={dateRange} 
+                onValueChange={(value: '7days' | '30days' | '90days' | 'year') => setDateRange(value)}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7days">Últimos 7 dias</SelectItem>
+                  <SelectItem value="30days">Últimos 30 dias</SelectItem>
+                  <SelectItem value="90days">Últimos 90 dias</SelectItem>
+                  <SelectItem value="year">Este ano</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select 
+                value={categoryFilter} 
+                onValueChange={setCategoryFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Categoria (Fornecedor)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas categorias</SelectItem>
+                  <SelectItem value="casual">Casual</SelectItem>
+                  <SelectItem value="fitness">Fitness</SelectItem>
+                  <SelectItem value="plussize">Plus Size</SelectItem>
+                  <SelectItem value="praia">Praia</SelectItem>
+                  <SelectItem value="acessorios">Acessórios</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select 
+                value={locationFilter} 
+                onValueChange={setLocationFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Localização (Usuário/Fornecedor)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos estados</SelectItem>
+                  <SelectItem value="SP">São Paulo</SelectItem>
+                  <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                  <SelectItem value="MG">Minas Gerais</SelectItem>
+                  <SelectItem value="BA">Bahia</SelectItem>
+                  <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* These cards will now use stats from the updated reportData */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total de Usuárias</CardTitle>
@@ -320,7 +296,6 @@ export default function Reports() {
               </Card>
             </div>
             
-            {/* Metrics de conversão - Updated with new metrics */}
             <Card>
               <CardHeader><CardTitle>Métricas de Conversão Chave</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -351,7 +326,6 @@ export default function Reports() {
               </CardContent>
             </Card>
             
-            {/* Tabs de dados detalhados */}
             <Tabs defaultValue="users" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="users">Usuários</TabsTrigger>
@@ -360,7 +334,6 @@ export default function Reports() {
                 {/* <TabsTrigger value="locations">Localidades</TabsTrigger> */} {/* Covered by GeoInsights tab */}
               </TabsList>
               
-              {/* Tab de usuários */}
               <TabsContent value="users" className="space-y-4">
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                   <Card>
@@ -411,7 +384,6 @@ export default function Reports() {
                 </Card>
               </TabsContent>
               
-              {/* Tab de assinaturas */}
               <TabsContent value="subscriptions" className="space-y-4">
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                   <Card>
@@ -469,7 +441,6 @@ export default function Reports() {
                 </Card>
               </TabsContent>
               
-              {/* Tab de fornecedores */}
               <TabsContent value="suppliers" className="space-y-4">
                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                     <Card>
@@ -494,7 +465,7 @@ export default function Reports() {
                     <Card>
                         <CardHeader><CardTitle>Visualizações por Categoria (Proxy)</CardTitle></CardHeader>
                         <CardContent className="px-0">
-                        <ChartContainer config={{ categoryViews: { label: "Visualizações", theme: { light: "#8884d8", dark: "#a4a0e5" } } }} className="h-[320px]"> {/* Adjusted height */}
+                        <ChartContainer config={{ categoryViews: { label: "Visualizações", theme: { light: "#8884d8", dark: "#a4a0e5" } } }} className="h-[320px]">
                             <RechartsBarChart data={stats.suppliers.byCategories} layout="vertical" margin={{ left: 20, right: 30, top: 5, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis type="number" />
@@ -509,7 +480,6 @@ export default function Reports() {
                  </div>
               </TabsContent>
               
-              {/* Tab de localidades */}
               <TabsContent value="locations">
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                   <Card>
@@ -520,9 +490,9 @@ export default function Reports() {
                       <ChartContainer config={{
                         usersByState: { label: "Usuárias", theme: { light: "#8884d8", dark: "#a4a0e5" } }
                       }} className="h-80">
-                        <PieChart>
+                        <RechartsPieChart>
                           <Pie
-                            data={generatePieChartData(reportData?.regionData.users)}
+                            data={usersByStatePieData}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
@@ -532,13 +502,13 @@ export default function Reports() {
                             nameKey="name"
                             label={(entry) => `${entry.name}: ${entry.value}`}
                           >
-                            {generatePieChartData(reportData?.regionData.users).map((entry, index) => (
+                            {usersByStatePieData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
-                          <Tooltip content={<ChartTooltipContent nameKey="name" />} />
+                          <RechartsTooltip content={<ChartTooltipContent nameKey="name" />} />
                           <Legend />
-                        </PieChart>
+                        </RechartsPieChart>
                       </ChartContainer>
                     </CardContent>
                   </Card>
@@ -562,12 +532,12 @@ export default function Reports() {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis type="number" />
                           <YAxis dataKey="state" type="category" />
-                          <Tooltip content={<ChartTooltipContent />} />
+                          <RechartsTooltip content={<ChartTooltipContent />} />
                           <Legend />
                           <Bar 
                             dataKey="suppliers" 
                             name="suppliersByState" 
-                            fill="#82ca9d" 
+                            fill="var(--color-suppliersByState, hsl(var(--chart-2)))" 
                             radius={[0, 4, 4, 0]} 
                           />
                         </RechartsBarChart>
@@ -579,17 +549,14 @@ export default function Reports() {
             </Tabs>
           </TabsContent>
           
-          {/* Report Builder */}
           <TabsContent value="builder">
             <ReportBuilder />
           </TabsContent>
           
-          {/* Cohort Analysis */}
           <TabsContent value="cohorts">
             <CohortAnalysis />
           </TabsContent>
           
-          {/* Geographic Insights */}
           <TabsContent value="geo">
             <GeoInsights />
           </TabsContent>

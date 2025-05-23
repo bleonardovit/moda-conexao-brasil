@@ -4,8 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from '@tanstack/react-query';
 import { getRegionalData, ReportData } from '@/services/reportService'; // Import ReportData
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart, PieChart, MapPin, Users, Store, TrendingUp, TrendingDown } from 'lucide-react';
-import { ResponsiveContainer, Bar, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend as RechartsLegend } from 'recharts';
+import { BarChart as BarChartIcon, PieChart as PieChartIcon, MapPin, Users, Store, TrendingUp, TrendingDown } from 'lucide-react'; // Aliased lucide icons
+import { ResponsiveContainer, Bar, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend as RechartsLegend, BarChart as RechartsBarChartComponent } from 'recharts'; // Imported BarChart as RechartsBarChartComponent
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -86,7 +86,7 @@ export function GeoInsights() {
               {isLoading ? <Skeleton className="h-[300px] w-full" /> : usersByStateChartData.length > 0 ? (
                 <ChartContainer config={{}} className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                    <PieChartIcon>
                       <Pie data={usersByStateChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                         {usersByStateChartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -94,25 +94,25 @@ export function GeoInsights() {
                       </Pie>
                       <Tooltip content={<ChartTooltipContent nameKey="name" />} />
                       <RechartsLegend />
-                    </PieChart>
+                    </PieChartIcon>
                   </ResponsiveContainer>
                 </ChartContainer>
               ) : <p className="text-muted-foreground text-center py-10">Sem dados de usuários por estado para exibir.</p>}
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><BarChart className="h-5 w-5"/> Top Estados por Usuários</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><BarChartIcon className="h-5 w-5"/> Top Estados por Usuários</CardTitle></CardHeader>
             <CardContent>
                {isLoading ? <Skeleton className="h-[300px] w-full" /> : regionalData?.users && regionalData.users.length > 0 ? (
                 <ChartContainer config={{}} className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={regionalData.users.slice(0,10)} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
+                    <RechartsBarChartComponent data={regionalData.users.slice(0,10)} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
                        <CartesianGrid strokeDasharray="3 3" />
                        <XAxis type="number" />
                        <YAxis dataKey="state" type="category" width={80} />
                        <Tooltip content={<ChartTooltipContent />} />
                        <Bar dataKey="count" name="Usuários" fill="var(--color-users, hsl(var(--chart-1)))" radius={[0, 4, 4, 0]} />
-                    </BarChart>
+                    </RechartsBarChartComponent>
                   </ResponsiveContainer>
                 </ChartContainer>
                ) : <p className="text-muted-foreground text-center py-10">Sem dados de usuários por estado para exibir.</p>}
@@ -152,7 +152,6 @@ export function GeoInsights() {
       </TabsContent>
       
       <TabsContent value="suppliers" className="space-y-4">
-         {/* Similar structure for suppliers as for users */}
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Store className="h-5 w-5"/> Distribuição de Fornecedores por Estado</CardTitle></CardHeader>
@@ -160,7 +159,7 @@ export function GeoInsights() {
               {isLoading ? <Skeleton className="h-[300px] w-full" /> : suppliersByStateChartData.length > 0 ? (
                 <ChartContainer config={{}} className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                    <PieChartIcon>
                       <Pie data={suppliersByStateChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                         {suppliersByStateChartData.map((entry, index) => (
                           <Cell key={`cell-supplier-${index}`} fill={COLORS[(index + 2) % COLORS.length]} /> // Offset colors
@@ -168,25 +167,25 @@ export function GeoInsights() {
                       </Pie>
                       <Tooltip content={<ChartTooltipContent nameKey="name" />} />
                       <RechartsLegend />
-                    </PieChart>
+                    </PieChartIcon>
                   </ResponsiveContainer>
                 </ChartContainer>
               ) : <p className="text-muted-foreground text-center py-10">Sem dados de fornecedores por estado para exibir.</p>}
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><BarChart className="h-5 w-5"/> Top Estados por Fornecedores</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><BarChartIcon className="h-5 w-5"/> Top Estados por Fornecedores</CardTitle></CardHeader>
             <CardContent>
                {isLoading ? <Skeleton className="h-[300px] w-full" /> : regionalData?.suppliers && regionalData.suppliers.length > 0 ? (
                 <ChartContainer config={{}} className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={regionalData.suppliers.slice(0,10)} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
+                    <RechartsBarChartComponent data={regionalData.suppliers.slice(0,10)} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
                        <CartesianGrid strokeDasharray="3 3" />
                        <XAxis type="number" />
                        <YAxis dataKey="state" type="category" width={80} />
                        <Tooltip content={<ChartTooltipContent />} />
                        <Bar dataKey="count" name="Fornecedores" fill="var(--color-suppliers, hsl(var(--chart-2)))" radius={[0, 4, 4, 0]} />
-                    </BarChart>
+                    </RechartsBarChartComponent>
                   </ResponsiveContainer>
                 </ChartContainer>
                ) : <p className="text-muted-foreground text-center py-10">Sem dados de fornecedores por estado para exibir.</p>}
