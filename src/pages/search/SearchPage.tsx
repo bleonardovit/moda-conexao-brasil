@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Search, Filter as FilterIcon, X } from 'lucide-react';
 import { useTrialStatus } from '@/hooks/use-trial-status';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 import { TrialBanner } from '@/components/trial/TrialBanner';
 import { LimitedSearch } from './LimitedSearch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -40,7 +41,8 @@ const SearchPage = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { isInTrial, isFeatureAllowed, userProfile } = useTrialStatus(); // Changed user to userProfile
+  const { isInTrial, isFeatureAllowed } = useTrialStatus(); // Removed userProfile from here
+  const { user } = useAuth(); // Get user from useAuth
   const [canAccessFeature, setCanAccessFeature] = useState(true);
 
   // Filter states
@@ -75,7 +77,6 @@ const SearchPage = () => {
         const categoriesData = await fetchSupplierCategories();
         setSupplierCategories(categoriesData);
         
-        // Fetch all distinct cities initially
         const citiesData = await getDistinctCities();
         setAvailableCities(citiesData.map(city => ({ label: city, value: city })).sort((a,b) => a.label.localeCompare(b.label)));
 
@@ -113,7 +114,7 @@ const SearchPage = () => {
         shippingMethods: selectedShippingMethods.length > 0 ? selectedShippingMethods : undefined,
         hasWebsite: hasWebsiteFilter === 'yes' ? true : hasWebsiteFilter === 'no' ? false : null,
       };
-      const results = await searchSuppliers(filters, userProfile?.id); // Changed user?.id to userProfile?.id
+      const results = await searchSuppliers(filters, user?.id); // Use user?.id
       setSuppliers(results);
     } catch (error) {
       console.error('Error searching suppliers:', error);
@@ -121,7 +122,7 @@ const SearchPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, userProfile?.id]); // Added userProfile?.id to dependency array
+  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, user?.id]); // Use user?.id in dependency array
 
   useEffect(() => {
     // Auto-search if not initial load and some filter changes, or searchTerm changes
@@ -232,7 +233,7 @@ const SearchPage = () => {
                   <Select value={cityFilter} onValueChange={setCityFilter} name="city-filter">
                     <SelectTrigger> <SelectValue placeholder="Todas as cidades" /> </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as cidades</SelectItem>
+                      <SelectItem value="">Todas as cidades</SelectItem> {/* Changed 'all' to empty string for city filter reset */}
                       {availableCities.map(city => (
                         <SelectItem key={city.value} value={city.value}>{city.label}</SelectItem>
                       ))}

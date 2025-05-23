@@ -27,7 +27,7 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): S
     shipping_methods: (rawSupplier.shipping_methods || []).filter(
       (method: string) => ['correios', 'delivery', 'transporter', 'excursion', 'air', 'custom'].includes(method)
     ),
-    categories: (rawSupplier.categories || []) as string[],
+    categories: (rawSupplier.categories || []) as string[], // Assuming categories are stored as array of IDs or names
     images: (rawSupplier.images || []) as string[],
     avg_price: (rawSupplier.avg_price || 'medium') as 'low' | 'medium' | 'high',
     isLockedForTrial: isLocked,
@@ -44,12 +44,6 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): S
       whatsapp: LOCKED_SUPPLIER_PLACEHOLDERS.whatsapp,
       website: LOCKED_SUPPLIER_PLACEHOLDERS.website,
       min_order: LOCKED_SUPPLIER_PLACEHOLDERS.min_order,
-      // Campos que não devem ser expostos podem ser definidos como undefined ou com valores genéricos
-      // Ex:
-      // requires_cnpj: false, // Ou manter o original se não for sensível
-      // payment_methods: [],
-      // shipping_methods: [],
-      // avg_price: 'medium', // Um valor genérico
     };
   }
   return baseSupplier;
@@ -129,6 +123,8 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
   }
   
   if (filters.categoryId && filters.categoryId !== 'all') {
+    // Assuming 'categories' is an array column in the 'suppliers' table containing category IDs or names.
+    // If 'categories' is a join table, this logic would need to be different (e.g. a subquery or function call).
     query = query.contains('categories', [filters.categoryId]);
   }
   
@@ -161,16 +157,16 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
   }
 
   // Min Order Amount Filters
-  const minOrderColumnExpression = `NULLIF(regexp_replace(min_order, '[^0-9]', '', 'g'), '')::numeric`;
+  const minOrderColumnExpression = `NULLIF(regexp_replace(min_order, '[^0-9.,]', '', 'g'), '')::numeric`;
 
-  if (filters.minOrderMin !== undefined && filters.minOrderMin !== null && filters.minOrderMin !== '') {
+  if (filters.minOrderMin !== undefined && filters.minOrderMin !== null) { // Removed !== ''
     try {
         query = query.filter(minOrderColumnExpression, 'gte', filters.minOrderMin);
     } catch (e) {
         console.warn("Could not apply minOrderMin due to potential non-numeric min_order values or filter error", e);
     }
   }
-  if (filters.minOrderMax !== undefined && filters.minOrderMax !== null && filters.minOrderMax !== '') {
+  if (filters.minOrderMax !== undefined && filters.minOrderMax !== null) { // Removed !== ''
      try {
         query = query.filter(minOrderColumnExpression, 'lte', filters.minOrderMax);
     } catch (e) {
@@ -178,9 +174,9 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
     }
   }
   
-  query = query.eq('hidden', false);
-  query = query.order('featured', { ascending: false })
-               .order('created_at', { ascending: false });
+  query = query.eq('hidden', false); // Ensure only non-hidden suppliers are fetched
+  query = query.order('featured', { ascending: false }) // Prioritize featured suppliers
+               .order('created_at', { ascending: false }); // Then by creation date
 
   const { data: rawSuppliers, error } = await query;
 
@@ -470,6 +466,3 @@ export const getDistinctCities = async (state?: string): Promise<string[]> => {
 
   return Array.from(new Set(cityValues)).sort();
 };
-
-// REMOVED THE PROTOTYPE EXTENSIONS for gte_sql and lte_sql as they were causing the runtime error.
-// The searchSuppliers function now uses query.filter() for min_order comparison.
