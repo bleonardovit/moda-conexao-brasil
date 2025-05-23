@@ -191,6 +191,7 @@ const AppRoutes = () => {
       {/* Rotas de autenticação - apenas para usuários não autenticados */}
       <Route path="/auth/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
       <Route path="/auth/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+      <Route path="/auth/select-plan" element={<SelectPlan />} />
       <Route path="/auth/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
       <Route path="/auth/reset-confirmation" element={<PublicOnlyRoute><ResetConfirmation /></PublicOnlyRoute>} />
       <Route path="/auth/payment" element={<Payment />} />
