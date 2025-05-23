@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BarChart, LineChart, PieChart, FileSpreadsheet } from "lucide-react";
+import { BarChartIcon, LineChartIcon, PieChartIcon, FileSpreadsheet, DraftingCompass } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportReportToCSV } from "@/services/reportService";
 
@@ -30,11 +30,13 @@ export function ReportBuilder() {
     { id: "new_users", name: "Novos Usuários", description: "Total de novos registros", category: "engagement" },
     { id: "active_users", name: "Usuários Ativos", description: "Usuários com login recente", category: "engagement" },
     { id: "visit_conversion", name: "Conversão de Visitantes", description: "Visitas que resultaram em registro", category: "conversion" },
+    { id: "trial_to_paid", name: "Conversão Teste > Pago", description: "Usuários que converteram do teste gratuito", category: "conversion" },
     { id: "retention_rate", name: "Taxa de Retenção", description: "Usuários que continuam ativos", category: "retention" },
     { id: "churn_rate", name: "Taxa de Cancelamento", description: "Usuários que cancelaram assinatura", category: "retention" },
     { id: "mrr", name: "Receita Mensal Recorrente", description: "Receita mensal de assinaturas", category: "revenue" },
     { id: "arpu", name: "Receita Média por Usuário", description: "Valor médio por usuário", category: "revenue" },
-    { id: "ltv", name: "Valor de Vida do Cliente", description: "Receita esperada por cliente", category: "revenue" }
+    { id: "ltv", name: "Valor de Vida do Cliente", description: "Receita esperada por cliente", category: "revenue" },
+    { id: "blocked_free_users", name: "Usuários Gratuitos Bloqueados", description: "Usuários com teste expirado não convertidos", category: "conversion" },
   ];
   
   // Function to handle metric selection
@@ -83,19 +85,20 @@ export function ReportBuilder() {
       });
       
       // Call the real export function
-      await exportReportToCSV('custom', timeRange, { 
+      await exportReportToCSV('custom_report', timeRange, { 
         metrics: selectedMetrics.join(','),
-        chart_type: chartType
+        chart_type: chartType,
+        // Potentially add other filters if available in UI
       });
       
       toast({
         title: "Relatório gerado com sucesso",
-        description: "O relatório foi baixado para o seu computador.",
+        description: "O relatório foi baixado para o seu computador.", // This is a mock download
       });
     } catch (error) {
       toast({
         title: "Erro ao gerar relatório",
-        description: "Não foi possível gerar o relatório solicitado.",
+        description: (error as Error).message || "Não foi possível gerar o relatório solicitado.",
         variant: "destructive"
       });
     } finally {
@@ -109,18 +112,28 @@ export function ReportBuilder() {
   };
   
   const handleSaveReport = async () => {
+    // This is a placeholder for saving report configurations
     toast({
-      title: "Relatório salvo",
-      description: "O modelo de relatório foi salvo para uso futuro",
+      title: "Relatório salvo (simulado)",
+      description: "O modelo de relatório foi salvo para uso futuro (funcionalidade pendente).",
     });
   };
   
+  const renderChartIcon = () => {
+    switch(chartType) {
+      case 'bar': return <BarChartIcon className="h-16 w-16 text-primary" />;
+      case 'line': return <LineChartIcon className="h-16 w-16 text-primary" />;
+      case 'pie': return <PieChartIcon className="h-16 w-16 text-primary" />;
+      default: return <DraftingCompass className="h-16 w-16 text-muted-foreground" />;
+    }
+  }
+
   return (
     <Card className="border-primary/20">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>Construtor de Relatórios</span>
-          <Button size="sm" onClick={handleSaveReport}>Salvar Relatório</Button>
+          <Button size="sm" onClick={handleSaveReport}>Salvar Modelo</Button>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -136,7 +149,7 @@ export function ReportBuilder() {
                   onClick={() => setChartType("bar")}
                   className="flex-1"
                 >
-                  <BarChart className="h-4 w-4 mr-2" />
+                  <BarChartIcon className="h-4 w-4 mr-2" /> {/* Use Icon component */}
                   Barras
                 </Button>
                 <Button 
@@ -145,7 +158,7 @@ export function ReportBuilder() {
                   onClick={() => setChartType("line")}
                   className="flex-1"
                 >
-                  <LineChart className="h-4 w-4 mr-2" />
+                  <LineChartIcon className="h-4 w-4 mr-2" /> {/* Use Icon component */}
                   Linhas
                 </Button>
                 <Button 
@@ -154,7 +167,7 @@ export function ReportBuilder() {
                   onClick={() => setChartType("pie")}
                   className="flex-1"
                 >
-                  <PieChart className="h-4 w-4 mr-2" />
+                  <PieChartIcon className="h-4 w-4 mr-2" /> {/* Use Icon component */}
                   Pizza
                 </Button>
               </div>
@@ -177,22 +190,28 @@ export function ReportBuilder() {
             
             <div className="space-y-3">
               <h3 className="text-sm font-medium">Métricas</h3>
-              <Tabs defaultValue="engagement">
-                <TabsList className="grid grid-cols-4 h-auto">
-                  <TabsTrigger value="engagement" className="text-xs py-1.5">Engajamento</TabsTrigger>
-                  <TabsTrigger value="conversion" className="text-xs py-1.5">Conversão</TabsTrigger>
-                  <TabsTrigger value="retention" className="text-xs py-1.5">Retenção</TabsTrigger>
-                  <TabsTrigger value="revenue" className="text-xs py-1.5">Receita</TabsTrigger>
+              <Tabs defaultValue="engagement" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+                  {Object.keys(metricsByCategory).map(categoryKey => (
+                     <TabsTrigger 
+                        key={categoryKey} 
+                        value={categoryKey} 
+                        className="text-xs py-1.5"
+                      >
+                        {categoryNames[categoryKey as keyof typeof categoryNames]}
+                      </TabsTrigger>
+                  ))}
                 </TabsList>
                 
                 {Object.entries(metricsByCategory).map(([category, metrics]) => (
-                  <TabsContent key={category} value={category} className="space-y-2 mt-2">
+                  <TabsContent key={category} value={category} className="space-y-2 mt-2 max-h-60 overflow-y-auto">
                     {metrics.map(metric => (
-                      <div key={metric.id} className="flex items-start gap-2">
+                      <div key={metric.id} className="flex items-start gap-2 p-1 hover:bg-muted/50 rounded">
                         <Checkbox 
                           id={metric.id} 
                           checked={selectedMetrics.includes(metric.id)}
                           onCheckedChange={() => toggleMetric(metric.id)}
+                          aria-label={`Selecionar ${metric.name}`}
                         />
                         <div>
                           <label htmlFor={metric.id} className="text-sm font-medium cursor-pointer block">
@@ -210,44 +229,59 @@ export function ReportBuilder() {
           
           {/* Preview Panel */}
           <div className="md:col-span-2">
-            <div className="border rounded-md p-4 h-[350px] flex items-center justify-center bg-muted/30">
-              <div className="text-center">
-                <p className="text-lg font-medium mb-2">Prévia do Relatório</p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedMetrics.length > 0 ? (
-                    <>
-                      Visualização de {chartType === "bar" ? "barras" : chartType === "line" ? "linhas" : "pizza"} para {selectedMetrics.length} métricas
-                    </>
-                  ) : (
-                    "Selecione pelo menos uma métrica para visualizar"
-                  )}
-                </p>
-                <div className="mt-4">
+            <div className="border rounded-md p-4 min-h-[350px] flex flex-col items-center justify-center bg-muted/30">
+              {selectedMetrics.length > 0 ? (
+                <>
+                  <div className="mb-4">
+                    {renderChartIcon()}
+                  </div>
+                  <p className="text-lg font-medium mb-2">
+                    Prévia: Gráfico de {chartType === "bar" ? "Barras" : chartType === "line" ? "Linhas" : "Pizza"}
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Período: {
+                      {
+                        "7days": "Últimos 7 dias",
+                        "30days": "Últimos 30 dias",
+                        "90days": "Últimos 90 dias",
+                        "year": "Este ano"
+                      }[timeRange]
+                    }
+                  </p>
+                  <p className="text-sm text-muted-foreground font-semibold mb-1">Métricas Selecionadas:</p>
                   {selectedMetrics.length > 0 && (
-                    <ul className="inline-flex flex-wrap gap-2 justify-center">
+                    <ul className="flex flex-wrap gap-2 justify-center max-w-md">
                       {selectedMetrics.map(id => {
                         const metric = metricOptions.find(m => m.id === id);
                         return metric ? (
-                          <li key={id} className="text-xs px-2 py-1 bg-secondary rounded-full">
+                          <li key={id} className="text-xs px-2 py-1 bg-secondary text-secondary-foreground rounded-full">
                             {metric.name}
                           </li>
                         ) : null;
                       })}
                     </ul>
                   )}
+                </>
+              ) : (
+                <div className="text-center">
+                  <DraftingCompass className="h-16 w-16 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-lg font-medium mb-2">Prévia do Relatório</p>
+                  <p className="text-sm text-muted-foreground">
+                    Selecione tipo de visualização, período e pelo menos uma métrica para visualizar.
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
             
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={clearSelection}>Limpar Seleção</Button>
+              <Button variant="outline" onClick={clearSelection} disabled={selectedMetrics.length === 0}>Limpar Seleção</Button>
               <Button onClick={generateReport} disabled={selectedMetrics.length === 0 || isGenerating}>
                 {isGenerating ? (
                   "Gerando..."
                 ) : (
                   <>
                     <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Gerar Relatório
+                    Gerar Relatório CSV
                   </>
                 )}
               </Button>

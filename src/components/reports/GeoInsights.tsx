@@ -1,317 +1,229 @@
-
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from '@tanstack/react-query';
-import { getRegionalData } from '@/services/reportService';
+import { getRegionalData, ReportData } from '@/services/reportService'; // Import ReportData
 import { Skeleton } from "@/components/ui/skeleton";
-import { Map } from "lucide-react";
+import { BarChart, PieChart, MapPin, Users, Store, TrendingUp, TrendingDown } from 'lucide-react';
+import { ResponsiveContainer, Bar, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend as RechartsLegend } from 'recharts';
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 export function GeoInsights() {
-  const [compareMetric, setCompareMetric] = useState("users");
-  
-  // Fetch regional data
-  const { data: regionData, isLoading, error } = useQuery({
+  const { data: regionalData, isLoading, error } = useQuery<ReportData['regionData']>({
     queryKey: ['regional-data'],
     queryFn: getRegionalData
   });
-  
+
   if (error) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="text-red-500">
-            Erro ao carregar dados regionais: {(error as Error).message}
-          </div>
+        <CardContent className="p-6 text-red-500">
+          Erro ao carregar insights geográficos: {(error as Error).message}
         </CardContent>
       </Card>
     );
   }
+
+  const usersByStateChartData = regionalData?.users
+    .filter(u => u.state !== "Não informado") // Optionally filter out "Não informado" for cleaner charts
+    .map(item => ({ name: item.state, value: item.count })) || [];
   
+  const suppliersByStateChartData = regionalData?.suppliers
+    .map(item => ({ name: item.state, value: item.count })) || [];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex justify-between items-center">
-          <span>Insights Geográficos</span>
-          <Select 
-            value={compareMetric} 
-            onValueChange={setCompareMetric}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Selecione a métrica" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="users">Usuárias</SelectItem>
-              <SelectItem value="suppliers">Fornecedores</SelectItem>
-              <SelectItem value="conversions">Conversões</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="table">
-          <div className="flex justify-end mb-4">
-            <TabsList>
-              <TabsTrigger value="table">Tabela</TabsTrigger>
-              <TabsTrigger value="map">Mapa</TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="table">
+    <Tabs defaultValue="overview" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+        <TabsTrigger value="users">Usuários por Estado</TabsTrigger>
+        <TabsTrigger value="suppliers">Fornecedores por Estado</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="overview" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Principais Estados</CardTitle>
+          </CardHeader>
+          <CardContent>
             {isLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="flex items-center justify-between">
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
               </div>
             ) : (
-              <>
-                {compareMetric === "users" && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Estado</TableHead>
-                        <TableHead className="text-right">Usuárias</TableHead>
-                        <TableHead className="text-right">% do Total</TableHead>
-                        <TableHead className="text-right">Crescimento</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {regionData?.users.map((row) => (
-                        <TableRow key={row.state}>
-                          <TableCell className="font-medium">{row.state}</TableCell>
-                          <TableCell className="text-right">{row.count}</TableCell>
-                          <TableCell className="text-right">{row.percentage}%</TableCell>
-                          <TableCell className={`text-right ${row.growth >= 0 ? "text-green-500" : "text-red-500"}`}>
-                            {row.growth > 0 ? "+" : ""}{row.growth}%
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-                
-                {compareMetric === "suppliers" && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Estado</TableHead>
-                        <TableHead className="text-right">Fornecedores</TableHead>
-                        <TableHead className="text-right">% do Total</TableHead>
-                        <TableHead className="text-right">Crescimento</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {regionData?.suppliers.map((row) => (
-                        <TableRow key={row.state}>
-                          <TableCell className="font-medium">{row.state}</TableCell>
-                          <TableCell className="text-right">{row.count}</TableCell>
-                          <TableCell className="text-right">{row.percentage}%</TableCell>
-                          <TableCell className={`text-right ${row.growth >= 0 ? "text-green-500" : "text-red-500"}`}>
-                            {row.growth > 0 ? "+" : ""}{row.growth}%
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-                
-                {compareMetric === "conversions" && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Estado</TableHead>
-                        <TableHead className="text-right">Taxa de Conversão</TableHead>
-                        <TableHead className="text-right">Mudança</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {regionData?.conversions.map((row) => (
-                        <TableRow key={row.state}>
-                          <TableCell className="font-medium">{row.state}</TableCell>
-                          <TableCell className="text-right">{row.rate}%</TableCell>
-                          <TableCell className={`text-right ${row.change >= 0 ? "text-green-500" : "text-red-500"}`}>
-                            {row.change > 0 ? "+" : ""}{row.change}%
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="map">
-            <div className="h-[300px] flex justify-center items-center border rounded-md bg-muted/20">
-              <div className="text-center p-4">
-                <Map className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-lg font-medium mb-2">Mapa do Brasil</p>
-                <p className="text-sm text-muted-foreground">Visualização de dados por estado</p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Mostrando dados de {compareMetric === "users" ? "usuárias" : 
-                    compareMetric === "suppliers" ? "fornecedores" : "conversões"} por região
-                </p>
-              </div>
-            </div>
-            
-            <div className="mt-6">
-              <h3 className="text-sm font-medium mb-2">Destaque Regional</h3>
-              {isLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <Card key={i} className="bg-muted/30">
-                      <CardContent className="p-4">
-                        <Skeleton className="h-4 w-20 mb-1" />
-                        <Skeleton className="h-8 w-24 mb-1" />
-                        <Skeleton className="h-4 w-32" />
-                      </CardContent>
-                    </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">Com Mais Usuários</h3>
+                  {regionalData?.users.slice(0, 3).map(u => (
+                    <div key={`user-${u.state}`} className="flex justify-between items-center p-2 bg-muted/50 rounded">
+                      <span>{u.state}</span>
+                      <span className="font-semibold">{u.count.toLocaleString()}</span>
+                    </div>
                   ))}
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {compareMetric === "users" ? (
-                    <>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Maior concentração</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.users[0]?.state || "São Paulo"}
-                          </div>
-                          <div className="text-sm">
-                            {regionData?.users[0]?.count || 0} usuárias ({regionData?.users[0]?.percentage || 0}%)
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Maior crescimento</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.users.sort((a, b) => b.growth - a.growth)[0]?.state || "Ceará"}
-                          </div>
-                          <div className="text-sm text-green-500">
-                            +{regionData?.users.sort((a, b) => b.growth - a.growth)[0]?.growth || 0}%
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Maior potencial</div>
-                          <div className="text-xl font-bold">Minas Gerais</div>
-                          <div className="text-sm">Crescimento projetado: +15%</div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Total cobertura</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.users.length || 0} Estados
-                          </div>
-                          <div className="text-sm">82% das usuárias</div>
-                        </CardContent>
-                      </Card>
-                    </>
-                  ) : compareMetric === "suppliers" ? (
-                    <>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Maior concentração</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.suppliers[0]?.state || "São Paulo"}
-                          </div>
-                          <div className="text-sm">
-                            {regionData?.suppliers[0]?.count || 0} fornecedores ({regionData?.suppliers[0]?.percentage || 0}%)
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Maior crescimento</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.suppliers.sort((a, b) => b.growth - a.growth)[0]?.state || "Ceará"}
-                          </div>
-                          <div className="text-sm text-green-500">
-                            +{regionData?.suppliers.sort((a, b) => b.growth - a.growth)[0]?.growth || 0}%
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Potencial inexplorado</div>
-                          <div className="text-xl font-bold">Bahia</div>
-                          <div className="text-sm">6 fornecedores potenciais</div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Total cobertura</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.suppliers.length || 0} Estados
-                          </div>
-                          <div className="text-sm">100% dos fornecedores</div>
-                        </CardContent>
-                      </Card>
-                    </>
-                  ) : (
-                    <>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Maior conversão</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.conversions.sort((a, b) => b.rate - a.rate)[0]?.state || "Ceará"}
-                          </div>
-                          <div className="text-sm">
-                            {regionData?.conversions.sort((a, b) => b.rate - a.rate)[0]?.rate || 0}% taxa de conversão
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Maior crescimento</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.conversions.sort((a, b) => b.change - a.change)[0]?.state || "Ceará"}
-                          </div>
-                          <div className="text-sm text-green-500">
-                            +{regionData?.conversions.sort((a, b) => b.change - a.change)[0]?.change || 0}%
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Menor desempenho</div>
-                          <div className="text-xl font-bold">
-                            {regionData?.conversions.sort((a, b) => a.change - b.change)[0]?.state || "Rio de Janeiro"}
-                          </div>
-                          <div className="text-sm text-red-500">
-                            {regionData?.conversions.sort((a, b) => a.change - b.change)[0]?.change || 0}%
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="bg-muted/30">
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground mb-1">Média nacional</div>
-                          <div className="text-xl font-bold">
-                            {regionData ? parseFloat(
-                              (regionData.conversions.reduce((sum, item) => sum + item.rate, 0) / 
-                              (regionData.conversions.length || 1)).toFixed(1)
-                            ) : 0}%
-                          </div>
-                          <div className="text-sm text-green-500">+1.1% vs mês anterior</div>
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">Com Mais Fornecedores</h3>
+                   {regionalData?.suppliers.slice(0, 3).map(s => (
+                    <div key={`supplier-${s.state}`} className="flex justify-between items-center p-2 bg-muted/50 rounded">
+                      <span>{s.state}</span>
+                      <span className="font-semibold">{s.count.toLocaleString()}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="users" className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Users className="h-5 w-5"/> Distribuição de Usuários por Estado</CardTitle></CardHeader>
+            <CardContent>
+              {isLoading ? <Skeleton className="h-[300px] w-full" /> : usersByStateChartData.length > 0 ? (
+                <ChartContainer config={{}} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={usersByStateChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                        {usersByStateChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <RechartsLegend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              ) : <p className="text-muted-foreground text-center py-10">Sem dados de usuários por estado para exibir.</p>}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><BarChart className="h-5 w-5"/> Top Estados por Usuários</CardTitle></CardHeader>
+            <CardContent>
+               {isLoading ? <Skeleton className="h-[300px] w-full" /> : regionalData?.users && regionalData.users.length > 0 ? (
+                <ChartContainer config={{}} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={regionalData.users.slice(0,10)} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
+                       <CartesianGrid strokeDasharray="3 3" />
+                       <XAxis type="number" />
+                       <YAxis dataKey="state" type="category" width={80} />
+                       <Tooltip content={<ChartTooltipContent />} />
+                       <Bar dataKey="count" name="Usuários" fill="var(--color-users, hsl(var(--chart-1)))" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+               ) : <p className="text-muted-foreground text-center py-10">Sem dados de usuários por estado para exibir.</p>}
+            </CardContent>
+          </Card>
+        </div>
+        <Card>
+          <CardHeader><CardTitle>Detalhes de Usuários por Estado</CardTitle></CardHeader>
+          <CardContent className="overflow-x-auto">
+            {isLoading ? <Skeleton className="h-40 w-full" /> : regionalData?.users && regionalData.users.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Usuários</TableHead>
+                  <TableHead className="text-right">% do Total</TableHead>
+                  <TableHead className="text-right">Crescimento (Mock)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {regionalData?.users.map(item => (
+                  <TableRow key={item.state}>
+                    <TableCell>{item.state}</TableCell>
+                    <TableCell className="text-right">{item.count.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{item.percentage.toFixed(1)}%</TableCell>
+                    <TableCell className="text-right flex items-center justify-end">
+                        {item.growth >= 0 ? <TrendingUp className="h-4 w-4 text-green-500 mr-1" /> : <TrendingDown className="h-4 w-4 text-red-500 mr-1" />}
+                        {item.growth.toFixed(1)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            ) : <p className="text-muted-foreground text-center py-10">Sem dados de usuários por estado para exibir.</p>}
+          </CardContent>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="suppliers" className="space-y-4">
+         {/* Similar structure for suppliers as for users */}
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Store className="h-5 w-5"/> Distribuição de Fornecedores por Estado</CardTitle></CardHeader>
+            <CardContent>
+              {isLoading ? <Skeleton className="h-[300px] w-full" /> : suppliersByStateChartData.length > 0 ? (
+                <ChartContainer config={{}} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={suppliersByStateChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                        {suppliersByStateChartData.map((entry, index) => (
+                          <Cell key={`cell-supplier-${index}`} fill={COLORS[(index + 2) % COLORS.length]} /> // Offset colors
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <RechartsLegend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              ) : <p className="text-muted-foreground text-center py-10">Sem dados de fornecedores por estado para exibir.</p>}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><BarChart className="h-5 w-5"/> Top Estados por Fornecedores</CardTitle></CardHeader>
+            <CardContent>
+               {isLoading ? <Skeleton className="h-[300px] w-full" /> : regionalData?.suppliers && regionalData.suppliers.length > 0 ? (
+                <ChartContainer config={{}} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={regionalData.suppliers.slice(0,10)} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
+                       <CartesianGrid strokeDasharray="3 3" />
+                       <XAxis type="number" />
+                       <YAxis dataKey="state" type="category" width={80} />
+                       <Tooltip content={<ChartTooltipContent />} />
+                       <Bar dataKey="count" name="Fornecedores" fill="var(--color-suppliers, hsl(var(--chart-2)))" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+               ) : <p className="text-muted-foreground text-center py-10">Sem dados de fornecedores por estado para exibir.</p>}
+            </CardContent>
+          </Card>
+        </div>
+         <Card>
+          <CardHeader><CardTitle>Detalhes de Fornecedores por Estado</CardTitle></CardHeader>
+          <CardContent className="overflow-x-auto">
+            {isLoading ? <Skeleton className="h-40 w-full" /> : regionalData?.suppliers && regionalData.suppliers.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Fornecedores</TableHead>
+                  <TableHead className="text-right">% do Total</TableHead>
+                  <TableHead className="text-right">Crescimento (Mock)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {regionalData?.suppliers.map(item => (
+                  <TableRow key={`sup-${item.state}`}>
+                    <TableCell>{item.state}</TableCell>
+                    <TableCell className="text-right">{item.count.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{item.percentage.toFixed(1)}%</TableCell>
+                    <TableCell className="text-right flex items-center justify-end">
+                        {item.growth >= 0 ? <TrendingUp className="h-4 w-4 text-green-500 mr-1" /> : <TrendingDown className="h-4 w-4 text-red-500 mr-1" />}
+                        {item.growth.toFixed(1)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            ) : <p className="text-muted-foreground text-center py-10">Sem dados de fornecedores por estado para exibir.</p>}
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }
