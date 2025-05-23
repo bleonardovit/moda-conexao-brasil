@@ -406,7 +406,7 @@ export default function Reports() {
                         <Legend />
                         <Bar dataKey="users" name="monthlyUsers" fill="var(--color-monthlyUsers, hsl(var(--chart-1)))" radius={[4, 4, 0, 0]} />
                       </RechartsBarChart>
-                    </CardContainer>
+                    </ChartContainer>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -551,7 +551,7 @@ export default function Reports() {
                       <ChartContainer config={{
                         suppliersByState: { label: "Fornecedores", theme: { light: "#82ca9d", dark: "#65ba83" } }
                       }} className="h-80">
-                        <BarChart 
+                        <RechartsBarChart 
                           data={reportData?.regionData.suppliers.map(item => ({
                             state: item.state,
                             suppliers: item.count
@@ -570,7 +570,7 @@ export default function Reports() {
                             fill="#82ca9d" 
                             radius={[0, 4, 4, 0]} 
                           />
-                        </BarChart>
+                        </RechartsBarChart>
                       </ChartContainer>
                     </CardContent>
                   </Card>
