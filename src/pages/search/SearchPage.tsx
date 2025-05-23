@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { searchSuppliers, getDistinctCities, getDistinctStates } from '@/services/supplierService';
@@ -41,7 +40,7 @@ const SearchPage = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { isInTrial, isFeatureAllowed, user } = useTrialStatus();
+  const { isInTrial, isFeatureAllowed, userProfile } = useTrialStatus(); // Changed user to userProfile
   const [canAccessFeature, setCanAccessFeature] = useState(true);
 
   // Filter states
@@ -76,7 +75,7 @@ const SearchPage = () => {
         const categoriesData = await fetchSupplierCategories();
         setSupplierCategories(categoriesData);
         
-        // Fetch distinct cities for the dropdown
+        // Fetch all distinct cities initially
         const citiesData = await getDistinctCities();
         setAvailableCities(citiesData.map(city => ({ label: city, value: city })).sort((a,b) => a.label.localeCompare(b.label)));
 
@@ -114,7 +113,7 @@ const SearchPage = () => {
         shippingMethods: selectedShippingMethods.length > 0 ? selectedShippingMethods : undefined,
         hasWebsite: hasWebsiteFilter === 'yes' ? true : hasWebsiteFilter === 'no' ? false : null,
       };
-      const results = await searchSuppliers(filters, user?.id);
+      const results = await searchSuppliers(filters, userProfile?.id); // Changed user?.id to userProfile?.id
       setSuppliers(results);
     } catch (error) {
       console.error('Error searching suppliers:', error);
@@ -122,7 +121,7 @@ const SearchPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, user?.id]);
+  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, userProfile?.id]); // Added userProfile?.id to dependency array
 
   useEffect(() => {
     // Auto-search if not initial load and some filter changes, or searchTerm changes
