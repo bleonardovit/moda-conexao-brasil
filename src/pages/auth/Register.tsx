@@ -214,7 +214,7 @@ const Register = () => {
                 field
               }) => <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <SelectTrigger className="w-full bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-brand-purple/50 data-[placeholder]:text-slate-500 relative">
-                           <div className="flex items-center">
+                           <div className="flex items-center mx-[22px]">
                             <Building className="absolute left-3 h-5 w-5 text-slate-400" /> {/* Icon */}
                             <SelectValue placeholder="Selecione seu estado" className="pl-8" /> {/* Adjusted pl for icon */}
                            </div>
