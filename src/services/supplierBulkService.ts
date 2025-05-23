@@ -1,7 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { createSupplier, updateSupplier } from "@/services/supplierService";
-import type { Supplier } from "@/types";
+import { createSupplier } from "@/services/supplierService"; // Assuming updateSupplier might be used later
+import type { Supplier } from "@/types"; // Assuming Supplier might be used later
 import { SupplierFormValues } from "@/lib/validators/supplier-form";
 
 // Interface for the parsed data from Excel
@@ -36,15 +35,22 @@ export interface ImportResult {
   errors: ValidationErrors;
 }
 
+// Helper function to normalize strings consistently
+const normalizeString = (str: string | undefined | null): string => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+};
+
 // Map Excel data to Supplier Form Values
-export const mapRowToSupplierFormValues = (row: SupplierRowData): SupplierFormValues => {
-  // Function to normalize strings
-  const normalize = (str: string) => {
-    return (str || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  };
+export const mapRowToSupplierFormValues = (
+  row: SupplierRowData,
+  categoryNameToIdMap: Map<string, string> // NormalizedCategoryName -> CategoryID
+): SupplierFormValues => {
+  // Function to normalize strings (using the shared helper)
+  const normalize = normalizeString;
 
   // Parse payment methods
   const paymentMethods: ('pix' | 'card' | 'bankslip')[] = [];
@@ -80,9 +86,22 @@ export const mapRowToSupplierFormValues = (row: SupplierRowData): SupplierFormVa
   const requiresCnpj = row.precisa_cnpj ? 
     ['sim', 'yes', 'true', '1'].includes(normalize(row.precisa_cnpj)) : false;
 
-  // Parse categories
-  const categories = row.tipo_fornecedor ? 
-    row.tipo_fornecedor.split(',').map(c => c.trim()) : [];
+  // Parse categories: expects names from sheet, converts to IDs
+  const categoryIds: string[] = [];
+  if (row.tipo_fornecedor) {
+    const namesFromSheet = row.tipo_fornecedor.split(',').map(c => c.trim()).filter(name => name);
+    for (const name of namesFromSheet) {
+      const normalizedName = normalize(name);
+      const catId = categoryNameToIdMap.get(normalizedName);
+      if (catId) {
+        categoryIds.push(catId);
+      } else {
+        // This should ideally be caught by validateSupplierRow.
+        // Logging here can help debug if validation consistency issues arise.
+        console.warn(`[mapRowToSupplierFormValues] Nome da categoria "${name}" (normalizado: "${normalizedName}") não encontrado no mapa de categorias para o fornecedor ${row.codigo}. Categorias mapeadas: ${Array.from(categoryNameToIdMap.keys()).join(', ')}`);
+      }
+    }
+  }
 
   return {
     code: row.codigo || '',
@@ -99,7 +118,7 @@ export const mapRowToSupplierFormValues = (row: SupplierRowData): SupplierFormVa
     custom_shipping_method: '', // Assuming this is intentional or handled elsewhere
     city: row.cidade || '',
     state: row.estado || '',
-    categories: categories,
+    categories: categoryIds,
     featured: false, // Default value
     hidden: false,   // Default value
     images: [], // Will be filled later with image URLs
@@ -108,12 +127,13 @@ export const mapRowToSupplierFormValues = (row: SupplierRowData): SupplierFormVa
 
 // Validate a supplier row
 export const validateSupplierRow = (
-  row: SupplierRowData, 
+  row: SupplierRowData,
   existingCodes: Set<string>,
-  existingCategories: Map<string, string>
+  categoryNameToIdMap: Map<string, string> // NormalizedCategoryName -> CategoryID
 ): string[] => {
   const errors: string[] = [];
-  
+  const normalize = normalizeString; // Use the shared helper
+
   // Check required fields
   if (!row.codigo || row.codigo.trim() === '') errors.push('Código é obrigatório');
   if (!row.nome || row.nome.trim() === '') errors.push('Nome é obrigatório');
@@ -128,13 +148,6 @@ export const validateSupplierRow = (
   
   // Validate price
   if (row.preco_medio && row.preco_medio.trim() !== '') {
-    const normalize = (str: string) => {
-      return (str || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-    };
-    
     const normalizedPrice = normalize(row.preco_medio);
     
     if (!['baixo', 'medio', 'alto', 'low', 'medium', 'high', '1', '2', '3'].includes(normalizedPrice)) {
@@ -142,19 +155,24 @@ export const validateSupplierRow = (
     }
   }
   
-  // Validate categories
+  // Validate categories by name
   if (row.tipo_fornecedor && row.tipo_fornecedor.trim() !== '') {
-    const categoryIds = row.tipo_fornecedor.split(',').map(c => c.trim());
-    for (const catId of categoryIds) {
-      if (catId && !existingCategories.has(catId)) {
-        errors.push(`Categoria com ID '${catId}' não foi encontrada`);
+    const categoryNamesFromSheet = row.tipo_fornecedor.split(',').map(c => c.trim()).filter(name => name);
+    if (categoryNamesFromSheet.length === 0 && row.tipo_fornecedor.trim() !== '') {
+      // Handles cases like " , " which results in empty array after filter
+      errors.push('Formato de categorias inválido. Use nomes de categorias separados por vírgula.');
+    }
+    for (const nameFromSheet of categoryNamesFromSheet) {
+      const normalizedNameFromSheet = normalize(nameFromSheet);
+      if (!categoryNameToIdMap.has(normalizedNameFromSheet)) {
+        errors.push(`Categoria com nome '${nameFromSheet}' não foi encontrada.`);
       }
     }
   } else {
-    errors.push('Pelo menos uma categoria deve ser informada');
+    errors.push('Pelo menos uma categoria deve ser informada. Forneça nomes de categorias separados por vírgula.');
   }
   
-  console.log(`Validação do fornecedor ${row.codigo}: ${errors.length > 0 ? `${errors.length} erros` : 'válido'}`);
+  console.log(`Validação do fornecedor ${row.codigo} (por nome de categoria): ${errors.length > 0 ? `${errors.length} erros` : 'válido'}`);
   if (errors.length > 0) {
     console.log(`Erros para ${row.codigo}:`, errors);
   }
@@ -164,7 +182,7 @@ export const validateSupplierRow = (
 
 // Import suppliers from parsed data
 export const importSuppliers = async (
-  suppliers: SupplierRowData[], 
+  suppliers: SupplierRowData[],
   imageMap: Record<string, string[]> = {},
   onProgress?: (progress: number) => void
 ): Promise<ImportResult> => {
@@ -174,9 +192,9 @@ export const importSuppliers = async (
     errorCount: 0,
     errors: {}
   };
-  
+
   try {
-    // Get existing supplier codes to check for duplicates
+    // Get existing supplier codes
     const { data: existingSuppliers, error: fetchError } = await supabase
       .from('suppliers')
       .select('code');
@@ -189,82 +207,79 @@ export const importSuppliers = async (
     }
     
     const existingCodes = new Set((existingSuppliers || []).map(s => s.code));
-    console.log('Códigos existentes:', Array.from(existingCodes));
-    
-    // Get existing categories
+    console.log('Códigos de fornecedores existentes:', Array.from(existingCodes));
+
+    // Get existing categories to build the name-to-ID map
     const { data: categoriesData, error: categoriesError } = await supabase
       .from('categories')
       .select('id, name');
 
     if (categoriesError) {
-      console.error('Error fetching existing categories:', categoriesError);
+      console.error('Erro ao buscar categorias existentes:', categoriesError);
       result.success = false;
-      result.errors['global'] = [`Erro ao buscar categorias existentes: ${categoriesError.message}`];
+      result.errors['global'] = [`Erro ao buscar categorias: ${categoriesError.message}`];
       return result;
     }
-    
-    const existingCategories = new Map(
-      (categoriesData || []).map(c => [c.id, c.name])
-    );
-    console.log('Categorias existentes:', Array.from(existingCategories.keys()));
-    
-    // Validate all rows first
+
+    const categoryNameToIdMap = new Map<string, string>();
+    (categoriesData || []).forEach(c => {
+      if (c.id && c.name) {
+        categoryNameToIdMap.set(normalizeString(c.name), c.id);
+      }
+    });
+    console.log('Mapa NomeNormalizado->ID de Categoria construído em importSuppliers:', categoryNameToIdMap);
+
+    // Validate all rows first using the categoryNameToIdMap
     for (const row of suppliers) {
-      const errors = validateSupplierRow(row, existingCodes, existingCategories);
+      const errors = validateSupplierRow(row, existingCodes, categoryNameToIdMap);
       if (errors.length > 0) {
-        result.errors[row.codigo || `unknown-${Date.now()}`] = errors; // Ensure unique key for errors
+        result.errors[row.codigo || `unknown-${Date.now()}`] = errors;
         result.errorCount++;
       }
     }
-    
-    // If there are validation errors, stop here
+
     if (result.errorCount > 0) {
       result.success = false;
+      console.log('Erros de validação encontrados antes da importação:', result.errors);
       return result;
     }
-    
+
     // Import suppliers if validation passed
     let processed = 0;
-    
     for (const row of suppliers) {
       const supplierCodeForError = row.codigo || `unknown-processing-${Date.now()}`;
       try {
-        // Map Excel data to supplier format
-        const supplierData = mapRowToSupplierFormValues(row);
-        
-        // Add images if available
+        // Map Excel data, passing the categoryNameToIdMap
+        const supplierData = mapRowToSupplierFormValues(row, categoryNameToIdMap);
+
         if (imageMap[row.codigo]) {
           supplierData.images = imageMap[row.codigo];
         }
-        
-        console.log(`Importing supplier ${supplierData.code}...`);
-        
-        // Create supplier in database
-        // Assuming createSupplier handles its own errors or throws them
-        await createSupplier(supplierData); 
-        
+
+        console.log(`Importando fornecedor ${supplierData.code} com IDs de categoria: ${supplierData.categories.join(', ')}`);
+        await createSupplier(supplierData);
         result.successCount++;
-        console.log(`Supplier ${supplierData.code} imported successfully!`);
+        console.log(`Fornecedor ${supplierData.code} importado com sucesso!`);
       } catch (error) {
-        console.error(`Error importing supplier ${supplierCodeForError}:`, error);
+        console.error(`Erro ao importar fornecedor ${supplierCodeForError}:`, error);
         result.errors[supplierCodeForError] = [
           `Erro ao importar: ${error instanceof Error ? error.message : 'erro desconhecido'}`
         ];
         result.errorCount++;
-        result.success = false; // Mark overall success as false if any supplier fails
+        result.success = false;
       }
-      
+
       processed++;
       if (onProgress) {
         onProgress(Math.floor((processed / suppliers.length) * 100));
       }
     }
-    
+
     return result;
   } catch (error) {
-    console.error('Error in bulk import process:', error);
+    console.error('Erro no processo de importação em massa:', error);
     result.success = false;
-    result.errors['global'] = [ // Ensure 'global' errors are captured
+    result.errors['global'] = [
       `Erro no processo de importação: ${error instanceof Error ? error.message : 'erro desconhecido'}`
     ];
     return result;

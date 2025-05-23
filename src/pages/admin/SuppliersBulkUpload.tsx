@@ -34,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from 'xlsx';
 import { 
   SupplierRowData, 
-  validateSupplierRow,
+  validateSupplierRow, // validateSupplierRow now expects categoryNameToIdMap
   importSuppliers, 
   processImagesFromZip, 
   saveImportHistory,
@@ -53,6 +53,15 @@ const TEMPLATE_HEADERS = [
   'imagens' 
 ];
 
+// Helper function to normalize strings consistently (can be moved to a utils file later)
+const normalizeString = (str: string | undefined | null): string => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+};
+
 export default function SuppliersBulkUpload() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'upload' | 'review' | 'history'>('upload');
@@ -64,7 +73,12 @@ export default function SuppliersBulkUpload() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [importHistory, setImportHistory] = useState<SupplierImportHistory[]>([]);
+  
+  // existingCategories stores ID -> Name
   const [existingCategories, setExistingCategories] = useState<Map<string, string>>(new Map());
+  // categoryNameToIdMap stores NormalizedName -> ID
+  const [categoryNameToIdMap, setCategoryNameToIdMap] = useState<Map<string, string>>(new Map());
+  
   const [existingCodes, setExistingCodes] = useState<Set<string>>(new Set());
   
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -86,10 +100,18 @@ export default function SuppliersBulkUpload() {
             description: categoriesError.message
           });
         } else {
-          const categoriesMap = new Map();
-          (categoriesData || []).forEach(cat => categoriesMap.set(cat.id, cat.name));
-          setExistingCategories(categoriesMap);
-          console.log("Categories loaded:", categoriesMap.size);
+          const idToNameMap = new Map<string, string>();
+          const nameToIdMap = new Map<string, string>();
+          (categoriesData || []).forEach(cat => {
+            if (cat.id && cat.name) {
+              idToNameMap.set(cat.id, cat.name);
+              nameToIdMap.set(normalizeString(cat.name), cat.id);
+            }
+          });
+          setExistingCategories(idToNameMap);
+          setCategoryNameToIdMap(nameToIdMap);
+          console.log("Categories (ID->Name) loaded:", idToNameMap.size);
+          console.log("Categories (NormalizedName->ID) loaded:", nameToIdMap.size);
         }
         
         const { data: suppliersData, error: suppliersError } = await supabase
@@ -150,13 +172,6 @@ export default function SuppliersBulkUpload() {
       });
     }
   };
-    
-  function normalize(str: string) {
-    return (str || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, ""); 
-  }
   
   const downloadTemplate = () => {
     const exampleData = [
@@ -241,6 +256,7 @@ export default function SuppliersBulkUpload() {
       const suppliers = jsonData.filter(row => 
         Object.values(row).some(value => value !== null && value !== undefined && String(value).trim() !== '')
       ).map(row => ({
+        // Ensure all fields are strings as expected by SupplierRowData
         codigo: String(row.codigo || ''),
         nome: String(row.nome || ''),
         descricao: String(row.descricao || ''),
@@ -254,7 +270,7 @@ export default function SuppliersBulkUpload() {
         envio: String(row.envio || ''),
         precisa_cnpj: String(row.precisa_cnpj || ''),
         formas_pagamento: String(row.formas_pagamento || ''),
-        tipo_fornecedor: String(row.tipo_fornecedor || ''),
+        tipo_fornecedor: String(row.tipo_fornecedor || ''), // Keep as string from sheet
         imagens: String(row.imagens || ''),
       }));
       console.log("handleExcelUpload: Mapped suppliers data:", suppliers);
@@ -263,8 +279,13 @@ export default function SuppliersBulkUpload() {
       
       const currentExistingCodes = new Set(existingCodes); 
       const errors: ValidationErrors = {};
+      
+      // Use categoryNameToIdMap from state for validation
+      console.log("handleExcelUpload: Using categoryNameToIdMap for validation:", categoryNameToIdMap);
+
       suppliers.forEach((supplier, index) => {
-        const supplierErrors = validateSupplierRow(supplier, currentExistingCodes, existingCategories);
+        // Pass categoryNameToIdMap from component state
+        const supplierErrors = validateSupplierRow(supplier, currentExistingCodes, categoryNameToIdMap);
         if (supplierErrors.length > 0) {
           errors[supplier.codigo || `linha-${index + 2}`] = supplierErrors; 
         }
@@ -401,7 +422,7 @@ export default function SuppliersBulkUpload() {
     const currentValidationErrors = { ...validationErrors };
     let hasAnyErrors = false;
     parsedSuppliers.forEach((supplier, index) => {
-        const supplierErrors = validateSupplierRow(supplier, existingCodes, existingCategories);
+        const supplierErrors = validateSupplierRow(supplier, existingCodes, categoryNameToIdMap);
         if (supplierErrors.length > 0) {
           currentValidationErrors[supplier.codigo || `review-err-${index}`] = supplierErrors;
           hasAnyErrors = true;
@@ -733,12 +754,14 @@ export default function SuppliersBulkUpload() {
               </Alert>
             )}
             
-            {existingCategories.size === 0 && parsedSuppliers.length > 0 && (
+            {categoryNameToIdMap.size === 0 && parsedSuppliers.length > 0 && (
               <Alert variant="default" className="shadow-md border-yellow-500 text-yellow-700 [&>svg]:text-yellow-500"> 
                 <AlertTriangle className="h-5 w-5" />
-                <AlertTitle className="font-semibold">Atenção: Nenhuma Categoria Cadastrada</AlertTitle>
+                <AlertTitle className="font-semibold">Atenção: Nenhuma Categoria Cadastrada ou Mapeada</AlertTitle>
                 <AlertDescription>
-                  Não há categorias cadastradas no sistema. Os fornecedores serão importados, mas as categorias listadas na planilha não serão vinculadas até que sejam criadas no sistema com os IDs correspondentes.
+                  Não há categorias cadastradas no sistema ou o mapa de nomes para IDs não pôde ser construído. 
+                  Os fornecedores serão importados, mas as categorias listadas na planilha não serão vinculadas 
+                  corretamente se os nomes não corresponderem aos cadastrados no sistema.
                 </AlertDescription>
               </Alert>
             )}
@@ -773,7 +796,8 @@ export default function SuppliersBulkUpload() {
                         const errorsForSupplier = validationErrors[supplier.codigo || `review-err-${idx}`] || [];
                         const hasErrors = errorsForSupplier.length > 0;
                         const supplierZipImages = previewImages[supplier.codigo] || [];
-                        const categoriesFromSheet = supplier.tipo_fornecedor?.split(',').map(t => t.trim()).filter(t => t) || [];
+                        // Get category names from the sheet
+                        const categoriesFromSheetAsNames = supplier.tipo_fornecedor?.split(',').map(t => t.trim()).filter(t => t) || [];
                         
                         return (
                           <TableRow key={supplier.codigo || `review-key-${idx}`} className={hasErrors ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}>
@@ -810,37 +834,32 @@ export default function SuppliersBulkUpload() {
                             </TableCell>
                             <TableCell className="text-xs">{supplier.cidade && supplier.estado ? `${supplier.cidade}/${supplier.estado}` : 'N/A'}</TableCell>
                             <TableCell>
-                              {categoriesFromSheet.length > 0 ? (
+                              {categoriesFromSheetAsNames.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
-                                  {categoriesFromSheet.map((catId, i) => (
-                                    <Badge key={i} variant={existingCategories.has(catId) ? "default" : "outline"} className="text-xs">
-                                      {existingCategories.get(catId) || catId}
-                                      {!existingCategories.has(catId) && " (Novo?)"}
-                                    </Badge>
-                                  ))}
+                                  {categoriesFromSheetAsNames.map((catNameFromSheet, i) => {
+                                    const normalizedSheetName = normalizeString(catNameFromSheet);
+                                    // Use categoryNameToIdMap (NormalizedName -> ID) from state
+                                    const categoryId = categoryNameToIdMap.get(normalizedSheetName);
+                                    // Use existingCategories (ID -> OriginalName) from state to get original casing
+                                    const actualDbName = categoryId ? existingCategories.get(categoryId) : undefined;
+
+                                    return (
+                                      <Badge 
+                                        key={i} 
+                                        variant={categoryId ? "default" : "outline"} 
+                                        className="text-xs"
+                                        title={categoryId ? `ID: ${categoryId}` : `Nome da planilha: ${catNameFromSheet}`}
+                                      >
+                                        {actualDbName || catNameFromSheet} {/* Show original DB name if mapped, else sheet name */}
+                                        {!categoryId && " (Nova?)"}
+                                      </Badge>
+                                    );
+                                  })}
                                 </div>
                               ) : <span className="text-xs text-muted-foreground">Nenhuma</span> }
                             </TableCell>
                             <TableCell>
-                              {supplierZipImages.length > 0 ? (
-                                <div className="flex gap-1 items-center">
-                                  {supplierZipImages.slice(0, 3).map((img, i) => (
-                                    <img 
-                                      key={i}
-                                      src={img} 
-                                      alt={`Preview ${i}`} 
-                                      className="h-8 w-8 object-cover rounded border" 
-                                    />
-                                  ))}
-                                  {supplierZipImages.length > 3 && (
-                                    <Badge variant="outline" className="text-xs">+{supplierZipImages.length - 3}</Badge>
-                                  )}
-                                </div>
-                              ) : supplier.imagens && supplier.imagens.trim() !== '' ? (
-                                <span className="text-xs text-amber-600">Imagens listadas, mas não no ZIP</span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Sem imagens</span>
-                              )}
+                              {/* ... keep existing code (Image previews) ... */}
                             </TableCell>
                           </TableRow>
                         );
