@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -34,11 +35,12 @@ import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from 'xlsx';
 import { 
   SupplierRowData, 
-  validateSupplierRow, // validateSupplierRow now expects categoryNameToIdMap
+  validateSupplierRow,
   importSuppliers, 
   processImagesFromZip, 
   saveImportHistory,
   ValidationErrors,
+  // mapRowToSupplierFormValues, // No longer directly used here for display logic
 } from '@/services/supplierBulkService';
 
 const TEMPLATE_HEADERS = [
@@ -63,6 +65,7 @@ const normalizeString = (str: string | undefined | null): string => {
 };
 
 export default function SuppliersBulkUpload() {
+  console.log('[SuppliersBulkUpload Render] Component rendering/re-rendering.'); // Log Adicionado
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'upload' | 'review' | 'history'>('upload');
   const [excelFile, setExcelFile] = useState<File | null>(null);
@@ -74,11 +77,8 @@ export default function SuppliersBulkUpload() {
   const [progress, setProgress] = useState(0);
   const [importHistory, setImportHistory] = useState<SupplierImportHistory[]>([]);
   
-  // existingCategories stores ID -> Name
   const [existingCategories, setExistingCategories] = useState<Map<string, string>>(new Map());
-  // categoryNameToIdMap stores NormalizedName -> ID
   const [categoryNameToIdMap, setCategoryNameToIdMap] = useState<Map<string, string>>(new Map());
-  
   const [existingCodes, setExistingCodes] = useState<Set<string>>(new Set());
   
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -256,7 +256,6 @@ export default function SuppliersBulkUpload() {
       const suppliers = jsonData.filter(row => 
         Object.values(row).some(value => value !== null && value !== undefined && String(value).trim() !== '')
       ).map(row => ({
-        // Ensure all fields are strings as expected by SupplierRowData
         codigo: String(row.codigo || ''),
         nome: String(row.nome || ''),
         descricao: String(row.descricao || ''),
@@ -270,7 +269,7 @@ export default function SuppliersBulkUpload() {
         envio: String(row.envio || ''),
         precisa_cnpj: String(row.precisa_cnpj || ''),
         formas_pagamento: String(row.formas_pagamento || ''),
-        tipo_fornecedor: String(row.tipo_fornecedor || ''), // Keep as string from sheet
+        tipo_fornecedor: String(row.tipo_fornecedor || ''),
         imagens: String(row.imagens || ''),
       }));
       console.log("handleExcelUpload: Mapped suppliers data:", suppliers);
@@ -280,19 +279,17 @@ export default function SuppliersBulkUpload() {
       const currentExistingCodes = new Set(existingCodes); 
       const errors: ValidationErrors = {};
       
-      // Use categoryNameToIdMap from state for validation
       console.log("handleExcelUpload: Using categoryNameToIdMap for validation:", categoryNameToIdMap);
 
       suppliers.forEach((supplier, index) => {
-        // Pass categoryNameToIdMap from component state
         const supplierErrors = validateSupplierRow(supplier, currentExistingCodes, categoryNameToIdMap);
         if (supplierErrors.length > 0) {
           errors[supplier.codigo || `linha-${index + 2}`] = supplierErrors; 
         }
       });
+      setValidationErrors(errors); // Ensure validationErrors is also set
       console.log("handleExcelUpload: Validation errors:", errors);
       
-      setValidationErrors(errors);
       setProgress(100);
       
       toast({
@@ -300,6 +297,9 @@ export default function SuppliersBulkUpload() {
         description: `${suppliers.length} fornecedores encontrados. ${Object.keys(errors).length > 0 ? `${Object.keys(errors).length} com erros de validação.` : 'Nenhum erro de validação.'}`
       });
       
+      console.log("handleExcelUpload: FINAL parsedSuppliers state before tab switch:", suppliers);
+      console.log("handleExcelUpload: FINAL validationErrors state before tab switch:", errors);
+
       if (suppliers.length > 0) {
         console.log("handleExcelUpload: Moving to review tab.");
         setActiveTab('review');
@@ -708,6 +708,13 @@ export default function SuppliersBulkUpload() {
           </TabsContent>
           
           <TabsContent value="review" className="space-y-6">
+            {(() => { // IIFE for logging
+              console.log('[Review Tab Render] Active Tab:', activeTab);
+              console.log('[Review Tab Render] Parsed Suppliers (length):', parsedSuppliers.length, parsedSuppliers);
+              console.log('[Review Tab Render] Validation Errors:', validationErrors);
+              console.log('[Review Tab Render] Is Processing:', isProcessing);
+              return null;
+            })()}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-2xl font-semibold text-gray-700">Revisar Dados e Importar</h2>
               <div className="flex flex-wrap gap-2">
@@ -729,7 +736,6 @@ export default function SuppliersBulkUpload() {
                   onClick={confirmImport}
                   disabled={
                     parsedSuppliers.length === 0 || 
-                    // Object.values(validationErrors).some(errs => errs.length > 0) || // Allow import even with errors, they will be skipped by importSuppliers
                     isProcessing
                   }
                   size="lg"
@@ -796,7 +802,6 @@ export default function SuppliersBulkUpload() {
                         const errorsForSupplier = validationErrors[supplier.codigo || `review-err-${idx}`] || [];
                         const hasErrors = errorsForSupplier.length > 0;
                         const supplierZipImages = previewImages[supplier.codigo] || [];
-                        // Get category names from the sheet
                         const categoriesFromSheetAsNames = supplier.tipo_fornecedor?.split(',').map(t => t.trim()).filter(t => t) || [];
                         
                         return (
@@ -838,9 +843,7 @@ export default function SuppliersBulkUpload() {
                                 <div className="flex flex-wrap gap-1">
                                   {categoriesFromSheetAsNames.map((catNameFromSheet, i) => {
                                     const normalizedSheetName = normalizeString(catNameFromSheet);
-                                    // Use categoryNameToIdMap (NormalizedName -> ID) from state
                                     const categoryId = categoryNameToIdMap.get(normalizedSheetName);
-                                    // Use existingCategories (ID -> OriginalName) from state to get original casing
                                     const actualDbName = categoryId ? existingCategories.get(categoryId) : undefined;
 
                                     return (
@@ -850,8 +853,8 @@ export default function SuppliersBulkUpload() {
                                         className="text-xs"
                                         title={categoryId ? `ID: ${categoryId}` : `Nome da planilha: ${catNameFromSheet}`}
                                       >
-                                        {actualDbName || catNameFromSheet} {/* Show original DB name if mapped, else sheet name */}
-                                        {!categoryId && " (Nova?)"}
+                                        {actualDbName || catNameFromSheet}
+                                        {!categoryId && !actualDbName && " (Nova?)"} {/* Ajustado para mostrar (Nova?) apenas se não mapeado */}
                                       </Badge>
                                     );
                                   })}
@@ -859,7 +862,24 @@ export default function SuppliersBulkUpload() {
                               ) : <span className="text-xs text-muted-foreground">Nenhuma</span> }
                             </TableCell>
                             <TableCell>
-                              {/* ... keep existing code (Image previews) ... */}
+                               {supplierZipImages.length > 0 ? (
+                                <div className="flex space-x-2">
+                                  {supplierZipImages.slice(0, 2).map((imgUrl, imgIdx) => (
+                                    <div key={imgIdx} className="w-10 h-10 rounded border overflow-hidden bg-muted">
+                                      <img src={imgUrl} alt={`Preview ${imgIdx + 1}`} className="object-cover w-full h-full" />
+                                    </div>
+                                  ))}
+                                  {supplierZipImages.length > 2 && (
+                                    <div className="w-10 h-10 rounded border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                                      +{supplierZipImages.length - 2}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : supplier.imagens && supplier.imagens.trim() !== '' ? (
+                                <span className="text-xs text-orange-600 italic">ZIP pendente</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Nenhuma</span>
+                              )}
                             </TableCell>
                           </TableRow>
                         );
@@ -867,14 +887,10 @@ export default function SuppliersBulkUpload() {
                     </TableBody>
                   </Table>
                 </CardContent>
-                 {parsedSuppliers.length === 0 && !isProcessing && (
-                    <CardContent>
-                        <p className="text-center text-muted-foreground py-8">Nenhum fornecedor carregado da planilha.</p>
-                    </CardContent>
-                )}
+                {/* A condição redundante foi removida daqui, pois o Card só renderiza se parsedSuppliers.length > 0 */}
               </Card>
             )}
-             {parsedSuppliers.length === 0 && !isProcessing && (
+             {!isProcessing && parsedSuppliers.length === 0 && ( // Esta é a mensagem correta para quando não há fornecedores
                 <div className="text-center py-10 text-muted-foreground">
                     <FileSpreadsheet className="mx-auto h-12 w-12 mb-4"/>
                     <p>Nenhum dado de fornecedor para revisar.</p>
@@ -974,3 +990,4 @@ export default function SuppliersBulkUpload() {
     </AdminLayout>
   );
 }
+
