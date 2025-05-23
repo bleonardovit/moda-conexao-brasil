@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,6 +73,7 @@ export default function SuppliersBulkUpload() {
   useEffect(() => {
     const fetchExistingData = async () => {
       try {
+        console.log("Fetching existing categories and supplier codes...");
         const { data: categoriesData, error: categoriesError } = await supabase
           .from('categories')
           .select('id, name');
@@ -88,6 +89,7 @@ export default function SuppliersBulkUpload() {
           const categoriesMap = new Map();
           (categoriesData || []).forEach(cat => categoriesMap.set(cat.id, cat.name));
           setExistingCategories(categoriesMap);
+          console.log("Categories loaded:", categoriesMap.size);
         }
         
         const { data: suppliersData, error: suppliersError } = await supabase
@@ -104,6 +106,7 @@ export default function SuppliersBulkUpload() {
         } else {
           const codesSet = new Set((suppliersData || []).map(s => s.code));
           setExistingCodes(codesSet);
+          console.log("Supplier codes loaded:", codesSet.size);
         }
         
       } catch (error) {
@@ -216,6 +219,7 @@ export default function SuppliersBulkUpload() {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    console.log("handleExcelUpload: Starting Excel file processing.", file.name);
     setExcelFile(file);
     setProgress(0);
     setIsProcessing(true);
@@ -232,6 +236,7 @@ export default function SuppliersBulkUpload() {
         header: TEMPLATE_HEADERS, 
         range: 1 
       }) as Partial<SupplierRowData>[];
+      console.log("handleExcelUpload: Raw JSON data from Excel:", jsonData);
 
       const suppliers = jsonData.filter(row => 
         Object.values(row).some(value => value !== null && value !== undefined && String(value).trim() !== '')
@@ -252,6 +257,7 @@ export default function SuppliersBulkUpload() {
         tipo_fornecedor: String(row.tipo_fornecedor || ''),
         imagens: String(row.imagens || ''),
       }));
+      console.log("handleExcelUpload: Mapped suppliers data:", suppliers);
       
       setParsedSuppliers(suppliers);
       
@@ -263,17 +269,21 @@ export default function SuppliersBulkUpload() {
           errors[supplier.codigo || `linha-${index + 2}`] = supplierErrors; 
         }
       });
+      console.log("handleExcelUpload: Validation errors:", errors);
       
       setValidationErrors(errors);
       setProgress(100);
       
       toast({
         title: "Planilha processada",
-        description: `${suppliers.length} fornecedores encontrados. ${Object.keys(errors).length} com erros de validação.`
+        description: `${suppliers.length} fornecedores encontrados. ${Object.keys(errors).length > 0 ? `${Object.keys(errors).length} com erros de validação.` : 'Nenhum erro de validação.'}`
       });
       
       if (suppliers.length > 0) {
+        console.log("handleExcelUpload: Moving to review tab.");
         setActiveTab('review');
+      } else {
+        console.log("handleExcelUpload: No suppliers found in the sheet.");
       }
     } catch (error) {
       console.error('Erro ao processar planilha:', error);
@@ -284,6 +294,7 @@ export default function SuppliersBulkUpload() {
       });
     } finally {
       setIsProcessing(false);
+      console.log("handleExcelUpload: Processing finished.");
     }
   };
   
@@ -364,34 +375,62 @@ export default function SuppliersBulkUpload() {
   };
 
   const confirmImport = async () => {
+    console.log("confirmImport: Starting import confirmation process.");
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.user) {
+      toast({
+        variant: "destructive",
+        title: "Sessão inválida ou expirada",
+        description: "Sua sessão de login não é mais válida. Por favor, faça login novamente e tente importar.",
+        duration: 7000,
+      });
+      console.error("confirmImport: User session is invalid or expired.");
+      setIsProcessing(false); // Ensure processing state is reset
+      // Optionally redirect to login or prompt user to refresh
+      return;
+    }
+    console.log("confirmImport: User session is valid. User ID:", session.user.id);
+
     if (parsedSuppliers.length === 0) {
       toast({ title: "Nenhum fornecedor para importar", description: "Faça upload de uma planilha.", variant: "destructive" });
+      console.warn("confirmImport: No suppliers to import.");
       return;
     }
 
     const currentValidationErrors = { ...validationErrors };
+    let hasAnyErrors = false;
     parsedSuppliers.forEach((supplier, index) => {
         const supplierErrors = validateSupplierRow(supplier, existingCodes, existingCategories);
         if (supplierErrors.length > 0) {
           currentValidationErrors[supplier.codigo || `review-err-${index}`] = supplierErrors;
+          hasAnyErrors = true;
+        } else if (currentValidationErrors[supplier.codigo || `review-err-${index}`]) {
+          // Clear previous errors if now valid
+          delete currentValidationErrors[supplier.codigo || `review-err-${index}`];
         }
      });
      setValidationErrors(currentValidationErrors);
+     console.log("confirmImport: Re-validated suppliers. Errors:", currentValidationErrors);
 
-    if (Object.keys(currentValidationErrors).some(key => currentValidationErrors[key]?.length > 0)) {
+    if (hasAnyErrors) {
       toast({
         variant: "destructive",
         title: "Erro na validação",
-        description: "Corrija os erros antes de importar."
+        description: "Corrija os erros identificados antes de importar. Verifique a planilha ou os dados na aba de revisão.",
+        duration: 7000,
       });
       setActiveTab('review'); 
+      console.warn("confirmImport: Validation errors found. Aborting import.");
       return;
     }
     
     setIsProcessing(true);
     setProgress(0);
+    console.log("confirmImport: Starting actual import process.");
     
     try {
+      // ... keep existing code (bucket check logic)
       const { data: buckets, error: listBucketError } = await supabase.storage.listBuckets();
       if (listBucketError) {
         console.error("Erro ao listar buckets:", listBucketError);
@@ -442,14 +481,17 @@ export default function SuppliersBulkUpload() {
       }
       
       toast({ title: "Importando fornecedores...", description: "Aguarde..." });
+      console.log("confirmImport: Calling importSuppliers service.");
       const result = await importSuppliers(
         parsedSuppliers, 
         imageMap,
         (p) => setProgress(30 + Math.floor(p * 0.6)) 
       );
+      console.log("confirmImport: importSuppliers result:", result);
       
       setProgress(95);
       
+      console.log("confirmImport: Calling saveImportHistory service.");
       await saveImportHistory({
         filename: excelFile?.name || 'importacao_manual.xlsx',
         total_count: parsedSuppliers.length,
@@ -458,6 +500,7 @@ export default function SuppliersBulkUpload() {
         status: result.successCount === parsedSuppliers.length && result.errorCount === 0 ? 'success' : 'error',
         error_details: result.errorCount > 0 ? result.errors : undefined,
       });
+      console.log("confirmImport: saveImportHistory finished.");
       
       setProgress(100);
       
@@ -476,6 +519,7 @@ export default function SuppliersBulkUpload() {
         if (zipInputRef.current) zipInputRef.current.value = '';
         fetchImportHistory(); 
         setActiveTab('history');
+        console.log("confirmImport: Import successful, resetting state and moving to history tab.");
       } else {
          toast({
           variant: "destructive",
@@ -486,6 +530,7 @@ export default function SuppliersBulkUpload() {
         setValidationErrors(result.errors); 
         fetchImportHistory(); 
         setActiveTab('review');
+        console.warn("confirmImport: Import finished with errors. Errors:", result.errors);
       }
       
     } catch (error) {
@@ -496,17 +541,23 @@ export default function SuppliersBulkUpload() {
         description: error instanceof Error ? error.message : "Ocorreu um erro inesperado."
       });
       setProgress(0); 
-      await saveImportHistory({
-        filename: excelFile?.name || 'import_critical_fail.xlsx',
-        total_count: parsedSuppliers.length,
-        success_count: 0,
-        error_count: parsedSuppliers.length, 
-        status: 'error',
-        error_details: { global: ['Erro crítico no processo: ' + (error instanceof Error ? error.message : "Desconhecido")] },
-      });
+      // Attempt to save history even on critical failure, if possible
+      try {
+        await saveImportHistory({
+          filename: excelFile?.name || 'import_critical_fail.xlsx',
+          total_count: parsedSuppliers.length,
+          success_count: 0, // Assuming no success in critical error
+          error_count: parsedSuppliers.length, 
+          status: 'error',
+          error_details: { global: ['Erro crítico no processo: ' + (error instanceof Error ? error.message : "Desconhecido")] },
+        });
+      } catch (historyError) {
+        console.error("Failed to save history after critical import error:", historyError);
+      }
       fetchImportHistory();
     } finally {
       setIsProcessing(false);
+      console.log("confirmImport: Import process finished (finally block).");
     }
   };
   
@@ -619,7 +670,7 @@ export default function SuppliersBulkUpload() {
               </Card>
             </div>
             
-            {isProcessing && (
+            {isProcessing && excelFile && ( // Show progress only if excelFile is selected to avoid showing on initial load
               <div className="space-y-2 p-4 border rounded-md bg-gray-50">
                 <p className="text-sm text-muted-foreground text-center font-medium">Processando arquivos...</p>
                 <Progress value={progress} className="w-full h-3" /> 
@@ -657,14 +708,16 @@ export default function SuppliersBulkUpload() {
                   onClick={confirmImport}
                   disabled={
                     parsedSuppliers.length === 0 || 
-                    Object.values(validationErrors).some(errs => errs.length > 0) ||
+                    // Object.values(validationErrors).some(errs => errs.length > 0) || // Allow import even with errors, they will be skipped by importSuppliers
                     isProcessing
                   }
                   size="lg"
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Import className="mr-2 h-5 w-5" />
-                  {isProcessing ? 'Importando...' : `Confirmar Importação (${parsedSuppliers.length - Object.keys(validationErrors).filter(k => validationErrors[k]?.length > 0).length} válidos)`}
+                  {isProcessing ? 'Importando...' : 
+                    `Confirmar Importação (${parsedSuppliers.filter(s => !(validationErrors[s.codigo]?.length > 0)).length} válidos de ${parsedSuppliers.length})`
+                  }
                 </Button>
               </div>
             </div>
@@ -674,8 +727,8 @@ export default function SuppliersBulkUpload() {
                 <AlertTriangle className="h-5 w-5" />
                 <AlertTitle className="font-semibold">Erros de Validação Encontrados</AlertTitle>
                 <AlertDescription>
-                  Existem {Object.keys(validationErrors).filter(k => validationErrors[k]?.length > 0).length} fornecedores com erros que precisam ser corrigidos na planilha e reenviados.
-                   Você pode exportar um relatório detalhado dos erros.
+                  Existem {Object.keys(validationErrors).filter(k => validationErrors[k]?.length > 0).length} fornecedores com erros. 
+                  Apenas os fornecedores válidos serão importados. Você pode exportar um relatório detalhado dos erros.
                 </AlertDescription>
               </Alert>
             )}
