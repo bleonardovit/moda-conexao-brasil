@@ -18,6 +18,8 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
+      console.log(`Starting upload for file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      
       // Validate file size (5MB limit)
       const fileSizeInMB = file.size / 1024 / 1024;
       if (fileSizeInMB > 5) {
@@ -33,6 +35,48 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
+      
+      console.log(`Uploading file to path: ${filePath}`);
+      
+      // Verify bucket exists before upload
+      const { data: buckets, error: listBucketError } = await supabase.storage.listBuckets();
+      
+      if (listBucketError) {
+        console.error("Error checking buckets:", listBucketError);
+        toast({
+          title: "Erro ao verificar buckets",
+          description: "Não foi possível verificar os buckets de armazenamento",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      const bucketExists = buckets?.some(b => b.name === 'supplier-images');
+      
+      if (!bucketExists) {
+        console.log("Bucket 'supplier-images' doesn't exist, creating it...");
+        
+        const { error: createBucketError } = await supabase.storage.createBucket('supplier-images', {
+          public: true,
+        });
+        
+        if (createBucketError) {
+          // If error is not "already exists", show error message
+          if (!createBucketError.message.toLowerCase().includes('already exist')) {
+            console.error("Error creating bucket:", createBucketError);
+            toast({
+              title: "Erro ao criar bucket",
+              description: `Não foi possível criar bucket de imagens: ${createBucketError.message}`,
+              variant: "destructive",
+            });
+            return null;
+          } else {
+            console.log("Bucket already exists, continuing with upload");
+          }
+        } else {
+          console.log("Bucket 'supplier-images' created successfully");
+        }
+      }
       
       // Upload the file to Supabase Storage
       const { data, error } = await supabase.storage
@@ -52,11 +96,14 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
         return null;
       }
 
+      console.log(`File uploaded successfully, getting public URL for: ${data?.path || 'unknown path'}`);
+
       // Get public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('supplier-images')
         .getPublicUrl(data?.path || '');
       
+      console.log(`Got public URL: ${publicUrl}`);
       return publicUrl;
     } catch (error) {
       console.error('Error in file upload:', error);
@@ -73,6 +120,7 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
     if (e.target.files && e.target.files.length > 0) {
       setIsUploading(true);
       const newFiles = Array.from(e.target.files);
+      console.log(`Processing ${newFiles.length} files from input change`);
       
       // Upload each file and get public URLs
       const uploadPromises = newFiles.map(file => uploadImage(file));
@@ -80,6 +128,7 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
       
       // Filter out failed uploads
       const uploadedUrls = results.filter(url => url !== null) as string[];
+      console.log(`Successfully uploaded ${uploadedUrls.length} of ${newFiles.length} files`);
       
       if (uploadedUrls.length > 0) {
         const updatedImages = [...images, ...uploadedUrls];
@@ -107,6 +156,7 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setIsUploading(true);
       const newFiles = Array.from(e.dataTransfer.files);
+      console.log(`Processing ${newFiles.length} files from drag and drop`);
       
       // Upload each file and get public URLs
       const uploadPromises = newFiles.map(file => uploadImage(file));
@@ -114,6 +164,7 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
       
       // Filter out failed uploads
       const uploadedUrls = results.filter(url => url !== null) as string[];
+      console.log(`Successfully uploaded ${uploadedUrls.length} of ${newFiles.length} files from drag and drop`);
       
       if (uploadedUrls.length > 0) {
         const updatedImages = [...images, ...uploadedUrls];
@@ -127,15 +178,24 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
 
   const removeImage = async (index: number, imageUrl: string) => {
     try {
+      console.log(`Removing image at index ${index}: ${imageUrl}`);
+      
       // Extract the file path from the URL
       const url = new URL(imageUrl);
       const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/supplier-images\/(.*)/);
       
       if (pathMatch && pathMatch[1]) {
+        console.log(`Attempting to delete file from storage: ${pathMatch[1]}`);
         // Try to delete the file from storage
-        await supabase.storage
+        const { error } = await supabase.storage
           .from('supplier-images')
           .remove([pathMatch[1]]);
+          
+        if (error) {
+          console.error('Error removing image from storage:', error);
+        } else {
+          console.log('Image successfully removed from storage');
+        }
       }
       
       // Update local state regardless of whether the delete was successful
@@ -143,6 +203,7 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
       updatedImages.splice(index, 1);
       setImages(updatedImages);
       onChange(updatedImages);
+      console.log(`Image removed from state, remaining: ${updatedImages.length}`);
       
     } catch (error) {
       console.error('Error removing image:', error);
@@ -152,6 +213,7 @@ export function SupplierImageUpload({ initialImages = [], onChange }: SupplierIm
       updatedImages.splice(index, 1);
       setImages(updatedImages);
       onChange(updatedImages);
+      console.log('Image removed from state despite error');
     }
   };
 

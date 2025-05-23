@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSupplier, updateSupplier } from "@/services/supplierService";
 import type { Supplier } from "@/types";
@@ -114,23 +115,27 @@ export const validateSupplierRow = (
   const errors: string[] = [];
   
   // Check required fields
-  if (!row.codigo) errors.push('Código é obrigatório');
-  if (!row.nome) errors.push('Nome é obrigatório');
-  if (!row.descricao) errors.push('Descrição é obrigatória');
-  if (!row.cidade) errors.push('Cidade é obrigatória');
-  if (!row.estado) errors.push('Estado é obrigatório');
+  if (!row.codigo || row.codigo.trim() === '') errors.push('Código é obrigatório');
+  if (!row.nome || row.nome.trim() === '') errors.push('Nome é obrigatório');
+  if (!row.descricao || row.descricao.trim() === '') errors.push('Descrição é obrigatória');
+  if (!row.cidade || row.cidade.trim() === '') errors.push('Cidade é obrigatória');
+  if (!row.estado || row.estado.trim() === '') errors.push('Estado é obrigatório');
   
   // Check code uniqueness
-  if (row.codigo && existingCodes.has(row.codigo)) {
+  if (row.codigo && existingCodes.has(row.codigo.trim())) {
     errors.push(`Código '${row.codigo}' já existe na base de dados`);
   }
   
   // Validate price
-  if (row.preco_medio) {
-    const normalizedPrice = (row.preco_medio || "") // Add null check for row.preco_medio itself
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, ""); // Ensure this uses the corrected regex pattern if normalize() isn't used here directly
+  if (row.preco_medio && row.preco_medio.trim() !== '') {
+    const normalize = (str: string) => {
+      return (str || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    };
+    
+    const normalizedPrice = normalize(row.preco_medio);
     
     if (!['baixo', 'medio', 'alto', 'low', 'medium', 'high', '1', '2', '3'].includes(normalizedPrice)) {
       errors.push('Preço médio deve ser baixo, médio ou alto, ou um número de 1 a 3');
@@ -138,15 +143,20 @@ export const validateSupplierRow = (
   }
   
   // Validate categories
-  if (row.tipo_fornecedor) {
+  if (row.tipo_fornecedor && row.tipo_fornecedor.trim() !== '') {
     const categoryIds = row.tipo_fornecedor.split(',').map(c => c.trim());
     for (const catId of categoryIds) {
-      if (!existingCategories.has(catId)) {
+      if (catId && !existingCategories.has(catId)) {
         errors.push(`Categoria com ID '${catId}' não foi encontrada`);
       }
     }
   } else {
     errors.push('Pelo menos uma categoria deve ser informada');
+  }
+  
+  console.log(`Validação do fornecedor ${row.codigo}: ${errors.length > 0 ? `${errors.length} erros` : 'válido'}`);
+  if (errors.length > 0) {
+    console.log(`Erros para ${row.codigo}:`, errors);
   }
   
   return errors;
@@ -179,6 +189,7 @@ export const importSuppliers = async (
     }
     
     const existingCodes = new Set((existingSuppliers || []).map(s => s.code));
+    console.log('Códigos existentes:', Array.from(existingCodes));
     
     // Get existing categories
     const { data: categoriesData, error: categoriesError } = await supabase
@@ -195,6 +206,7 @@ export const importSuppliers = async (
     const existingCategories = new Map(
       (categoriesData || []).map(c => [c.id, c.name])
     );
+    console.log('Categorias existentes:', Array.from(existingCategories.keys()));
     
     // Validate all rows first
     for (const row of suppliers) {
@@ -225,11 +237,14 @@ export const importSuppliers = async (
           supplierData.images = imageMap[row.codigo];
         }
         
+        console.log(`Importing supplier ${supplierData.code}...`);
+        
         // Create supplier in database
         // Assuming createSupplier handles its own errors or throws them
         await createSupplier(supplierData); 
         
         result.successCount++;
+        console.log(`Supplier ${supplierData.code} imported successfully!`);
       } catch (error) {
         console.error(`Error importing supplier ${supplierCodeForError}:`, error);
         result.errors[supplierCodeForError] = [
@@ -345,6 +360,9 @@ export const saveImportHistory = async (historyData: {
       console.warn('Error fetching user for import history:', userError.message);
     }
 
+    console.log('Saving import history with user:', userData?.user?.id || 'null');
+    console.log('Import history data:', historyData);
+
     const { data, error } = await supabase
       .from('supplier_import_history')
       .insert({
@@ -358,7 +376,7 @@ export const saveImportHistory = async (historyData: {
         error_details: historyData.error_details || null // Ensure null if undefined
       })
       .select()
-      .single(); // Assuming you expect one row back
+      .single(); 
     
     if (error) {
       console.error('Error saving import history:', error);
@@ -366,13 +384,13 @@ export const saveImportHistory = async (historyData: {
       if (error.message.includes("violates row-level security policy")) {
         console.error("RLS policy violation when saving import history. Ensure the user has permissions or table policy allows insert.");
       }
-      // Optionally re-throw or return a more specific error object
-      return null; // Or throw error to be caught by caller
+      throw error; // Re-throw for proper handling by caller
     }
     
+    console.log('Import history saved successfully:', data);
     return data;
   } catch (error) {
     console.error('Unexpected error in saveImportHistory:', error);
-    return null; // Or throw
+    throw error; // Re-throw for proper handling by caller
   }
 };
