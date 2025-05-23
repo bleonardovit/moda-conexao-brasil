@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +19,7 @@ import Register from "./pages/auth/Register";
 import ResetPassword from "./pages/auth/ResetPassword";
 import ResetConfirmation from "./pages/auth/ResetConfirmation";
 import Payment from "./pages/auth/Payment";
+import SelectPlan from "./pages/auth/SelectPlan"; // Adicionada importação
 
 // Páginas do app
 import SuppliersList from "./pages/suppliers/SuppliersList";
@@ -191,7 +193,7 @@ const AppRoutes = () => {
       {/* Rotas de autenticação - apenas para usuários não autenticados */}
       <Route path="/auth/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
       <Route path="/auth/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
-      <Route path="/auth/select-plan" element={<SelectPlan />} />
+      <Route path="/auth/select-plan" element={<SelectPlan />} /> {/* Rota adicionada */}
       <Route path="/auth/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
       <Route path="/auth/reset-confirmation" element={<PublicOnlyRoute><ResetConfirmation /></PublicOnlyRoute>} />
       <Route path="/auth/payment" element={<Payment />} />
