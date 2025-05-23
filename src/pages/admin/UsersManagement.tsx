@@ -48,7 +48,8 @@ import {
   RefreshCcw,
   Save,
   User as UserIcon,
-  Phone
+  Phone,
+  MapPin
 } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { 
@@ -125,8 +126,8 @@ export default function UsersManagement() {
   
   // Novo estado para edição de assinatura
   const [subscriptionEditData, setSubscriptionEditData] = useState({
-    type: '' as User['subscription_type'], // Use type from User
-    status: '' as User['subscription_status'] // Use type from User
+    type: '' as User['subscription_type'], 
+    status: '' as User['subscription_status'] 
   });
   
   // Buscar dados de usuários do Supabase
@@ -165,16 +166,19 @@ export default function UsersManagement() {
   
   // Filtrar usuários com base nos critérios de pesquisa
   const filteredUsers = users.filter(user => {
+    const normalizedSearchTerm = searchTerm.toLowerCase();
     const matchesSearch = searchTerm === '' || 
-      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.phone && user.phone.includes(searchTerm));
+      (user.full_name || '').toLowerCase().includes(normalizedSearchTerm) ||
+      (user.email || '').toLowerCase().includes(normalizedSearchTerm) ||
+      (user.phone || '').toLowerCase().includes(normalizedSearchTerm) ||
+      (user.city || '').toLowerCase().includes(normalizedSearchTerm) ||
+      (user.state || '').toLowerCase().includes(normalizedSearchTerm);
     
     const matchesStatus = statusFilter === 'all' || 
-      (user.subscription_status || 'inactive') === statusFilter; // Handle undefined status
+      (user.subscription_status || 'inactive') === statusFilter;
     
     const matchesSubscription = subscriptionFilter === 'all' || 
-      (user.subscription_type || 'none') === subscriptionFilter; // Handle undefined type
+      (user.subscription_type || 'none') === subscriptionFilter; 
     
     return matchesSearch && matchesStatus && matchesSubscription;
   });
@@ -371,14 +375,17 @@ export default function UsersManagement() {
     setIsExporting(true);
     
     try {
-      const headers = ['Nome', 'Email', 'Telefone', 'Status', 'Plano', 'Data de Cadastro'];
+      // Adicionado Estado ao CSV
+      const headers = ['Nome', 'Email', 'Telefone', 'Cidade', 'Estado', 'Status', 'Plano', 'Data de Cadastro'];
       const rows = filteredUsers.map(user => [
         user.full_name || '',
         user.email,
         user.phone || '',
+        user.city || '', // Adicionado Cidade
+        user.state || '', // Adicionado Estado
         user.subscription_status || '',
         user.subscription_type || '',
-        user.subscription_start_date ? formatDate(user.subscription_start_date) : ''
+        user.created_at ? formatDate(user.created_at) : '' // Modificado para usar created_at
       ]);
       
       const csvContent = [
@@ -462,7 +469,7 @@ export default function UsersManagement() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, email..."
+              placeholder="Buscar por nome, email, cidade, estado..." // Atualizado placeholder
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -509,6 +516,7 @@ export default function UsersManagement() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                <TableHead className="hidden md:table-cell">Estado</TableHead> {/* Adicionada coluna Estado */}
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="hidden lg:table-cell">Plano</TableHead>
                 <TableHead className="hidden lg:table-cell">Cadastro</TableHead>
@@ -519,7 +527,7 @@ export default function UsersManagement() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={9} className="h-24 text-center">
                     Carregando usuários...
                   </TableCell>
                 </TableRow>
@@ -536,6 +544,9 @@ export default function UsersManagement() {
                     <TableCell className="hidden md:table-cell">
                       {user.phone || 'N/A'}
                     </TableCell>
+                    <TableCell className="hidden md:table-cell"> {/* Adicionada célula para Estado */}
+                      {user.state || 'N/A'}
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <Badge className={`${
                         user.subscription_status === 'active' 
@@ -543,8 +554,8 @@ export default function UsersManagement() {
                           : user.subscription_status === 'pending'
                             ? 'bg-yellow-500'
                             : user.subscription_status === 'trialing'
-                              ? 'bg-blue-400' // Example for trialing
-                              : 'bg-red-500' // inactive, canceled etc.
+                              ? 'bg-blue-400' 
+                              : 'bg-red-500' 
                       }`}>
                         {user.subscription_status ? user.subscription_status.charAt(0).toUpperCase() + user.subscription_status.slice(1) : 'Inativo'}
                       </Badge>
@@ -555,7 +566,6 @@ export default function UsersManagement() {
                         : 'N/A'}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {/* Assuming created_at is the registration date */}
                       {user.created_at ? formatDate(user.created_at) : 'N/A'} 
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
@@ -603,7 +613,7 @@ export default function UsersManagement() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={9} className="h-24 text-center">
                     Nenhum usuário encontrado.
                   </TableCell>
                 </TableRow>
@@ -638,15 +648,29 @@ export default function UsersManagement() {
 
               {/* Aba de perfil */}
               <TabsContent value="profile" className="space-y-4 mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
-                    <p>{selectedUser.email}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center"><UserIcon size={14} className="mr-2 text-gray-500" />Nome Completo</h3>
+                    <p className="ml-6">{selectedUser.full_name || 'Não informado'}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center"><Mail size={14} className="mr-2 text-gray-500" />Email</h3>
+                    <p className="ml-6">{selectedUser.email}</p>
                   </div>
                   
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">Telefone</h3>
-                    <p>{selectedUser.phone || 'Não informado'}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center"><Phone size={14} className="mr-2 text-gray-500" />Telefone</h3>
+                    <p className="ml-6">{selectedUser.phone || 'Não informado'}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center"><MapPin size={14} className="mr-2 text-gray-500" />Cidade</h3>
+                    <p className="ml-6">{selectedUser.city || 'Não informada'}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center"><MapPin size={14} className="mr-2 text-gray-500" />Estado</h3>
+                    <p className="ml-6">{selectedUser.state || 'Não informado'}</p>
                   </div>
                   
                   <div className="space-y-2">
