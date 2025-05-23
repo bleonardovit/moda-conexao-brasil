@@ -1,13 +1,13 @@
-
 import { Article, ArticleCategory } from '@/types/article';
 import { supabase } from "@/integrations/supabase/client";
 
-// Função para buscar todos os artigos
+// Função para buscar todos os artigos publicados
 export const getArticles = async (categoryId?: string): Promise<Article[]> => {
   try {
     let query = supabase
       .from('articles')
-      .select('*');
+      .select('*')
+      .eq('published', true); // Adicionado filtro para artigos publicados
     
     // Filtra por categoria se fornecida
     if (categoryId) {
@@ -26,6 +26,48 @@ export const getArticles = async (categoryId?: string): Promise<Article[]> => {
     console.error('Erro ao buscar artigos:', error);
     return [];
   }
+};
+
+// Função para buscar o ID do último artigo publicado de uma categoria
+export const getLatestPublishedArticleIdForCategory = async (categoryId: string): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id')
+      .eq('published', true)
+      .eq('category', categoryId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      // Não é necessariamente um erro se nenhum artigo for encontrado, pode ser uma categoria vazia
+      if (error.code !== 'PGRST116') { // PGRST116: "Query result returned an empty array"
+         console.warn('Aviso ao buscar último artigo da categoria:', categoryId, error);
+      }
+      return null;
+    }
+    return data ? data.id : null;
+  } catch (error) {
+    console.error('Erro ao buscar último artigo da categoria:', categoryId, error);
+    return null;
+  }
+};
+
+// Função para buscar os IDs dos últimos artigos publicados de cada categoria
+export const getLatestPublishedArticleIdsPerCategory = async (allCategories: ArticleCategory[]): Promise<string[]> => {
+  if (!allCategories || allCategories.length === 0) {
+    return [];
+  }
+  
+  const allowedIds: string[] = [];
+  for (const category of allCategories) {
+    const latestId = await getLatestPublishedArticleIdForCategory(category.id);
+    if (latestId) {
+      allowedIds.push(latestId);
+    }
+  }
+  return allowedIds;
 };
 
 // Função para buscar um artigo específico
