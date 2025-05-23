@@ -41,14 +41,14 @@ const SearchPage = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { isInTrial, isFeatureAllowed } = useTrialStatus(); // Removed userProfile from here
-  const { user } = useAuth(); // Get user from useAuth
+  const { isInTrial, isFeatureAllowed } = useTrialStatus();
+  const { user } = useAuth();
   const [canAccessFeature, setCanAccessFeature] = useState(true);
 
   // Filter states
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
-  const [cityFilter, setCityFilter] = useState(''); // Text input for city for now
+  const [cityFilter, setCityFilter] = useState('all'); // Changed initial value from '' to 'all'
   const [minOrderMin, setMinOrderMin] = useState('');
   const [minOrderMax, setMinOrderMax] = useState('');
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -56,9 +56,8 @@ const SearchPage = () => {
   const [selectedShippingMethods, setSelectedShippingMethods] = useState<ShippingMethod[]>([]);
   const [hasWebsiteFilter, setHasWebsiteFilter] = useState<'all' | 'yes' | 'no'>('all');
   
-  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true); // Filters open by default
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true);
   const [availableCities, setAvailableCities] = useState<Option[]>([]);
-
 
   useEffect(() => {
     const checkFeatureAccess = async () => {
@@ -78,7 +77,9 @@ const SearchPage = () => {
         setSupplierCategories(categoriesData);
         
         const citiesData = await getDistinctCities();
-        setAvailableCities(citiesData.map(city => ({ label: city, value: city })).sort((a,b) => a.label.localeCompare(b.label)));
+        // Filter out empty or null city values before mapping
+        const validCities = citiesData.filter(city => city && city.trim() !== '');
+        setAvailableCities(validCities.map(city => ({ label: city, value: city })).sort((a,b) => a.label.localeCompare(b.label)));
 
       } catch (error) {
         console.error('Error fetching initial filter data:', error);
@@ -106,7 +107,7 @@ const SearchPage = () => {
         searchTerm: searchTerm.trim() || undefined,
         categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
         state: stateFilter !== 'all' ? stateFilter : undefined,
-        city: cityFilter.trim() || undefined,
+        city: cityFilter !== 'all' ? cityFilter.trim() : undefined, // Updated logic for cityFilter
         minOrderMin: minOrderMin !== '' ? parseInt(minOrderMin, 10) : undefined,
         minOrderMax: minOrderMax !== '' ? parseInt(minOrderMax, 10) : undefined,
         paymentMethods: selectedPaymentMethods.length > 0 ? selectedPaymentMethods : undefined,
@@ -114,7 +115,7 @@ const SearchPage = () => {
         shippingMethods: selectedShippingMethods.length > 0 ? selectedShippingMethods : undefined,
         hasWebsite: hasWebsiteFilter === 'yes' ? true : hasWebsiteFilter === 'no' ? false : null,
       };
-      const results = await searchSuppliers(filters, user?.id); // Use user?.id
+      const results = await searchSuppliers(filters, user?.id);
       setSuppliers(results);
     } catch (error) {
       console.error('Error searching suppliers:', error);
@@ -122,7 +123,7 @@ const SearchPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, user?.id]); // Use user?.id in dependency array
+  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, user?.id]);
 
   useEffect(() => {
     // Auto-search if not initial load and some filter changes, or searchTerm changes
@@ -130,11 +131,10 @@ const SearchPage = () => {
     // handleSearch(); // Debounce or make this explicit
   }, [handleSearch]);
 
-
   const clearFilters = () => {
     setCategoryFilter('all');
     setStateFilter('all');
-    setCityFilter('');
+    setCityFilter('all'); // Changed from '' to 'all'
     setMinOrderMin('');
     setMinOrderMax('');
     setSelectedPaymentMethods([]);
@@ -233,7 +233,7 @@ const SearchPage = () => {
                   <Select value={cityFilter} onValueChange={setCityFilter} name="city-filter">
                     <SelectTrigger> <SelectValue placeholder="Todas as cidades" /> </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas as cidades</SelectItem> {/* Changed 'all' to empty string for city filter reset */}
+                      <SelectItem value="all">Todas as cidades</SelectItem> {/* Changed value from "" to "all" */}
                       {availableCities.map(city => (
                         <SelectItem key={city.value} value={city.value}>{city.label}</SelectItem>
                       ))}
@@ -343,12 +343,12 @@ const SearchPage = () => {
             ) : (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">Nenhum fornecedor encontrado com os critérios selecionados. Tente ajustar seus filtros ou o termo de busca.</p>
-                { (searchTerm || categoryFilter !== 'all' || stateFilter !== 'all' || cityFilter || minOrderMin || minOrderMax || selectedPaymentMethods.length > 0 || requiresCnpjFilter !== 'all' || selectedShippingMethods.length > 0 || hasWebsiteFilter !== 'all') &&
+                { (searchTerm || categoryFilter !== 'all' || stateFilter !== 'all' || cityFilter !== 'all' /* Updated condition */ || minOrderMin || minOrderMax || selectedPaymentMethods.length > 0 || requiresCnpjFilter !== 'all' || selectedShippingMethods.length > 0 || hasWebsiteFilter !== 'all') &&
                   <Button variant="link" onClick={() => { clearFilters(); handleSearch(); }} className="mt-2">Limpar filtros e buscar novamente</Button>
                 }
               </div>
             )}
-            {suppliers.length === 0 && !searchTerm && categoryFilter === 'all' && stateFilter === 'all' && !cityFilter && !minOrderMin && !minOrderMax && selectedPaymentMethods.length === 0 && requiresCnpjFilter === 'all' && selectedShippingMethods.length === 0 && hasWebsiteFilter === 'all' && (
+            {suppliers.length === 0 && !searchTerm && categoryFilter === 'all' && stateFilter === 'all' && cityFilter === 'all' /* Updated condition */ && !minOrderMin && !minOrderMax && selectedPaymentMethods.length === 0 && requiresCnpjFilter === 'all' && selectedShippingMethods.length === 0 && hasWebsiteFilter === 'all' && (
                  <div className="text-center py-12 text-muted-foreground">
                     Digite algo na busca ou utilize os filtros para encontrar fornecedores.
                  </div>
