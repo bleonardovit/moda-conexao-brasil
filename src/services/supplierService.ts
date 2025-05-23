@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
+import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload, PaymentMethod, ShippingMethod } from '@/types';
 // Importar serviços e tipos de trial
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
 
@@ -128,39 +128,66 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
     query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
   }
   
-  if (filters.categoryId) {
-    // This part needs suppliers_categories join logic, not directly on suppliers table
-    // For simplicity, this part of filtering might be more complex if done purely in SQL with joins
-    // Consider fetching suppliers then filtering categories if complex, or adjust SQL query
-    console.warn("Category filtering in searchSuppliers might need adjustment based on join table logic. Currently not filtering by category in this SQL query.");
+  if (filters.categoryId && filters.categoryId !== 'all') {
+    // This requires a join with suppliers_categories or that categories are denormalized in suppliers table.
+    // Assuming 'categories' in 'suppliers' table is an array of category IDs.
+    query = query.contains('categories', [filters.categoryId]);
   }
   
-  if (filters.state) {
+  if (filters.state && filters.state !== 'all') {
     query = query.eq('state', filters.state);
   }
   
-  if (filters.city) {
-    query = query.eq('city', filters.city);
+  if (filters.city && filters.city.trim() !== '') {
+    // If city is a dropdown with specific values, use eq. If it's free text, ilike.
+    // Assuming city filter provides an exact city name or is handled carefully.
+    query = query.ilike('city', `%${filters.city.trim()}%`);
   }
   
   if (filters.paymentMethods && filters.paymentMethods.length > 0) {
-    query = query.overlaps('payment_methods', filters.paymentMethods);
+    query = query.overlaps('payment_methods', filters.paymentMethods as string[]);
   }
+
   if (filters.requiresCnpj !== null && filters.requiresCnpj !== undefined) {
     query = query.eq('requires_cnpj', filters.requiresCnpj);
   }
+
   if (filters.shippingMethods && filters.shippingMethods.length > 0) {
-    query = query.overlaps('shipping_methods', filters.shippingMethods);
+    query = query.overlaps('shipping_methods', filters.shippingMethods as string[]);
   }
+
   if (filters.hasWebsite !== null && filters.hasWebsite !== undefined) {
     if (filters.hasWebsite) {
       query = query.not('website', 'is', null).neq('website', '');
     } else {
+      // Has no website means website is null or empty
       query = query.or('website.is.null,website.eq.');
     }
   }
+
+  // Min Order Amount Filters
+  // This is complex because min_order is text. Attempting to cast and compare.
+  // This assumes min_order stores a plain number as text, e.g., "100".
+  // If it contains "R$", currency symbols, or ranges, this SQL will likely fail or need adjustment.
+  // A more robust solution might involve cleaning data at insertion or using a DB function.
+  if (filters.minOrderMin !== undefined && filters.minOrderMin !== null) {
+    try {
+        // Try to create a number from min_order text by removing non-digits.
+        // This is a simplified approach. For production, consider a dedicated numeric column or advanced parsing.
+        query = query.gte_sql(`NULLIF(regexp_replace(min_order, '[^0-9]', '', 'g'), '')::numeric`, filters.minOrderMin);
+    } catch (e) {
+        console.warn("Could not apply minOrderMin due to potential non-numeric min_order values", e);
+    }
+  }
+  if (filters.minOrderMax !== undefined && filters.minOrderMax !== null) {
+     try {
+        query = query.lte_sql(`NULLIF(regexp_replace(min_order, '[^0-9]', '', 'g'), '')::numeric`, filters.minOrderMax);
+    } catch (e) {
+        console.warn("Could not apply minOrderMax due to potential non-numeric min_order values", e);
+    }
+  }
   
-  query = query.eq('hidden', false); // Always filter out hidden suppliers for search results
+  query = query.eq('hidden', false);
   query = query.order('featured', { ascending: false })
                .order('created_at', { ascending: false });
 
@@ -418,3 +445,53 @@ export const toggleSupplierVisibility = async (id: string, hidden: boolean): Pro
   
   console.log(`supplierService: Visibility for supplier ${id} updated successfully.`);
 };
+
+// Helper function to get distinct states from suppliers (example, might need optimization)
+export const getDistinctStates = async (): Promise<string[]> => {
+  const { data, error } = await supabase.rpc('get_distinct_supplier_states'); // Assuming you create such a function
+  if (error) {
+    console.error('Error fetching distinct states:', error);
+    // Fallback or empty array
+    const { data: allSuppliers, error: supplierError } = await supabase.from('suppliers').select('state');
+    if (supplierError) return [];
+    const states = new Set(allSuppliers.map(s => s.state).filter(Boolean));
+    return Array.from(states);
+  }
+  return data || [];
+};
+
+// Helper function to get distinct cities from suppliers (example)
+export const getDistinctCities = async (state?: string): Promise<string[]> => {
+  let query = supabase.from('suppliers').select('city').neq('city', '');
+  if (state && state !== 'all') {
+    query = query.eq('state', state);
+  }
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error fetching distinct cities:', error);
+    return [];
+  }
+  const cities = new Set(data.map(s => s.city).filter(Boolean));
+  return Array.from(cities);
+};
+
+// Add _sql comparison to supabase client if not present (for query.gte_sql, query.lte_sql)
+// This is a workaround, ideally Supabase client supports this or you use .rpc
+// @ts-ignore
+if (supabase.from('suppliers').gte_sql === undefined) {
+    // @ts-ignore
+    // eslint-disable-next-line no-proto
+    supabase.constructor.prototype.PostgrestQueryBuilder.prototype.gte_sql = function (column, value) {
+        this.url.searchParams.append(column, `gte.${value}`);
+        return this;
+    };
+}
+// @ts-ignore
+if (supabase.from('suppliers').lte_sql === undefined) {
+    // @ts-ignore
+    // eslint-disable-next-line no-proto
+    supabase.constructor.prototype.PostgrestQueryBuilder.prototype.lte_sql = function (column, value) {
+        this.url.searchParams.append(column, `lte.${value}`);
+        return this;
+    };
+}

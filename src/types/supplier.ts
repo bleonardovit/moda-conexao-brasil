@@ -13,20 +13,20 @@ export interface Supplier {
   instagram?: string;
   whatsapp?: string;
   website?: string;
-  min_order?: string;
+  min_order?: string; // This is text, e.g., "100" or "R$ 100"
   payment_methods: PaymentMethod[];
   requires_cnpj: boolean;
-  avg_price: AvgPrice; // Kept as required for the main Supplier type
+  avg_price: AvgPrice; 
   shipping_methods: ShippingMethod[];
   custom_shipping_method?: string;
   city: string;
   state: string;
-  categories: string[]; // These are category IDs
+  categories: string[]; 
   featured: boolean;
   hidden: boolean;
   created_at: string;
   updated_at: string;
-  isLockedForTrial?: boolean; // Novo campo para indicar se está bloqueado no trial
+  isLockedForTrial?: boolean;
 }
 
 // Payload for creating a supplier
@@ -39,7 +39,7 @@ export interface SupplierCreationPayload {
   instagram?: string;
   whatsapp?: string;
   website?: string;
-  min_order?: string;
+  min_order?: string; // This is text, e.g., "100" or "R$ 100"
   payment_methods?: PaymentMethod[]; // Changed to optional
   requires_cnpj?: boolean; // Changed to optional
   avg_price?: AvgPrice; // Kept optional as per previous change
@@ -74,11 +74,12 @@ export interface SearchFilters {
   categoryId?: string;
   state?: string;
   city?: string;
-  minOrderRange?: [number, number];
+  minOrderMin?: number; // Added for minimum order value
+  minOrderMax?: number; // Added for maximum order value
   paymentMethods?: PaymentMethod[];
-  requiresCnpj?: boolean | null;
+  requiresCnpj?: boolean | null; // null means 'both'
   shippingMethods?: ShippingMethod[];
-  hasWebsite?: boolean | null;
+  hasWebsite?: boolean | null; // null means 'both'
 }
 
 // Type for supplier reviews (moved from review.ts to avoid duplication)
