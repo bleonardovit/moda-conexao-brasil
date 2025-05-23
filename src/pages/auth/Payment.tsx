@@ -89,6 +89,7 @@ export default function Payment() {
                 subscription_type: selectedPlan, 
                 subscription_start_date: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
+                trial_status: 'converted', // Adicionado para atualizar o status do trial
               })
               .eq('id', user.id);
 
