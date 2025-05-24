@@ -20,11 +20,12 @@ export interface SupplierRowData {
   formas_pagamento?: string;
   tipo_fornecedor?: string;
   imagens?: string;
+  originalRowIndex?: number; // Adicionado para rastrear a linha original do Excel
 }
 
 // Interface for validation errors
 export interface ValidationErrors {
-  [supplierCode: string]: string[];
+  [supplierCodeOrRowKey: string]: string[];
 }
 
 // Interface for import result
@@ -359,53 +360,60 @@ export const processImagesFromZip = async (
   return imageMap;
 };
 
-// Save import history
-export const saveImportHistory = async (historyData: {
-  filename: string;
-  total_count: number;
-  success_count: number;
-  error_count: number;
-  status: 'success' | 'error' | 'pending';
-  error_details?: ValidationErrors;
-}) => {
-  try {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    // Not critical if user fetch fails, imported_by is nullable
-    if (userError) {
-      console.warn('Error fetching user for import history:', userError.message);
-    }
+// Define a interface explícita para os dados do histórico de importação
+// Estes nomes devem corresponder às colunas na tabela supplier_import_history do Supabase
+export interface SupplierImportHistoryEntry {
+  id: string; 
+  file_name: string;
+  imported_by_id?: string | null;
+  imported_at: string; 
+  status: 'success' | 'error' | 'pending' | 'partial';
+  total_rows: number;
+  successful_rows: number;
+  failed_rows: number;
+  error_details?: ValidationErrors | { global?: string[] };
+  // Adicione quaisquer outros campos que existam na sua tabela, ex: created_at (gerado pelo DB)
+  // created_at?: string;
+}
 
-    console.log('Saving import history with user:', userData?.user?.id || 'null');
-    console.log('Import history data:', historyData);
+export const saveImportHistory = async (historyData: SupplierImportHistoryEntry) => {
+  console.log('[saveImportHistory] Saving history data:', JSON.stringify(historyData, null, 2));
 
-    const { data, error } = await supabase
-      .from('supplier_import_history')
-      .insert({
-        filename: historyData.filename,
-        total_count: historyData.total_count,
-        success_count: historyData.success_count,
-        error_count: historyData.error_count,
-        status: historyData.status,
-        imported_by: userData?.user?.id || null,
-        imported_at: new Date().toISOString(),
-        error_details: historyData.error_details || null // Ensure null if undefined
-      })
-      .select()
-      .single(); 
-    
-    if (error) {
-      console.error('Error saving import history:', error);
-      // Specific RLS check
-      if (error.message.includes("violates row-level security policy")) {
-        console.error("RLS policy violation when saving import history. Ensure the user has permissions or table policy allows insert.");
-      }
-      throw error; // Re-throw for proper handling by caller
-    }
-    
-    console.log('Import history saved successfully:', data);
-    return data;
-  } catch (error) {
-    console.error('Unexpected error in saveImportHistory:', error);
-    throw error; // Re-throw for proper handling by caller
+  // Supabase insert espera que as chaves do objeto correspondam aos nomes das colunas.
+  // Se o linter reclamar sobre 'filename' vs 'file_name', ou 'total_count' vs 'total_rows',
+  // significa que os tipos inferidos/gerados pelo Supabase para a tabela 'supplier_import_history'
+  // usam nomes diferentes. A solução ideal é alinhar esta interface com os tipos gerados do Supabase
+  // ou fazer um mapeamento explícito aqui.
+  
+  // Tentativa direta, assumindo que SupplierImportHistoryEntry está alinhada com as colunas da tabela:
+  const { data, error } = await supabase
+    .from('supplier_import_history') 
+    .insert([historyData]); 
+
+  if (error) {
+    console.error("Erro ao salvar histórico de importação:", error);
+    // Exemplo de como o linter pode ter inferido os tipos das colunas:
+    // console.error("Supabase SDK might expect fields like: filename, total_count, success_count, error_count, imported_by");
   }
+  return { data, error };
+};
+
+// Função para buscar o histórico de importações
+export const fetchImportHistoryFromService = async (limit = 20): Promise<SupplierImportHistoryEntry[]> => {
+  const { data, error } = await supabase
+    .from('supplier_import_history')
+    .select('*') 
+    .order('imported_at', { ascending: false })
+    .limit(limit);
+  
+  if (error) {
+    console.error("Erro ao buscar histórico de importação (service):", error);
+    return []; // Retorna array vazio em caso de erro
+  }
+  
+  // O cast para SupplierImportHistoryEntry[] assume que os dados retornados pelo Supabase
+  // (com os nomes exatos das colunas) são compatíveis. 
+  // Se houver incompatibilidade (ex: total_count vs total_rows), um mapeamento seria necessário:
+  // return (data || []).map(item => ({ ...item, total_rows: item.total_count, ... })) as SupplierImportHistoryEntry[];
+  return (data || []) as SupplierImportHistoryEntry[]; 
 };

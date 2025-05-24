@@ -39,7 +39,9 @@ import {
   processImagesFromZip, 
   saveImportHistory,
   ValidationErrors,
+  ImportResult
 } from '@/services/supplierBulkService';
+import { useAuth } from '@/hooks/useAuth';
 
 const TEMPLATE_HEADERS = [
   'codigo', 'nome', 'descricao', 'instagram', 'whatsapp', 'site', 
@@ -65,6 +67,7 @@ const normalizeString = (str: string | undefined | null): string => {
 export default function SuppliersBulkUpload() {
   console.log('[SuppliersBulkUpload Render] Component rendering/re-rendering.'); // Log Adicionado
   const { toast } = useToast();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'upload' | 'review' | 'history'>('upload');
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -79,35 +82,28 @@ export default function SuppliersBulkUpload() {
   const [categoryNameToIdMap, setCategoryNameToIdMap] = useState<Map<string, string>>(new Map());
   const [existingCodes, setExistingCodes] = useState<Set<string>>(new Set());
   
-  // Add state to track if initial data has been loaded
-  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
-  
   const excelInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Only run once on mount, and only if data hasn't been loaded yet
-    if (initialDataLoaded) {
-      console.log('[useEffect] Skipping - initial data already loaded');
-      return;
-    }
-    
-    console.log('[useEffect] Loading initial data (categories and supplier codes)');
-    
+    let isMounted = true; // Flag para rastrear se o componente está montado
+    console.log('[useEffect InitialData] Componente montado. Buscando dados iniciais...');
+
     const fetchExistingData = async () => {
       try {
-        console.log("Fetching existing categories and supplier codes...");
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('categories')
-          .select('id, name');
-        
+        console.log("[useEffect InitialData] Fetching existing categories and supplier codes...");
+        // Promise.all para buscar em paralelo
+        const [categoriesResult, suppliersResult] = await Promise.all([
+          supabase.from('categories').select('id, name'),
+          supabase.from('suppliers').select('code')
+        ]);
+
+        if (!isMounted) return; // Não atualizar estado se desmontado
+
+        const { data: categoriesData, error: categoriesError } = categoriesResult;
         if (categoriesError) {
-          console.error('Error fetching categories:', categoriesError);
-          toast({
-            variant: "destructive",
-            title: "Erro ao carregar categorias",
-            description: categoriesError.message
-          });
+          console.error('[useEffect InitialData] Error fetching categories:', categoriesError);
+          toast({ variant: "destructive", title: "Erro ao carregar categorias", description: categoriesError.message });
         } else {
           const idToNameMap = new Map<string, string>();
           const nameToIdMap = new Map<string, string>();
@@ -117,35 +113,32 @@ export default function SuppliersBulkUpload() {
               nameToIdMap.set(normalizeString(cat.name), cat.id);
             }
           });
-          setExistingCategories(idToNameMap);
-          setCategoryNameToIdMap(nameToIdMap);
-          console.log("Categories (ID->Name) loaded:", idToNameMap.size);
-          console.log("Categories (NormalizedName->ID) loaded:", nameToIdMap.size);
+          if (isMounted) {
+            setExistingCategories(idToNameMap);
+            setCategoryNameToIdMap(nameToIdMap);
+            console.log('[useEffect InitialData] Categories loaded:', { idToNameMapSize: idToNameMap.size, nameToIdMapSize: nameToIdMap.size });
+          }
         }
-        
-        const { data: suppliersData, error: suppliersError } = await supabase
-          .from('suppliers')
-          .select('code');
-        
+
+        if (!isMounted) return; // Não atualizar estado se desmontado
+
+        const { data: suppliersData, error: suppliersError } = suppliersResult;
         if (suppliersError) {
-          console.error('Error fetching supplier codes:', suppliersError);
-          toast({
-            variant: "destructive",
-            title: "Erro ao carregar códigos de fornecedores",
-            description: suppliersError.message,
-          });
+          console.error('[useEffect InitialData] Error fetching supplier codes:', suppliersError);
+          toast({ variant: "destructive", title: "Erro ao carregar códigos de fornecedores", description: suppliersError.message });
         } else {
-          const codesSet = new Set((suppliersData || []).map(s => s.code));
-          setExistingCodes(codesSet);
-          console.log("Supplier codes loaded:", codesSet.size);
+          const codesSet = new Set((suppliersData || []).map(s => s.code).filter(Boolean) as string[]);
+          if (isMounted) {
+            setExistingCodes(codesSet);
+            console.log('[useEffect InitialData] Supplier codes loaded:', codesSet.size);
+          }
         }
         
-        // Mark initial data as loaded
-        setInitialDataLoaded(true);
-        console.log('[useEffect] Initial data loading complete - setting initialDataLoaded to true');
+        console.log('[useEffect InitialData] Initial data loading complete.');
         
       } catch (error) {
-        console.error('Error fetching initial data:', error);
+        if (!isMounted) return;
+        console.error('[useEffect InitialData] Error fetching initial data:', error);
         toast({
             variant: "destructive",
             title: "Erro ao carregar dados iniciais",
@@ -155,14 +148,14 @@ export default function SuppliersBulkUpload() {
     };
     
     fetchExistingData();
-  }, []); // Empty dependency array - run only once on mount
+
+    return () => {
+      isMounted = false; // Define como desmontado ao limpar o efeito
+      console.log('[useEffect InitialData] Componente desmontado. Limpando efeito.');
+    };
+  }, [toast]); // toast é uma dependência estável se vier do hook useToast
   
-  // Separate useEffect for import history - also only run once
-  useEffect(() => {
-    fetchImportHistory(); 
-  }, []); // Only run once on mount
-  
-  const fetchImportHistory = async () => {
+  const fetchHistoryLocal = async () => {
     try {
       const { data, error } = await supabase
         .from('supplier_import_history')
@@ -172,14 +165,10 @@ export default function SuppliersBulkUpload() {
       
       if (error) {
         console.error('Error fetching import history:', error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar histórico",
-          description: error.message
-        });
+        toast({ variant: "destructive", title: "Erro ao carregar histórico", description: error.message });
         return;
       }
-      setImportHistory((data as SupplierImportHistory[] || []));
+      if (data) setImportHistory((data as SupplierImportHistory[] || []));
     } catch (error) {
       console.error('Error in fetchImportHistory:', error);
       toast({
@@ -189,6 +178,12 @@ export default function SuppliersBulkUpload() {
       });
     }
   };
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isMounted) fetchHistoryLocal();
+    return () => { isMounted = false; };
+  }, [toast]);
   
   const downloadTemplate = () => {
     const exampleData = [
@@ -250,387 +245,378 @@ export default function SuppliersBulkUpload() {
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    console.log("handleExcelUpload: Starting Excel file processing.", file.name);
-    console.log('[handleExcelUpload] Current parsedSuppliers length BEFORE processing:', parsedSuppliers.length);
-    console.log('[handleExcelUpload] Initial data loaded status:', initialDataLoaded);
-    
-    setExcelFile(file);
-    setProgress(0);
-    setIsProcessing(true);
-    
-    // Clear previous data
-    console.log('[handleExcelUpload] Clearing previous data - this will reset parsedSuppliers to []');
-    setParsedSuppliers([]); 
+
+    console.log(`[handleExcelUpload] Starting Excel file processing: ${file.name}`);
+    setExcelFile(file); // Armazena o arquivo
+    setIsProcessing(true); // Indica início do processamento
+    // Reseta estados anteriores para um novo upload
+    setParsedSuppliers([]);
     setValidationErrors({});
-    
+    setPreviewImages({});
+    setProgress(0);
+
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' }); 
+      const workbook = XLSX.read(data);
       const worksheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[worksheetName];
-      
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-        header: TEMPLATE_HEADERS, 
-        range: 1 
-      }) as Partial<SupplierRowData>[];
-      console.log("handleExcelUpload: Raw JSON data from Excel:", jsonData);
+      const jsonSuppliers = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 }); // Obter como array de arrays
 
-      const suppliers = jsonData.filter(row => 
-        Object.values(row).some(value => value !== null && value !== undefined && String(value).trim() !== '')
-      ).map(row => ({
-        codigo: String(row.codigo || ''),
-        nome: String(row.nome || ''),
-        descricao: String(row.descricao || ''),
-        instagram: String(row.instagram || ''),
-        whatsapp: String(row.whatsapp || ''),
-        site: String(row.site || ''),
-        preco_medio: String(row.preco_medio || ''),
-        quantidade_minima: String(row.quantidade_minima || ''),
-        cidade: String(row.cidade || ''),
-        estado: String(row.estado || ''),
-        envio: String(row.envio || ''),
-        precisa_cnpj: String(row.precisa_cnpj || ''),
-        formas_pagamento: String(row.formas_pagamento || ''),
-        tipo_fornecedor: String(row.tipo_fornecedor || ''),
-        imagens: String(row.imagens || ''),
-      }));
-      console.log("handleExcelUpload: Mapped suppliers data:", suppliers);
-      console.log('[handleExcelUpload] About to call setParsedSuppliers with:', suppliers.length, 'suppliers');
-      
-      // Wait for initial data to be loaded before proceeding
-      if (!initialDataLoaded) {
-        console.log('[handleExcelUpload] Waiting for initial data to be loaded...');
-        // Wait a bit and try again, or show an error
-        setTimeout(() => {
-          if (initialDataLoaded) {
-            console.log('[handleExcelUpload] Initial data now loaded, proceeding...');
-            // Continue processing...
-          } else {
-            toast({
-              variant: "destructive",
-              title: "Aguarde o carregamento",
-              description: "Os dados iniciais ainda estão sendo carregados. Tente novamente em alguns segundos."
-            });
-            setIsProcessing(false);
-            return;
-          }
-        }, 1000);
+      if (jsonSuppliers.length < 2) { // Pelo menos cabeçalho e uma linha de dados
+        toast({ title: "Arquivo Excel vazio", description: "O arquivo parece não conter dados de fornecedores.", variant: "destructive" });
+        setIsProcessing(false);
         return;
       }
       
-      // Set the parsed suppliers - THIS IS CRITICAL
-      setParsedSuppliers(suppliers);
-      console.log('[handleExcelUpload] setParsedSuppliers called successfully');
-      
-      const currentExistingCodes = new Set(existingCodes); 
-      const errors: ValidationErrors = {};
-      
-      console.log("handleExcelUpload: Using categoryNameToIdMap for validation:", categoryNameToIdMap);
+      const headers = (jsonSuppliers[0] as string[]).map(h => normalizeString(h));
+      const missingHeaders = TEMPLATE_HEADERS.filter(th => !headers.includes(normalizeString(th)));
 
-      suppliers.forEach((supplier, index) => {
-        const supplierErrors = validateSupplierRow(supplier, currentExistingCodes, categoryNameToIdMap);
-        if (supplierErrors.length > 0) {
-          errors[supplier.codigo || `linha-${index + 2}`] = supplierErrors; 
-        }
-      });
-      setValidationErrors(errors); // Ensure validationErrors is also set
-      console.log("handleExcelUpload: Validation errors:", errors);
-      
-      setProgress(100);
-      
-      toast({
-        title: "Planilha processada",
-        description: `${suppliers.length} fornecedores encontrados. ${Object.keys(errors).length > 0 ? `${Object.keys(errors).length} com erros de validação.` : 'Nenhum erro de validação.'}`
-      });
-      
-      console.log("handleExcelUpload: FINAL parsedSuppliers state before tab switch:", suppliers);
-      console.log("handleExcelUpload: FINAL validationErrors state before tab switch:", errors);
-
-      if (suppliers.length > 0) {
-        console.log("handleExcelUpload: Moving to review tab.");
-        // Add a longer delay to ensure state is updated before tab change
-        setTimeout(() => {
-          console.log('[handleExcelUpload] About to change tab to review. Current parsedSuppliers length:', parsedSuppliers.length);
-          setActiveTab('review');
-        }, 300); // Increased delay
-      } else {
-        console.log("handleExcelUpload: No suppliers found in the sheet.");
+      if (missingHeaders.length > 0) {
+        toast({
+          title: "Cabeçalhos faltando no template",
+          description: `Os seguintes cabeçalhos não foram encontrados: ${missingHeaders.join(', ')}`,
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
       }
-    } catch (error) {
-      console.error('Erro ao processar planilha:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao processar planilha",
-        description: error instanceof Error ? error.message : "Verifique o formato e tente novamente."
+
+      const mappedSuppliers: SupplierRowData[] = jsonSuppliers.slice(1).map((rowArray: any[], rowIndex) => {
+        const row: any = {};
+        headers.forEach((header, index) => {
+          // Encontra o nome original do header no template para usar como chave
+          const templateHeaderKey = TEMPLATE_HEADERS.find(th => normalizeString(th) === header) || header;
+          row[templateHeaderKey] = rowArray[index];
+        });
+        row.originalRowIndex = rowIndex + 2; // +1 para slice, +1 para 1-based index
+        return row as SupplierRowData;
       });
+      
+      console.log(`[handleExcelUpload] Mapped suppliers data (count: ${mappedSuppliers.length})`);
+
+      const currentValidationErrors: ValidationErrors = {};
+      const suppliersToParse: SupplierRowData[] = [];
+
+      mappedSuppliers.forEach(row => {
+        const errors = validateSupplierRow(row, existingCodes, categoryNameToIdMap);
+        if (errors.length > 0) {
+          currentValidationErrors[row.codigo || `Linha ${row.originalRowIndex}`] = errors;
+        }
+        suppliersToParse.push(row); // Adiciona mesmo com erros para exibição
+      });
+
+      setParsedSuppliers(suppliersToParse);
+      setValidationErrors(currentValidationErrors);
+      
+      console.log(`[handleExcelUpload] Validation complete. Errors count: ${Object.keys(currentValidationErrors).length}`);
+
+      if (zipFile) {
+        console.log('[handleExcelUpload] Processing ZIP file...');
+        const zipData = await zipFile.arrayBuffer();
+        const localImagePreviews: Record<string, string[]> = {};
+        const JSZip = await import('jszip').then(mod => mod.default);
+        const loadedZip = await JSZip.loadAsync(zipData);
+        for (const supplier of suppliersToParse) {
+          if (supplier.codigo && supplier.imagens) {
+            const imageNames = supplier.imagens.split(',').map(name => name.trim());
+            localImagePreviews[supplier.codigo] = [];
+            for (const imageName of imageNames) {
+              const imageFile = loadedZip.file(imageName);
+              if (imageFile) {
+                const blob = await imageFile.async('blob');
+                localImagePreviews[supplier.codigo].push(URL.createObjectURL(blob));
+              }
+            }
+          }
+        }
+        setPreviewImages(localImagePreviews);
+        console.log('[handleExcelUpload] ZIP file processed.');
+      }
+      
+      // A mudança de aba deve ocorrer após a definição dos estados
+      // para que a aba de revisão já tenha os dados.
+      setActiveTab('review'); 
+      console.log('[handleExcelUpload] Moved to review tab.');
+
+    } catch (error) {
+      console.error('[handleExcelUpload] Error processing Excel:', error);
+      toast({ title: "Erro ao processar Excel", description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.", variant: "destructive"});
+      setParsedSuppliers([]);
+      setValidationErrors({});
+      setPreviewImages({});
     } finally {
-      setIsProcessing(false);
-      console.log("handleExcelUpload: Processing finished.");
+      setIsProcessing(false); // Finaliza o processamento aqui
+      console.log('[handleExcelUpload] Processing finished.');
+      // Limpa o valor do input para permitir o re-upload do mesmo arquivo
+      if (excelInputRef.current) {
+        excelInputRef.current.value = "";
+      }
     }
   };
   
   const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     setZipFile(file);
-    setProgress(0);
-    setIsProcessing(true);
-    setPreviewImages({});
-    
-    try {
-      const JSZip = await import('jszip').then(mod => mod.default); 
-      const data = await file.arrayBuffer();
-      const zip = await JSZip.loadAsync(data);
-      const imagesPreview: Record<string, string[]> = {};
-      
-      const filePromises: Promise<void>[] = [];
-      let processedCount = 0;
-      const totalFiles = Object.values(zip.files).filter(f => !f.dir && /\.(jpe?g|png|gif|webp)$/i.test(f.name)).length;
+    console.log(`[handleZipUpload] ZIP file selected: ${file.name}`);
 
-      for (const filename of Object.keys(zip.files)) {
-        const fileInZip = zip.files[filename];
-        if (fileInZip.dir || !/\.(jpe?g|png|gif|webp)$/i.test(filename)) {
-          continue;
-        }
-
-        filePromises.push(
-          (async () => {
-            const match = filename.match(/^([^-]+)-/) || filename.match(/^([^.]+)\./);
-            const supplierCode = match ? match[1] : null;
-
-            if (supplierCode) {
-              const blob = await fileInZip.async("blob");
-              const imageUrl = URL.createObjectURL(blob);
-              if (!imagesPreview[supplierCode]) {
-                imagesPreview[supplierCode] = [];
+    // Se já houver fornecedores parseados, tentar processar as imagens imediatamente
+    if (parsedSuppliers.length > 0) {
+      setIsProcessing(true);
+      console.log('[handleZipUpload] Reprocessing ZIP with existing parsed suppliers...');
+      try {
+        const zipData = await file.arrayBuffer();
+        const localImagePreviews: Record<string, string[]> = {};
+        const JSZip = await import('jszip').then(mod => mod.default);
+        const loadedZip = await JSZip.loadAsync(zipData);
+        for (const supplier of parsedSuppliers) {
+          if (supplier.codigo && supplier.imagens) {
+            const imageNames = supplier.imagens.split(',').map(name => name.trim());
+            localImagePreviews[supplier.codigo] = [];
+            for (const imageName of imageNames) {
+              const imageFile = loadedZip.file(imageName);
+              if (imageFile) {
+                const blob = await imageFile.async('blob');
+                localImagePreviews[supplier.codigo].push(URL.createObjectURL(blob));
               }
-              imagesPreview[supplierCode].push(imageUrl);
             }
-            processedCount++;
-            setProgress(Math.floor((processedCount / totalFiles) * 100));
-          })()
-        );
-      }
-      
-      await Promise.all(filePromises);
-      setPreviewImages(imagesPreview);
-      setProgress(100);
-      
-      if (parsedSuppliers.length > 0) {
-        const newErrors = { ...validationErrors };
-        parsedSuppliers.forEach(supplier => {
-          if (supplier.imagens && supplier.imagens.trim() !== '' && !imagesPreview[supplier.codigo]) {
-            if (!newErrors[supplier.codigo]) newErrors[supplier.codigo] = [];
-            newErrors[supplier.codigo].push('Imagens listadas na planilha não encontradas no arquivo ZIP.');
           }
-        });
-        setValidationErrors(newErrors);
+        }
+        setPreviewImages(localImagePreviews);
+        toast({ title: "Arquivo ZIP processado", description: "Imagens do ZIP foram vinculadas aos fornecedores." });
+      } catch (error) {
+        console.error('[handleZipUpload] Error processing ZIP file:', error);
+        toast({ title: "Erro ao processar ZIP", description: error instanceof Error ? error.message : "Ocorreu um erro.", variant: "destructive" });
+      } finally {
+        setIsProcessing(false);
       }
-      
-      toast({
-        title: "Arquivo ZIP processado",
-        description: `Imagens de preview para ${Object.keys(imagesPreview).length} fornecedores.`
-      });
-
-    } catch (error) {
-      console.error('Erro ao processar ZIP:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao processar ZIP",
-        description: error instanceof Error ? error.message : "Verifique o arquivo e tente novamente."
-      });
-    } finally {
-      setIsProcessing(false);
+    }
+    // Limpa o valor do input para permitir o re-upload do mesmo arquivo
+    if (zipInputRef.current) {
+        zipInputRef.current.value = "";
     }
   };
 
   const confirmImport = async () => {
-    console.log("confirmImport: Starting import confirmation process.");
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session || !session.user) {
+    // Verificação de erros críticos de validação
+    const hasCriticalErrors = Object.values(validationErrors).flat().some(
+      (errMsg) => 
+        typeof errMsg === 'string' && 
+        (errMsg.toLowerCase().includes("inválido") || 
+         errMsg.toLowerCase().includes("obrigatório") || 
+         errMsg.toLowerCase().includes("já existe"))
+    );
+
+    if (hasCriticalErrors) {
       toast({
+        title: "Erros Críticos de Validação",
+        description: "Corrija os erros marcados como críticos antes de importar. Baixe o CSV de erros para detalhes.",
         variant: "destructive",
-        title: "Sessão inválida ou expirada",
-        description: "Sua sessão de login não é mais válida. Por favor, faça login novamente e tente importar.",
         duration: 7000,
       });
-      console.error("confirmImport: User session is invalid or expired.");
-      setIsProcessing(false); // Ensure processing state is reset
-      // Optionally redirect to login or prompt user to refresh
       return;
     }
-    console.log("confirmImport: User session is valid. User ID:", session.user.id);
-
+    
     if (parsedSuppliers.length === 0) {
-      toast({ title: "Nenhum fornecedor para importar", description: "Faça upload de uma planilha.", variant: "destructive" });
-      console.warn("confirmImport: No suppliers to import.");
-      return;
+        toast({ title: "Nenhum fornecedor para importar", description: "Não há dados de fornecedores válidos na lista de revisão.", variant: "destructive" });
+        return;
     }
 
-    const currentValidationErrors = { ...validationErrors };
-    let hasAnyErrors = false;
-    parsedSuppliers.forEach((supplier, index) => {
-        const supplierErrors = validateSupplierRow(supplier, existingCodes, categoryNameToIdMap);
-        if (supplierErrors.length > 0) {
-          currentValidationErrors[supplier.codigo || `review-err-${index}`] = supplierErrors;
-          hasAnyErrors = true;
-        } else if (currentValidationErrors[supplier.codigo || `review-err-${index}`]) {
-          // Clear previous errors if now valid
-          delete currentValidationErrors[supplier.codigo || `review-err-${index}`];
-        }
-     });
-     setValidationErrors(currentValidationErrors);
-     console.log("confirmImport: Re-validated suppliers. Errors:", currentValidationErrors);
-
-    if (hasAnyErrors) {
-      toast({
-        variant: "destructive",
-        title: "Erro na validação",
-        description: "Corrija os erros identificados antes de importar. Verifique a planilha ou os dados na aba de revisão.",
-        duration: 7000,
-      });
-      setActiveTab('review'); 
-      console.warn("confirmImport: Validation errors found. Aborting import.");
-      return;
-    }
-    
     setIsProcessing(true);
     setProgress(0);
-    console.log("confirmImport: Starting actual import process.");
-    
+    let successCount = 0;
+    let errorCount = 0;
+    const importAttemptId = crypto.randomUUID();
+    let finalValidationErrors: ValidationErrors = { ...validationErrors }; // Começa com os erros de validação da planilha
+
     try {
-      // ... keep existing code (bucket check logic and import process)
-      const { data: buckets, error: listBucketError } = await supabase.storage.listBuckets();
-      if (listBucketError) {
-        console.error("Erro ao listar buckets:", listBucketError);
-        toast({
-            variant: "destructive",
-            title: "Erro ao verificar buckets",
-            description: `Não foi possível verificar os buckets de armazenamento: ${listBucketError.message}`
-        });
-        setIsProcessing(false);
-        return;
+      // Filtrar fornecedores que não têm erros de validação iniciais fatais.
+      const suppliersToAttemptImport = parsedSuppliers.filter(supplier => {
+        const errorKey = supplier.codigo || `Linha ${supplier.originalRowIndex}`;
+        const errors = finalValidationErrors[errorKey] || [];
+        return !errors.some(err => 
+          err.toLowerCase().includes("inválido") || 
+          err.toLowerCase().includes("obrigatório") || 
+          err.toLowerCase().includes("já existe")
+        );
+      });
+
+      if (suppliersToAttemptImport.length === 0 && parsedSuppliers.length > 0) {
+         toast({ title: "Nenhum fornecedor válido para tentativa", description: "Todos os fornecedores na lista possuem erros críticos ou nenhum fornecedor para processar. Corrija-os e tente novamente.", variant: "destructive", duration: 7000 });
+         setIsProcessing(false);
+         return;
       }
       
-      const bucketExists = buckets?.some(b => b.name === 'supplier-images');
-      
-      if (!bucketExists) {
-        toast({ title: "Criando bucket de imagens...", description: "Aguarde um momento."});
-        const { error: createBucketError } = await supabase.storage.createBucket('supplier-images', {
-          public: true, 
-        });
-        
-        if (createBucketError) {
-          const msg = createBucketError.message.toLowerCase();
-          if (msg.includes('already exist') || msg.includes('já existe')) {
-            toast({ title: "Aviso", description: "Bucket 'supplier-images' já existe. Continuando..." });
-          } else {
-            console.error("Erro ao criar bucket:", createBucketError);
-            toast({
-                variant: "destructive",
-                title: "Erro ao criar bucket",
-                description: `Erro ao criar bucket 'supplier-images': ${createBucketError.message}`
-            });
-            setIsProcessing(false);
-            return;
-          }
-        } else {
-          toast({ title: "Bucket 'supplier-images' criado com sucesso!" });
+      let uploadedImageMap: Record<string, string[]> = {};
+      if (zipFile) {
+        console.log('[confirmImport] Processing ZIP file for image uploads...');
+        try {
+          const zipData = await zipFile.arrayBuffer();
+          // Nota: processImagesFromZip pode lançar seus próprios erros.
+          uploadedImageMap = await processImagesFromZip(zipData);
+          console.log('[confirmImport] ZIP file processed. Image map created.', uploadedImageMap);
+          // Aqui, poderíamos opcionalmente atualizar os previewImages com as URLs reais do storage,
+          // mas para a importação, o uploadedImageMap é o que importa.
+        } catch (zipError: any) {
+          console.error("[confirmImport] Error processing ZIP file:", zipError);
+          toast({ title: "Erro ao Processar ZIP", description: `Falha ao processar arquivo ZIP: ${zipError.message || 'Erro desconhecido'}`, variant: "destructive" });
+          // Salvar histórico com erro no ZIP
+          await saveImportHistory({
+            id: importAttemptId,
+            file_name: excelFile?.name || 'N/A',
+            imported_by_id: user?.id,
+            imported_at: new Date().toISOString(),
+            status: 'error',
+            total_rows: parsedSuppliers.length,
+            successful_rows: 0,
+            failed_rows: parsedSuppliers.length,
+            error_details: { global: [`Erro ao processar arquivo ZIP: ${zipError.message || 'Erro desconhecido'}`] }
+          });
+          setIsProcessing(false);
+          return; // Interrompe a importação se o ZIP falhar
         }
       }
-      setProgress(5); 
-      
-      let imageMap: Record<string, string[]> = {};
-      if (zipFile) {
-        toast({ title: "Processando imagens do ZIP...", description: "Isso pode levar alguns minutos."});
-        const zipData = await zipFile.arrayBuffer();
-        imageMap = await processImagesFromZip(zipData, 'supplier-images');
-        setProgress(30); 
-        toast({ title: "Imagens processadas", description: `${Object.values(imageMap).flat().length} imagens carregadas para o armazenamento.` });
-      }
-      
-      toast({ title: "Importando fornecedores...", description: "Aguarde..." });
-      console.log("confirmImport: Calling importSuppliers service.");
-      const result = await importSuppliers(
-        parsedSuppliers, 
-        imageMap,
-        (p) => setProgress(30 + Math.floor(p * 0.6)) 
+
+      console.log(`[confirmImport] Attempting to import ${suppliersToAttemptImport.length} suppliers.`);
+      const results: ImportResult = await importSuppliers(
+        suppliersToAttemptImport, 
+        uploadedImageMap, // Passa o mapa de imagens REALMENTE enviadas
+        (p) => setProgress(p)
       );
-      console.log("confirmImport: importSuppliers result:", result);
       
-      setProgress(95);
-      
-      console.log("confirmImport: Calling saveImportHistory service.");
+      successCount = results.successCount;
+      // errorCount inicial da importação (Supabase)
+      errorCount = results.errorCount; 
+
+      // Atualizar finalValidationErrors com erros que ocorreram durante a importação no Supabase
+      if (Object.keys(results.errors).length > 0) {
+        Object.entries(results.errors).forEach(([key, messages]) => {
+          if (!finalValidationErrors[key]) finalValidationErrors[key] = [];
+          finalValidationErrors[key].push(...messages.map(m => `Falha na importação: ${m}`));
+        });
+      }
+      setValidationErrors(finalValidationErrors); // Atualiza o estado de erros com os erros da importação
+
+      // Calcular o número total de falhas: 
+      // aqueles que falharam no Supabase + aqueles que nem foram tentados devido a erros de validação prévios.
+      const notAttemptedCount = parsedSuppliers.length - suppliersToAttemptImport.length;
+      const totalFailedRows = errorCount + notAttemptedCount;
+
       await saveImportHistory({
-        filename: excelFile?.name || 'importacao_manual.xlsx',
-        total_count: parsedSuppliers.length,
-        success_count: result.successCount,
-        error_count: result.errorCount,
-        status: result.successCount === parsedSuppliers.length && result.errorCount === 0 ? 'success' : 'error',
-        error_details: result.errorCount > 0 ? result.errors : undefined,
+        id: importAttemptId,
+        file_name: excelFile?.name || 'N/A',
+        imported_by_id: user?.id,
+        imported_at: new Date().toISOString(),
+        status: totalFailedRows > 0 ? (successCount > 0 ? 'partial' : 'error') : 'success',
+        total_rows: parsedSuppliers.length,
+        successful_rows: successCount,
+        failed_rows: totalFailedRows,
+        error_details: Object.keys(finalValidationErrors).length > 0 ? finalValidationErrors : undefined
       });
-      console.log("confirmImport: saveImportHistory finished.");
-      
-      setProgress(100);
-      
-      if (result.errorCount === 0 && result.successCount === parsedSuppliers.length) {
-        toast({
-          title: "Importação concluída com sucesso!",
-          description: `${result.successCount} fornecedores importados.`,
-          duration: 5000,
-        });
-        setParsedSuppliers([]);
-        setPreviewImages({});
-        setExcelFile(null);
-        setZipFile(null);
-        setValidationErrors({});
-        if (excelInputRef.current) excelInputRef.current.value = '';
-        if (zipInputRef.current) zipInputRef.current.value = '';
-        fetchImportHistory(); 
-        setActiveTab('history');
-        console.log("confirmImport: Import successful, resetting state and moving to history tab.");
-      } else {
-         toast({
-          variant: "destructive",
-          title: "Importação concluída com erros",
-          description: `${result.successCount} fornecedores importados, ${result.errorCount} com erro. Verifique a aba de revisão ou o histórico.`,
-          duration: 7000,
-        });
-        setValidationErrors(result.errors); 
-        fetchImportHistory(); 
-        setActiveTab('review');
-        console.warn("confirmImport: Import finished with errors. Errors:", result.errors);
-      }
-      
-    } catch (error) {
-      console.error('Erro catastrófico durante importação:', error);
+
       toast({
-        variant: "destructive",
-        title: "Erro crítico na importação",
-        description: error instanceof Error ? error.message : "Ocorreu um erro inesperado."
+        title: "Importação Concluída",
+        description: `${successCount} fornecedores importados. ${totalFailedRows} falharam ou não foram tentados.`,
+        duration: 7000,
       });
-      setProgress(0); 
-      // Attempt to save history even on critical failure, if possible
-      try {
-        await saveImportHistory({
-          filename: excelFile?.name || 'import_critical_fail.xlsx',
-          total_count: parsedSuppliers.length,
-          success_count: 0, // Assuming no success in critical error
-          error_count: parsedSuppliers.length, 
-          status: 'error',
-          error_details: { global: ['Erro crítico no processo: ' + (error instanceof Error ? error.message : "Desconhecido")] },
-        });
-      } catch (historyError) {
-        console.error("Failed to save history after critical import error:", historyError);
-      }
-      fetchImportHistory();
+      
+      // Após a importação, atualiza o histórico na aba de histórico
+      fetchHistoryLocal();
+      // Considerar limpar excelFile e zipFile aqui ou mudar de aba
+      // setActiveTab('history'); // ou de volta para upload, ou manter em review
+
+    } catch (error: any) {
+      console.error("[confirmImport] Critical error during bulk import process:", error);
+      toast({ title: "Erro Crítico na Importação", description: error.message || "Ocorreu um erro grave e inesperado.", variant: "destructive" });
+      // Garante que errorCount reflita que tudo falhou se um erro não capturado ocorreu
+      const failedDueToException = parsedSuppliers.length - successCount; 
+      
+      await saveImportHistory({
+        id: importAttemptId,
+        file_name: excelFile?.name || 'N/A',
+        imported_by_id: user?.id,
+        imported_at: new Date().toISOString(),
+        status: 'error',
+        total_rows: parsedSuppliers.length,
+        successful_rows: successCount, // Pode ser > 0 se o erro ocorreu após alguns sucessos parciais não tratados no results
+        failed_rows: failedDueToException,
+        error_details: { global: [`Erro crítico no processo: ${error.message || "Erro desconhecido"}`] }
+      });
+      fetchHistoryLocal(); // Atualiza histórico mesmo em erro crítico
     } finally {
       setIsProcessing(false);
-      console.log("confirmImport: Import process finished (finally block).");
+      setProgress(100); // Garante que a barra de progresso vá até o fim
+      // Decidir se limpa os arquivos ou não. 
+      // Limpar pode ser bom para um novo ciclo, mas pode frustrar se o usuário quiser tentar de novo com pequenos ajustes.
+      // setExcelFile(null);
+      // setZipFile(null);
     }
+  };
+
+  const clearUploadArea = () => {
+    setExcelFile(null);
+    setZipFile(null);
+    setParsedSuppliers([]);
+    setValidationErrors({});
+    setPreviewImages({});
+    setProgress(0);
+    if (excelInputRef.current) excelInputRef.current.value = "";
+    if (zipInputRef.current) zipInputRef.current.value = "";
+    setActiveTab('upload');
+    toast({title: "Área de Upload Limpa", description: "Pode iniciar uma nova importação."});
+  };
+
+  const handleRetryFailed = async () => {
+    const suppliersToRetry = parsedSuppliers.filter(supplier => {
+      const errorKey = supplier.codigo || `Linha ${supplier.originalRowIndex}`;
+      // Considera apenas aqueles que tiveram erros de importação (não de validação inicial crítica)
+      // ou aqueles que não foram tentados mas não tinham erros críticos.
+      const errors = validationErrors[errorKey];
+      return errors && errors.some(e => e.startsWith("Falha na importação:")) || 
+            !errors && !initialCriticalErrors(supplier); // Se não tem erro registrado E não tinha erro crítico inicial
+    });
+
+    if (suppliersToRetry.length === 0) {
+      toast({ title: "Nenhum fornecedor para tentar novamente", description: "Não há fornecedores marcados com falha na importação ou aptos para nova tentativa." });
+      return;
+    }
+    
+    // Antes de chamar confirmImport novamente, precisamos limpar os erros *específicos de importação* desses fornecedores
+    // para que `confirmImport` possa tentar processá-los novamente.
+    // Não limpe erros de validação originais se eles ainda se aplicarem.
+    const nextValidationErrors = { ...validationErrors };
+    suppliersToRetry.forEach(s => {
+      const errorKey = s.codigo || `Linha ${s.originalRowIndex}`;
+      if (nextValidationErrors[errorKey]) {
+        nextValidationErrors[errorKey] = nextValidationErrors[errorKey].filter(err => !err.startsWith("Falha na importação:"));
+        if (nextValidationErrors[errorKey].length === 0) {
+          delete nextValidationErrors[errorKey];
+        }
+      }
+    });
+
+    setParsedSuppliers(suppliersToRetry); // Define apenas os que serão tentados
+    setValidationErrors(nextValidationErrors); // Define os erros limpos
+    // O zipFile e excelFile devem permanecer os mesmos
+    
+    toast({ title: "Preparando para tentar novamente...", description: `Tentando importar ${suppliersToRetry.length} fornecedores novamente.` });
+    // Pequeno delay para o estado atualizar antes de chamar confirmImport, se necessário
+    // setTimeout(confirmImport, 100);
+    await confirmImport(); // Chamar confirmImport para processar apenas os filtrados
+  };
+
+  // Helper para verificar se um fornecedor tinha erros críticos iniciais (para a lógica de retry)
+  const initialCriticalErrors = (supplier: SupplierRowData): boolean => {
+    const tempValidationErrors = {};
+    const errors = validateSupplierRow(supplier, existingCodes, categoryNameToIdMap);
+    if (errors.length > 0) {
+      tempValidationErrors[supplier.codigo || `Linha ${supplier.originalRowIndex}`] = errors;
+    }
+    return errors.some(err => 
+      err.toLowerCase().includes("inválido") || 
+      err.toLowerCase().includes("obrigatório") || 
+      err.toLowerCase().includes("já existe")
+    );
   };
 
   // Debug logging for the current state in the render cycle
@@ -638,7 +624,6 @@ export default function SuppliersBulkUpload() {
   console.log('[Review Tab Render] Parsed Suppliers (length):', parsedSuppliers.length, parsedSuppliers);
   console.log('[Review Tab Render] Validation Errors:', validationErrors);
   console.log('[Review Tab Render] Is Processing:', isProcessing);
-  console.log('[Review Tab Render] Initial Data Loaded:', initialDataLoaded);
   
   return (
     <AdminLayout>
@@ -648,7 +633,6 @@ export default function SuppliersBulkUpload() {
         <Tabs value={activeTab} onValueChange={(value) => {
           console.log('[Tab Change] Changing from', activeTab, 'to', value);
           console.log('[Tab Change] Current parsedSuppliers length:', parsedSuppliers.length);
-          console.log('[Tab Change] Initial data loaded:', initialDataLoaded);
           setActiveTab(value as 'upload' | 'review' | 'history');
         }}>
           <TabsList className="w-full max-w-lg grid grid-cols-3 mb-8 shadow-sm"> 
@@ -800,7 +784,7 @@ export default function SuppliersBulkUpload() {
                   disabled={
                     parsedSuppliers.length === 0 || 
                     isProcessing ||
-                    !initialDataLoaded
+                    !Object.keys(existingCategories).length
                   }
                   size="lg"
                   className="bg-green-600 hover:bg-green-700 text-white"
@@ -813,28 +797,7 @@ export default function SuppliersBulkUpload() {
               </div>
             </div>
             
-            {!initialDataLoaded && (
-              <Alert variant="default" className="shadow-md border-blue-500 text-blue-700 [&>svg]:text-blue-500"> 
-                <AlertTriangle className="h-5 w-5" />
-                <AlertTitle className="font-semibold">Carregando dados iniciais...</AlertTitle>
-                <AlertDescription>
-                  Aguardando carregamento das categorias e códigos de fornecedores existentes.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {Object.values(validationErrors).some(errs => errs.length > 0) && (
-              <Alert variant="destructive" className="shadow-md">
-                <AlertTriangle className="h-5 w-5" />
-                <AlertTitle className="font-semibold">Erros de Validação Encontrados</AlertTitle>
-                <AlertDescription>
-                  Existem {Object.keys(validationErrors).filter(k => validationErrors[k]?.length > 0).length} fornecedores com erros. 
-                  Apenas os fornecedores válidos serão importados. Você pode exportar um relatório detalhado dos erros.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {categoryNameToIdMap.size === 0 && parsedSuppliers.length > 0 && initialDataLoaded && (
+            {!Object.keys(existingCategories).length && parsedSuppliers.length > 0 && (
               <Alert variant="default" className="shadow-md border-yellow-500 text-yellow-700 [&>svg]:text-yellow-500"> 
                 <AlertTriangle className="h-5 w-5" />
                 <AlertTitle className="font-semibold">Atenção: Nenhuma Categoria Cadastrada ou Mapeada</AlertTitle>
@@ -963,7 +926,7 @@ export default function SuppliersBulkUpload() {
                 </CardContent>
               </Card>
             )}
-             {!isProcessing && parsedSuppliers.length === 0 && initialDataLoaded && ( // Esta é a mensagem correta para quando não há fornecedores
+             {!isProcessing && parsedSuppliers.length === 0 && Object.keys(existingCategories).length && ( // Esta é a mensagem correta para quando não há fornecedores
                 <div className="text-center py-10 text-muted-foreground">
                     <FileSpreadsheet className="mx-auto h-12 w-12 mb-4"/>
                     <p>Nenhum dado de fornecedor para revisar.</p>
@@ -975,7 +938,7 @@ export default function SuppliersBulkUpload() {
           <TabsContent value="history" className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                 <h2 className="text-2xl font-semibold text-gray-700">Histórico de Importações</h2>
-                <Button variant="outline" onClick={fetchImportHistory} disabled={isProcessing}>
+                <Button variant="outline" onClick={fetchHistoryLocal} disabled={isProcessing}>
                     <History className="mr-2 h-4 w-4"/> Atualizar Histórico
                 </Button>
             </div>
