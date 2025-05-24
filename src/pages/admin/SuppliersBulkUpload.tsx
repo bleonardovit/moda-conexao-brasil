@@ -39,7 +39,6 @@ import {
   processImagesFromZip, 
   saveImportHistory,
   ValidationErrors,
-  // mapRowToSupplierFormValues, // No longer directly used here for display logic
 } from '@/services/supplierBulkService';
 
 const TEMPLATE_HEADERS = [
@@ -80,12 +79,20 @@ export default function SuppliersBulkUpload() {
   const [categoryNameToIdMap, setCategoryNameToIdMap] = useState<Map<string, string>>(new Map());
   const [existingCodes, setExistingCodes] = useState<Set<string>>(new Set());
   
+  // Add state to track if initial data has been loaded
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  
   const excelInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    console.log('[useEffect] Triggered - this might be causing re-renders and data loss');
-    console.log('[useEffect] Current parsedSuppliers length before fetch:', parsedSuppliers.length);
+    // Only run once on mount, and only if data hasn't been loaded yet
+    if (initialDataLoaded) {
+      console.log('[useEffect] Skipping - initial data already loaded');
+      return;
+    }
+    
+    console.log('[useEffect] Loading initial data (categories and supplier codes)');
     
     const fetchExistingData = async () => {
       try {
@@ -133,6 +140,10 @@ export default function SuppliersBulkUpload() {
           console.log("Supplier codes loaded:", codesSet.size);
         }
         
+        // Mark initial data as loaded
+        setInitialDataLoaded(true);
+        console.log('[useEffect] Initial data loading complete - setting initialDataLoaded to true');
+        
       } catch (error) {
         console.error('Error fetching initial data:', error);
         toast({
@@ -143,15 +154,10 @@ export default function SuppliersBulkUpload() {
       }
     };
     
-    // Only fetch if we don't have categories loaded yet
-    if (existingCategories.size === 0) {
-      fetchExistingData();
-    }
-    
-    // Don't call fetchImportHistory here to avoid multiple calls
-  }, []); // Changed dependency array to empty to avoid re-running
+    fetchExistingData();
+  }, []); // Empty dependency array - run only once on mount
   
-  // Separate useEffect for import history
+  // Separate useEffect for import history - also only run once
   useEffect(() => {
     fetchImportHistory(); 
   }, []); // Only run once on mount
@@ -247,12 +253,13 @@ export default function SuppliersBulkUpload() {
     
     console.log("handleExcelUpload: Starting Excel file processing.", file.name);
     console.log('[handleExcelUpload] Current parsedSuppliers length BEFORE processing:', parsedSuppliers.length);
+    console.log('[handleExcelUpload] Initial data loaded status:', initialDataLoaded);
     
     setExcelFile(file);
     setProgress(0);
     setIsProcessing(true);
     
-    // Clear previous data - THIS MIGHT BE THE ISSUE
+    // Clear previous data
     console.log('[handleExcelUpload] Clearing previous data - this will reset parsedSuppliers to []');
     setParsedSuppliers([]); 
     setValidationErrors({});
@@ -291,6 +298,27 @@ export default function SuppliersBulkUpload() {
       console.log("handleExcelUpload: Mapped suppliers data:", suppliers);
       console.log('[handleExcelUpload] About to call setParsedSuppliers with:', suppliers.length, 'suppliers');
       
+      // Wait for initial data to be loaded before proceeding
+      if (!initialDataLoaded) {
+        console.log('[handleExcelUpload] Waiting for initial data to be loaded...');
+        // Wait a bit and try again, or show an error
+        setTimeout(() => {
+          if (initialDataLoaded) {
+            console.log('[handleExcelUpload] Initial data now loaded, proceeding...');
+            // Continue processing...
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Aguarde o carregamento",
+              description: "Os dados iniciais ainda estão sendo carregados. Tente novamente em alguns segundos."
+            });
+            setIsProcessing(false);
+            return;
+          }
+        }, 1000);
+        return;
+      }
+      
       // Set the parsed suppliers - THIS IS CRITICAL
       setParsedSuppliers(suppliers);
       console.log('[handleExcelUpload] setParsedSuppliers called successfully');
@@ -321,11 +349,11 @@ export default function SuppliersBulkUpload() {
 
       if (suppliers.length > 0) {
         console.log("handleExcelUpload: Moving to review tab.");
-        // Add a small delay to ensure state is updated before tab change
+        // Add a longer delay to ensure state is updated before tab change
         setTimeout(() => {
           console.log('[handleExcelUpload] About to change tab to review. Current parsedSuppliers length:', parsedSuppliers.length);
           setActiveTab('review');
-        }, 100);
+        }, 300); // Increased delay
       } else {
         console.log("handleExcelUpload: No suppliers found in the sheet.");
       }
@@ -474,7 +502,7 @@ export default function SuppliersBulkUpload() {
     console.log("confirmImport: Starting actual import process.");
     
     try {
-      // ... keep existing code (bucket check logic)
+      // ... keep existing code (bucket check logic and import process)
       const { data: buckets, error: listBucketError } = await supabase.storage.listBuckets();
       if (listBucketError) {
         console.error("Erro ao listar buckets:", listBucketError);
@@ -610,6 +638,7 @@ export default function SuppliersBulkUpload() {
   console.log('[Review Tab Render] Parsed Suppliers (length):', parsedSuppliers.length, parsedSuppliers);
   console.log('[Review Tab Render] Validation Errors:', validationErrors);
   console.log('[Review Tab Render] Is Processing:', isProcessing);
+  console.log('[Review Tab Render] Initial Data Loaded:', initialDataLoaded);
   
   return (
     <AdminLayout>
@@ -619,6 +648,7 @@ export default function SuppliersBulkUpload() {
         <Tabs value={activeTab} onValueChange={(value) => {
           console.log('[Tab Change] Changing from', activeTab, 'to', value);
           console.log('[Tab Change] Current parsedSuppliers length:', parsedSuppliers.length);
+          console.log('[Tab Change] Initial data loaded:', initialDataLoaded);
           setActiveTab(value as 'upload' | 'review' | 'history');
         }}>
           <TabsList className="w-full max-w-lg grid grid-cols-3 mb-8 shadow-sm"> 
@@ -769,7 +799,8 @@ export default function SuppliersBulkUpload() {
                   onClick={confirmImport}
                   disabled={
                     parsedSuppliers.length === 0 || 
-                    isProcessing
+                    isProcessing ||
+                    !initialDataLoaded
                   }
                   size="lg"
                   className="bg-green-600 hover:bg-green-700 text-white"
@@ -782,6 +813,16 @@ export default function SuppliersBulkUpload() {
               </div>
             </div>
             
+            {!initialDataLoaded && (
+              <Alert variant="default" className="shadow-md border-blue-500 text-blue-700 [&>svg]:text-blue-500"> 
+                <AlertTriangle className="h-5 w-5" />
+                <AlertTitle className="font-semibold">Carregando dados iniciais...</AlertTitle>
+                <AlertDescription>
+                  Aguardando carregamento das categorias e códigos de fornecedores existentes.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {Object.values(validationErrors).some(errs => errs.length > 0) && (
               <Alert variant="destructive" className="shadow-md">
                 <AlertTriangle className="h-5 w-5" />
@@ -793,7 +834,7 @@ export default function SuppliersBulkUpload() {
               </Alert>
             )}
             
-            {categoryNameToIdMap.size === 0 && parsedSuppliers.length > 0 && (
+            {categoryNameToIdMap.size === 0 && parsedSuppliers.length > 0 && initialDataLoaded && (
               <Alert variant="default" className="shadow-md border-yellow-500 text-yellow-700 [&>svg]:text-yellow-500"> 
                 <AlertTriangle className="h-5 w-5" />
                 <AlertTitle className="font-semibold">Atenção: Nenhuma Categoria Cadastrada ou Mapeada</AlertTitle>
@@ -920,10 +961,9 @@ export default function SuppliersBulkUpload() {
                     </TableBody>
                   </Table>
                 </CardContent>
-                {/* A condição redundante foi removida daqui, pois o Card só renderiza se parsedSuppliers.length > 0 */}
               </Card>
             )}
-             {!isProcessing && parsedSuppliers.length === 0 && ( // Esta é a mensagem correta para quando não há fornecedores
+             {!isProcessing && parsedSuppliers.length === 0 && initialDataLoaded && ( // Esta é a mensagem correta para quando não há fornecedores
                 <div className="text-center py-10 text-muted-foreground">
                     <FileSpreadsheet className="mx-auto h-12 w-12 mb-4"/>
                     <p>Nenhum dado de fornecedor para revisar.</p>
