@@ -86,74 +86,88 @@ export default function SuppliersBulkUpload() {
   const zipInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    let isMounted = true; // Flag para rastrear se o componente está montado
+    let isMounted = true;
     console.log('[useEffect InitialData] Componente montado. Buscando dados iniciais...');
 
     const fetchExistingData = async () => {
       try {
         console.log("[useEffect InitialData] Fetching existing categories and supplier codes...");
-        // Promise.all para buscar em paralelo
-        const [categoriesResult, suppliersResult] = await Promise.all([
-          supabase.from('categories').select('id, name'),
-          supabase.from('suppliers').select('code')
-        ]);
+        
+        // Buscar categorias primeiro
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('id, name');
 
-        if (!isMounted) return; // Não atualizar estado se desmontado
+        if (!isMounted) return;
 
-        const { data: categoriesData, error: categoriesError } = categoriesResult;
         if (categoriesError) {
           console.error('[useEffect InitialData] Error fetching categories:', categoriesError);
-          toast({ variant: "destructive", title: "Erro ao carregar categorias", description: categoriesError.message });
+          toast({ 
+            variant: "destructive", 
+            title: "Erro ao carregar categorias", 
+            description: categoriesError.message 
+          });
         } else {
+          console.log('[useEffect InitialData] Categories data received:', categoriesData);
+          
           const idToNameMap = new Map<string, string>();
           const nameToIdMap = new Map<string, string>();
+          
           (categoriesData || []).forEach(cat => {
             if (cat.id && cat.name) {
               idToNameMap.set(cat.id, cat.name);
               nameToIdMap.set(normalizeString(cat.name), cat.id);
             }
           });
+          
           if (isMounted) {
             setExistingCategories(idToNameMap);
             setCategoryNameToIdMap(nameToIdMap);
-            console.log('[useEffect InitialData] Categories loaded:', { idToNameMapSize: idToNameMap.size, nameToIdMapSize: nameToIdMap.size });
+            console.log('[useEffect InitialData] Categories maps updated:', {
+              idToNameMapSize: idToNameMap.size,
+              nameToIdMapSize: nameToIdMap.size,
+              categories: Array.from(idToNameMap.entries())
+            });
           }
         }
 
-        if (!isMounted) return; // Não atualizar estado se desmontado
+        // Buscar códigos de fornecedores
+        const { data: suppliersData, error: suppliersError } = await supabase
+          .from('suppliers')
+          .select('code');
 
-        const { data: suppliersData, error: suppliersError } = suppliersResult;
+        if (!isMounted) return;
+
         if (suppliersError) {
           console.error('[useEffect InitialData] Error fetching supplier codes:', suppliersError);
-          toast({ variant: "destructive", title: "Erro ao carregar códigos de fornecedores", description: suppliersError.message });
+          toast({ 
+            variant: "destructive", 
+            title: "Erro ao carregar códigos de fornecedores", 
+            description: suppliersError.message 
+          });
         } else {
-          const codesSet = new Set((suppliersData || []).map(s => s.code).filter(Boolean) as string[]);
+          const codes = new Set((suppliersData || []).map(s => s.code));
           if (isMounted) {
-            setExistingCodes(codesSet);
-            console.log('[useEffect InitialData] Supplier codes loaded:', codesSet.size);
+            setExistingCodes(codes);
+            console.log('[useEffect InitialData] Supplier codes loaded:', Array.from(codes));
           }
         }
-        
-        console.log('[useEffect InitialData] Initial data loading complete.');
-        
       } catch (error) {
-        if (!isMounted) return;
-        console.error('[useEffect InitialData] Error fetching initial data:', error);
-        toast({
-            variant: "destructive",
-            title: "Erro ao carregar dados iniciais",
-            description: error instanceof Error ? error.message : "Erro desconhecido.",
+        console.error('[useEffect InitialData] Unexpected error:', error);
+        toast({ 
+          variant: "destructive", 
+          title: "Erro inesperado", 
+          description: error instanceof Error ? error.message : "Erro desconhecido" 
         });
       }
     };
-    
+
     fetchExistingData();
 
     return () => {
-      isMounted = false; // Define como desmontado ao limpar o efeito
-      console.log('[useEffect InitialData] Componente desmontado. Limpando efeito.');
+      isMounted = false;
     };
-  }, [toast]); // toast é uma dependência estável se vier do hook useToast
+  }, [toast]);
   
   const fetchHistoryLocal = async () => {
     try {
@@ -783,8 +797,7 @@ export default function SuppliersBulkUpload() {
                   onClick={confirmImport}
                   disabled={
                     parsedSuppliers.length === 0 || 
-                    isProcessing ||
-                    !Object.keys(existingCategories).length
+                    isProcessing
                   }
                   size="lg"
                   className="bg-green-600 hover:bg-green-700 text-white"
