@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -85,6 +84,9 @@ export default function SuppliersBulkUpload() {
   const zipInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    console.log('[useEffect] Triggered - this might be causing re-renders and data loss');
+    console.log('[useEffect] Current parsedSuppliers length before fetch:', parsedSuppliers.length);
+    
     const fetchExistingData = async () => {
       try {
         console.log("Fetching existing categories and supplier codes...");
@@ -141,9 +143,18 @@ export default function SuppliersBulkUpload() {
       }
     };
     
-    fetchExistingData();
+    // Only fetch if we don't have categories loaded yet
+    if (existingCategories.size === 0) {
+      fetchExistingData();
+    }
+    
+    // Don't call fetchImportHistory here to avoid multiple calls
+  }, []); // Changed dependency array to empty to avoid re-running
+  
+  // Separate useEffect for import history
+  useEffect(() => {
     fetchImportHistory(); 
-  }, [toast]);
+  }, []); // Only run once on mount
   
   const fetchImportHistory = async () => {
     try {
@@ -179,7 +190,7 @@ export default function SuppliersBulkUpload() {
         'F001', 'Moda Fashion SP', 'Roupas femininas atacado', '@modafashionsp', '11999999999', 'https://modafashion.com',
         'medio', '10 peças', 'São Paulo', 'SP',
         'correios,transportadora', 'sim', 'pix,cartao', 
-        'uuid-categoria-1,uuid-categoria-2', 
+        'casual,fitness', 
         'F001-img1.jpg,F001-img2.png'
       ],
     ];
@@ -235,9 +246,14 @@ export default function SuppliersBulkUpload() {
     if (!file) return;
     
     console.log("handleExcelUpload: Starting Excel file processing.", file.name);
+    console.log('[handleExcelUpload] Current parsedSuppliers length BEFORE processing:', parsedSuppliers.length);
+    
     setExcelFile(file);
     setProgress(0);
     setIsProcessing(true);
+    
+    // Clear previous data - THIS MIGHT BE THE ISSUE
+    console.log('[handleExcelUpload] Clearing previous data - this will reset parsedSuppliers to []');
     setParsedSuppliers([]); 
     setValidationErrors({});
     
@@ -273,8 +289,11 @@ export default function SuppliersBulkUpload() {
         imagens: String(row.imagens || ''),
       }));
       console.log("handleExcelUpload: Mapped suppliers data:", suppliers);
+      console.log('[handleExcelUpload] About to call setParsedSuppliers with:', suppliers.length, 'suppliers');
       
+      // Set the parsed suppliers - THIS IS CRITICAL
       setParsedSuppliers(suppliers);
+      console.log('[handleExcelUpload] setParsedSuppliers called successfully');
       
       const currentExistingCodes = new Set(existingCodes); 
       const errors: ValidationErrors = {};
@@ -302,7 +321,11 @@ export default function SuppliersBulkUpload() {
 
       if (suppliers.length > 0) {
         console.log("handleExcelUpload: Moving to review tab.");
-        setActiveTab('review');
+        // Add a small delay to ensure state is updated before tab change
+        setTimeout(() => {
+          console.log('[handleExcelUpload] About to change tab to review. Current parsedSuppliers length:', parsedSuppliers.length);
+          setActiveTab('review');
+        }, 100);
       } else {
         console.log("handleExcelUpload: No suppliers found in the sheet.");
       }
@@ -581,13 +604,23 @@ export default function SuppliersBulkUpload() {
       console.log("confirmImport: Import process finished (finally block).");
     }
   };
+
+  // Debug logging for the current state in the render cycle
+  console.log('[Review Tab Render] Active Tab:', activeTab);
+  console.log('[Review Tab Render] Parsed Suppliers (length):', parsedSuppliers.length, parsedSuppliers);
+  console.log('[Review Tab Render] Validation Errors:', validationErrors);
+  console.log('[Review Tab Render] Is Processing:', isProcessing);
   
   return (
     <AdminLayout>
       <div className="container mx-auto py-8"> 
         <h1 className="text-3xl font-bold mb-8 text-gray-800">Importação em Massa de Fornecedores</h1> 
         
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'review' | 'history')}>
+        <Tabs value={activeTab} onValueChange={(value) => {
+          console.log('[Tab Change] Changing from', activeTab, 'to', value);
+          console.log('[Tab Change] Current parsedSuppliers length:', parsedSuppliers.length);
+          setActiveTab(value as 'upload' | 'review' | 'history');
+        }}>
           <TabsList className="w-full max-w-lg grid grid-cols-3 mb-8 shadow-sm"> 
             <TabsTrigger value="upload" className="py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"> 
               <Upload className="h-4 w-4 mr-2" /> Upload
@@ -990,4 +1023,3 @@ export default function SuppliersBulkUpload() {
     </AdminLayout>
   );
 }
-
