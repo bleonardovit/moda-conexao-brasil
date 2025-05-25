@@ -1,19 +1,20 @@
-
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom'; // Adicionado useNavigate
-import { getArticleById, getCategories, getLatestPublishedArticleIdForCategory } from '@/services/articleService'; // Adicionado getLatestPublishedArticleIdForCategory
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getArticleById, getCategories, getLatestPublishedArticleIdForCategory } from '@/services/articleService';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Article, ArticleCategory, getCategoryLabel } from '@/types/article';
-import { ArrowLeft, Calendar, Loader2, User, Lock } from 'lucide-react'; // Adicionado Lock
-import { useAuth } from '@/hooks/useAuth'; // Adicionado useAuth
-import { checkFeatureAccess } from '@/services/featureAccessService'; // Adicionado checkFeatureAccess
+import { ArrowLeft, Calendar, Loader2, User, Lock } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useTrialStatus } from '@/hooks/use-trial-status';
+import { checkFeatureAccess } from '@/services/featureAccessService';
 import type { AccessCheckResult } from '@/types/featureAccess';
 
 export default function ArticleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { hasExpired: trialHasExpired } = useTrialStatus();
   const [article, setArticle] = useState<Article | null>(null);
   const [categories, setCategories] = useState<ArticleCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,15 +31,22 @@ export default function ArticleDetailPage() {
         let tempArticle: Article | null = null;
         if (id) {
           const foundArticle = await getArticleById(id);
-          // A verificação de 'published' é crucial aqui, mesmo que o serviço já filtre.
-          // Se um artigo não publicado for acessado por ID direto, não deve mostrar.
           if (foundArticle && foundArticle.published) {
             setArticle(foundArticle);
             tempArticle = foundArticle;
           }
         }
 
-        if (tempArticle) {
+        if (trialHasExpired) {
+          setIsAccessible(false);
+          if (!accessRule || accessRule.access !== 'none') {
+            setAccessRule(prev => ({
+              ...prev,
+              access: 'none', 
+              message: "Seu período de teste expirou. Assine para ler o conteúdo completo." 
+            }));
+          }
+        } else if (tempArticle) {
           const accessResult = await checkFeatureAccess(user?.id, 'article_access');
           setAccessRule(accessResult);
 
@@ -55,7 +63,6 @@ export default function ArticleDetailPage() {
             setIsAccessible(false);
           }
         } else {
-          // Artigo não encontrado ou não publicado
           setIsAccessible(false); 
         }
 
@@ -67,12 +74,12 @@ export default function ArticleDetailPage() {
       }
     }
     
-    if (id) { // Apenas carrega se houver ID
+    if (id) {
         loadDataAndCheckAccess();
     } else {
-        setLoading(false); // Se não houver ID, para o loading
+        setLoading(false);
     }
-  }, [id, user]);
+  }, [id, user, trialHasExpired, accessRule]);
 
   const formattedDate = article ? new Date(article.created_at).toLocaleDateString('pt-BR', {
     day: 'numeric',
@@ -108,6 +115,10 @@ export default function ArticleDetailPage() {
 
   // Se o artigo existe mas não é acessível
   if (!isAccessible) {
+    const lockedMessage = trialHasExpired
+      ? "Seu período de teste expirou. Assine para ler o conteúdo completo."
+      : accessRule?.message || "Este conteúdo é exclusivo para assinantes.";
+
     return (
       <AppLayout>
         <div className="max-w-3xl mx-auto pb-12 animate-fade-in">
@@ -139,7 +150,7 @@ export default function ArticleDetailPage() {
               {article.summary}
             </p>
             <p className="text-amber-500 font-semibold text-lg mb-6">
-              {accessRule?.message || "Este conteúdo é exclusivo para assinantes."}
+              {lockedMessage}
             </p>
             <Button size="lg" className="bg-gradient-to-r from-brand-purple to-brand-pink hover:opacity-90" onClick={() => navigate('/auth/select-plan')}>
               Ver Planos de Assinatura
