@@ -477,13 +477,13 @@ export default function SuppliersBulkUpload() {
           // Salvar histórico com erro no ZIP
           await saveImportHistory({
             id: importAttemptId,
-            file_name: excelFile?.name || 'N/A',
-            imported_by_id: user?.id,
+            filename: excelFile?.name || 'N/A', // Changed from file_name
+            imported_by: user?.id, // Changed from imported_by_id
             imported_at: new Date().toISOString(),
             status: 'error',
-            total_rows: parsedSuppliers.length,
-            successful_rows: 0,
-            failed_rows: parsedSuppliers.length,
+            total_count: parsedSuppliers.length, // Changed from total_rows
+            success_count: 0, // Changed from successful_rows
+            error_count: parsedSuppliers.length, // Changed from failed_rows
             error_details: { global: [`Erro ao processar arquivo ZIP: ${zipError.message || 'Erro desconhecido'}`] }
           });
           setIsProcessing(false);
@@ -514,23 +514,23 @@ export default function SuppliersBulkUpload() {
       // Calcular o número total de falhas: 
       // aqueles que falharam no Supabase + aqueles que nem foram tentados devido a erros de validação prévios.
       const notAttemptedCount = parsedSuppliers.length - suppliersToAttemptImport.length;
-      const totalFailedRows = errorCount + notAttemptedCount;
+      const totalFailedRowsCalculated = results.errorCount + notAttemptedCount; // Renamed to avoid conflict
 
       await saveImportHistory({
         id: importAttemptId,
-        file_name: excelFile?.name || 'N/A',
-        imported_by_id: user?.id,
+        filename: excelFile?.name || 'N/A', // Changed from file_name
+        imported_by: user?.id, // Changed from imported_by_id
         imported_at: new Date().toISOString(),
-        status: totalFailedRows > 0 ? (successCount > 0 ? 'partial' : 'error') : 'success',
-        total_rows: parsedSuppliers.length,
-        successful_rows: successCount,
-        failed_rows: totalFailedRows,
+        status: totalFailedRowsCalculated > 0 ? (successCount > 0 ? 'partial' : 'error') : 'success',
+        total_count: parsedSuppliers.length, // Changed from total_rows
+        success_count: successCount, // Changed from successful_rows
+        error_count: totalFailedRowsCalculated, // Changed from failed_rows, used calculated value
         error_details: Object.keys(finalValidationErrors).length > 0 ? finalValidationErrors : undefined
       });
 
       toast({
         title: "Importação Concluída",
-        description: `${successCount} fornecedores importados. ${totalFailedRows} falharam ou não foram tentados.`,
+        description: `${successCount} fornecedores importados. ${totalFailedRowsCalculated} falharam ou não foram tentados.`,
         duration: 7000,
       });
       
@@ -547,13 +547,13 @@ export default function SuppliersBulkUpload() {
       
       await saveImportHistory({
         id: importAttemptId,
-        file_name: excelFile?.name || 'N/A',
-        imported_by_id: user?.id,
+        filename: excelFile?.name || 'N/A', // Changed from file_name
+        imported_by: user?.id, // Changed from imported_by_id
         imported_at: new Date().toISOString(),
         status: 'error',
-        total_rows: parsedSuppliers.length,
-        successful_rows: successCount, // Pode ser > 0 se o erro ocorreu após alguns sucessos parciais não tratados no results
-        failed_rows: failedDueToException,
+        total_count: parsedSuppliers.length, // Changed from total_rows
+        success_count: successCount, // Pode ser > 0 se o erro ocorreu após alguns sucessos parciais não tratados no results
+        error_count: failedDueToException,
         error_details: { global: [`Erro crítico no processo: ${error.message || "Erro desconhecido"}`] }
       });
       fetchHistoryLocal(); // Atualiza histórico mesmo em erro crítico

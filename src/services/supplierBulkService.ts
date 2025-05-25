@@ -361,39 +361,30 @@ export const processImagesFromZip = async (
 };
 
 // Define a interface explícita para os dados do histórico de importação
-// Estes nomes devem corresponder às colunas na tabela supplier_import_history do Supabase
+// Estes nomes DEVEM CORRESPONDER às colunas na tabela supplier_import_history do Supabase
 export interface SupplierImportHistoryEntry {
-  id: string; 
-  file_name: string;
-  imported_by_id?: string | null;
-  imported_at: string; 
+  id: string;
+  filename: string; // Was file_name
+  imported_by?: string | null; // Was imported_by_id
+  imported_at: string;
   status: 'success' | 'error' | 'pending' | 'partial';
-  total_rows: number;
-  successful_rows: number;
-  failed_rows: number;
+  total_count: number; // Was total_rows
+  success_count: number; // Was successful_rows
+  error_count: number; // Was failed_rows
   error_details?: ValidationErrors | { global?: string[] };
-  // Adicione quaisquer outros campos que existam na sua tabela, ex: created_at (gerado pelo DB)
-  // created_at?: string;
 }
 
 export const saveImportHistory = async (historyData: SupplierImportHistoryEntry) => {
   console.log('[saveImportHistory] Saving history data:', JSON.stringify(historyData, null, 2));
 
   // Supabase insert espera que as chaves do objeto correspondam aos nomes das colunas.
-  // Se o linter reclamar sobre 'filename' vs 'file_name', ou 'total_count' vs 'total_rows',
-  // significa que os tipos inferidos/gerados pelo Supabase para a tabela 'supplier_import_history'
-  // usam nomes diferentes. A solução ideal é alinhar esta interface com os tipos gerados do Supabase
-  // ou fazer um mapeamento explícito aqui.
-  
-  // Tentativa direta, assumindo que SupplierImportHistoryEntry está alinhada com as colunas da tabela:
+  // A interface SupplierImportHistoryEntry agora está alinhada com as colunas da tabela.
   const { data, error } = await supabase
-    .from('supplier_import_history') 
-    .insert([historyData]); 
+    .from('supplier_import_history')
+    .insert([historyData]); // historyData now uses correct field names
 
   if (error) {
     console.error("Erro ao salvar histórico de importação:", error);
-    // Exemplo de como o linter pode ter inferido os tipos das colunas:
-    // console.error("Supabase SDK might expect fields like: filename, total_count, success_count, error_count, imported_by");
   }
   return { data, error };
 };
@@ -402,18 +393,17 @@ export const saveImportHistory = async (historyData: SupplierImportHistoryEntry)
 export const fetchImportHistoryFromService = async (limit = 20): Promise<SupplierImportHistoryEntry[]> => {
   const { data, error } = await supabase
     .from('supplier_import_history')
-    .select('*') 
+    .select('*')
     .order('imported_at', { ascending: false })
     .limit(limit);
-  
+
   if (error) {
     console.error("Erro ao buscar histórico de importação (service):", error);
     return []; // Retorna array vazio em caso de erro
   }
-  
+
   // O cast para SupplierImportHistoryEntry[] assume que os dados retornados pelo Supabase
-  // (com os nomes exatos das colunas) são compatíveis. 
-  // Se houver incompatibilidade (ex: total_count vs total_rows), um mapeamento seria necessário:
-  // return (data || []).map(item => ({ ...item, total_rows: item.total_count, ... })) as SupplierImportHistoryEntry[];
-  return (data || []) as SupplierImportHistoryEntry[]; 
+  // (com os nomes exatos das colunas) são compatíveis, o que agora é verdade
+  // após a correção da interface.
+  return (data || []) as SupplierImportHistoryEntry[];
 };
