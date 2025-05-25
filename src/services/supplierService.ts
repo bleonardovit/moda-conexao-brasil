@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload, PaymentMethod, ShippingMethod } from '@/types';
-// Importar serviços e tipos de trial
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
 
 // Placeholders para dados genéricos de fornecedores bloqueados em trial
@@ -30,7 +29,7 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): S
     categories: (rawSupplier.categories || []) as string[], // Assuming categories are stored as array of IDs or names
     images: (rawSupplier.images || []) as string[],
     avg_price: (rawSupplier.avg_price || 'medium') as 'low' | 'medium' | 'high',
-    isLockedForTrial: isLocked,
+    isLockedForTrial: isLocked, // Ensure this field is consistently set
   } as Supplier;
 
   if (isLocked) {
@@ -44,6 +43,7 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): S
       whatsapp: LOCKED_SUPPLIER_PLACEHOLDERS.whatsapp,
       website: LOCKED_SUPPLIER_PLACEHOLDERS.website,
       min_order: LOCKED_SUPPLIER_PLACEHOLDERS.min_order,
+      // Ensure other sensitive fields are also masked if needed
     };
   }
   return baseSupplier;
@@ -63,21 +63,26 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   }
   console.log("supplierService: Raw suppliers fetched successfully:", rawSuppliers?.length);
 
-  let allowedSupplierIdsForTrial: string[] = [];
-  let isInActiveTrial = false;
-
-  if (userId) {
-    const trialInfo = await getUserTrialInfo(userId);
-    if (trialInfo && trialInfo.trial_status === 'active') {
-      isInActiveTrial = true;
-      allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-    }
+  if (!userId) { // If no user, return all suppliers without trial-based locking
+    return (rawSuppliers || []).map(rawSupplier => mapRawSupplierToDisplaySupplier(rawSupplier, false));
   }
+  
+  const trialInfo = await getUserTrialInfo(userId);
 
-  return (rawSuppliers || []).map(rawSupplier => {
-    const isLocked = isInActiveTrial && !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+  return Promise.all((rawSuppliers || []).map(async rawSupplier => {
+    let isLocked = false;
+    if (trialInfo) {
+      if (trialInfo.trial_status === 'expired') {
+        isLocked = true;
+      } else if (trialInfo.trial_status === 'active') {
+        const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
+        isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+      }
+      // For 'not_started', 'converted', or no trialInfo, isLocked remains false
+      // (access governed by subscription status, not trial limitations)
+    }
     return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
-  });
+  }));
 };
 
 // Fetch a single supplier by ID, optionally considering userId for RLS
@@ -99,17 +104,21 @@ export const getSupplierById = async (id: string, userId?: string): Promise<Supp
     return null;
   }
 
+  if (!userId) { // If no user, return supplier without trial-based locking
+    return mapRawSupplierToDisplaySupplier(rawSupplier, false);
+  }
+
   let isLocked = false;
-  if (userId) {
-    const trialInfo = await getUserTrialInfo(userId);
-    if (trialInfo && trialInfo.trial_status === 'active') {
+  const trialInfo = await getUserTrialInfo(userId);
+  if (trialInfo) {
+    if (trialInfo.trial_status === 'expired') {
+      isLocked = true;
+    } else if (trialInfo.trial_status === 'active') {
       const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-      if (!allowedSupplierIdsForTrial.includes(rawSupplier.id)) {
-        isLocked = true;
-      }
+      isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
     }
   }
-  console.log(`supplierService: Supplier ${id} fetched. Is locked for trial: ${isLocked}`);
+  console.log(`supplierService: Supplier ${id} fetched. Is locked: ${isLocked} for user ${userId} with trial_status ${trialInfo?.trial_status}`);
   return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
 };
 
@@ -186,21 +195,24 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
   }
   console.log("supplierService: Suppliers search completed. Raw found:", rawSuppliers?.length);
   
-  let allowedSupplierIdsForTrial: string[] = [];
-  let isInActiveTrial = false;
-
-  if (userId) {
-    const trialInfo = await getUserTrialInfo(userId);
-    if (trialInfo && trialInfo.trial_status === 'active') {
-      isInActiveTrial = true;
-      allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-    }
+  if (!userId) { // If no user, return all searched suppliers without trial-based locking
+    return (rawSuppliers || []).map(rawSupplier => mapRawSupplierToDisplaySupplier(rawSupplier, false));
   }
 
-  return (rawSuppliers || []).map(rawSupplier => {
-    const isLocked = isInActiveTrial && !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+  const trialInfo = await getUserTrialInfo(userId);
+  
+  return Promise.all((rawSuppliers || []).map(async rawSupplier => {
+    let isLocked = false;
+    if (trialInfo) {
+      if (trialInfo.trial_status === 'expired') {
+        isLocked = true;
+      } else if (trialInfo.trial_status === 'active') {
+        const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
+        isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+      }
+    }
     return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
-  });
+  }));
 };
 
 
@@ -301,7 +313,7 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     await associateSupplierWithCategories(createdSupplierId, supplierInput.categories);
   }
   
-  const finalSupplier = await getSupplierById(createdSupplierId);
+  const finalSupplier = await getSupplierById(createdSupplierId); // Pass userId if available for consistent locking
   if (!finalSupplier) {
     console.error('Critical error: Failed to retrieve supplier immediately after creation.');
     throw new Error('Failed to retrieve supplier after creation.');
@@ -333,7 +345,7 @@ const associateSupplierWithCategories = async (supplierId: string, categoryIds: 
 };
 
 // Update an existing supplier
-export const updateSupplier = async (id: string, updates: SupplierUpdatePayload): Promise<Supplier | null> => {
+export const updateSupplier = async (id: string, updates: SupplierUpdatePayload, userId?: string): Promise<Supplier | null> => { // Added userId
   console.log(`supplierService: Updating supplier with ID: ${id}`, updates);
   
   const { categories, ...supplierUpdatesForTable } = updates;
@@ -364,8 +376,8 @@ export const updateSupplier = async (id: string, updates: SupplierUpdatePayload)
     }
   }
   
-  // Fetch the complete supplier data after updates
-  const finalSupplier = await getSupplierById(id);
+  // Fetch the complete supplier data after updates, applying user-specific locking
+  const finalSupplier = await getSupplierById(id, userId); 
   if (!finalSupplier) {
     console.error(`Failed to retrieve supplier ${id} after update.`);
     return null; 

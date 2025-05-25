@@ -1,15 +1,13 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   getUserTrialInfo, 
-  // isFeatureAccessibleInTrial, // No longer directly used here
   getAllowedSuppliersForTrial, 
   isSupplierAllowedForTrial,
   checkAndUpdateTrialStatus,
   autoStartTrialForUser
 } from '@/services/trialService';
-import { checkFeatureAccess } from '@/services/featureAccessService'; // Import checkFeatureAccess
+import { checkFeatureAccess } from '@/services/featureAccessService'; 
 
 export interface TrialStatus {
   isInTrial: boolean;
@@ -36,6 +34,7 @@ export function useTrialStatus(): TrialStatus {
         setHasExpired(false); // Reset expired state if no user
         setDaysRemaining(0);
         setHoursRemaining(0);
+        setAllowedSupplierIds([]); // Clear allowed suppliers
         return;
       }
 
@@ -66,42 +65,40 @@ export function useTrialStatus(): TrialStatus {
                 setDaysRemaining(days);
                 setHoursRemaining(hours);
               } else {
-                // Trial ended, but status might not be 'expired' yet in DB if checkAndUpdateTrialStatus hasn't run after the exact moment
                 setDaysRemaining(0);
                 setHoursRemaining(0);
-                // setHasExpired(true); // Rely on trialInfo.trial_status for expired state
+                // setHasExpired(true); // This will be set based on trial_status from DB
               }
             }
+            const suppliers = await getAllowedSuppliersForTrial(user.id);
+            setAllowedSupplierIds(suppliers);
           } else if (trialInfo.trial_status === 'expired') {
             setIsInTrial(false);
             setHasExpired(true);
             setDaysRemaining(0);
             setHoursRemaining(0);
+            setAllowedSupplierIds([]);
           } else { // e.g., 'not_started', 'converted'
             setIsInTrial(false);
             setHasExpired(false);
             setDaysRemaining(0);
             setHoursRemaining(0);
-          }
-          
-          // Get allowed suppliers if in active trial
-          if (trialInfo.trial_status === 'active') {
-            const allowedSuppliers = await getAllowedSuppliersForTrial(user.id);
-            setAllowedSupplierIds(allowedSuppliers);
-          } else {
             setAllowedSupplierIds([]);
           }
-
         } else { // No trial info found
           setIsInTrial(false);
           setHasExpired(false);
           setDaysRemaining(0);
           setHoursRemaining(0);
+          setAllowedSupplierIds([]);
         }
       } catch (error) {
         console.error('Error checking trial status:', error);
         setIsInTrial(false);
-        setHasExpired(false);
+        setHasExpired(false); // Ensure reset on error
+        setDaysRemaining(0);
+        setHoursRemaining(0);
+        setAllowedSupplierIds([]);
       }
     };
     
@@ -114,15 +111,22 @@ export function useTrialStatus(): TrialStatus {
   }, [user?.id]);
   
   const isSupplierAllowed = useCallback(async (supplierId: string): Promise<boolean> => {
-    if (!user?.id) return true; // Non-logged in users might have different general restrictions, but for trial-specific, assume allowed if not in trial logic
-    if (!isInTrial) return true; // If not in an active trial, supplier restrictions specific to trial don't apply
+    if (!user?.id) return true; 
+    if (hasExpired) return false; // If trial has expired, supplier is not allowed
+    
+    // If not in an active trial (e.g., subscribed, or trial not_started/converted)
+    // access is not restricted by *trial* limitations.
+    // supplierService will handle general visibility/locking for non-trial states.
+    if (!isInTrial) return true; 
+
+    // If in active trial and not expired:
     try {
       return await isSupplierAllowedForTrial(user.id, supplierId);
     } catch (error) {
       console.error('Error checking supplier access:', error);
       return false;
     }
-  }, [user?.id, isInTrial]);
+  }, [user?.id, isInTrial, hasExpired]); // Added hasExpired to dependency array
   
   const isFeatureAllowed = useCallback(async (featureKey: string): Promise<boolean> => {
     try {
@@ -135,7 +139,7 @@ export function useTrialStatus(): TrialStatus {
       console.error(`Error checking feature access for ${featureKey}:`, error);
       return false; // Default to not allowed on error to be safe.
     }
-  }, [user?.id]); // user.id is the primary dependency here.
+  }, [user?.id]);
   
   return {
     isInTrial,
@@ -147,4 +151,3 @@ export function useTrialStatus(): TrialStatus {
     isFeatureAllowed
   };
 }
-
