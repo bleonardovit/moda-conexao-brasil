@@ -22,7 +22,7 @@ export function useFavorites() {
   const getAccessDeniedMessage = useCallback(() => {
     return hasExpired 
       ? "Seu período de teste expirou. Assine para gerenciar seus favoritos."
-      : "A funcionalidade de favoritos não está disponível no seu plano atual.";
+      : "A funcionalidade de favoritos não está disponível no seu plano atual. Considere fazer um upgrade.";
   }, [hasExpired]);
 
   // Carregar favoritos do banco de dados ou localStorage
@@ -32,6 +32,8 @@ export function useFavorites() {
 
       const canAccessFavorites = await isFeatureAllowed('favorites');
       if (!canAccessFavorites) {
+        // Se o usuário não pode acessar, limpa os favoritos locais e do estado.
+        // Não mostra toast aqui, pois a UI (FavoritesList) cuidará da mensagem.
         setFavorites([]);
         localStorage.removeItem('supplier-favorites');
         setIsLoading(false);
@@ -73,13 +75,13 @@ export function useFavorites() {
     };
     
     fetchFavorites();
-  }, [isAuthenticated, user?.id, toast, isFeatureAllowed, getAccessDeniedMessage]);
+  }, [isAuthenticated, user?.id, toast, isFeatureAllowed, getAccessDeniedMessage]); // Removed getAccessDeniedMessage as it's not used here directly for toast
 
   const addFavorite = async (supplierId: string) => {
     const canAccessFavorites = await isFeatureAllowed('favorites');
     if (!canAccessFavorites) {
       toast({
-        variant: "warning",
+        variant: "default", // Changed from "warning"
         title: "Acesso Negado",
         description: getAccessDeniedMessage()
       });
@@ -121,7 +123,7 @@ export function useFavorites() {
     const canAccessFavorites = await isFeatureAllowed('favorites');
     if (!canAccessFavorites) {
       toast({
-        variant: "warning",
+        variant: "default", // Changed from "warning"
         title: "Acesso Negado",
         description: getAccessDeniedMessage()
       });
@@ -160,7 +162,7 @@ export function useFavorites() {
     const canAccessFavorites = await isFeatureAllowed('favorites');
     if (!canAccessFavorites) {
       toast({
-        variant: "warning",
+        variant: "default", // Changed from "warning"
         title: "Acesso Negado",
         description: getAccessDeniedMessage()
       });
