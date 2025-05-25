@@ -7,16 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Search, Filter as FilterIcon, X } from 'lucide-react';
+import { Search, Filter as FilterIcon, X, Loader2 } from 'lucide-react'; // Added Loader2
 import { useTrialStatus } from '@/hooks/use-trial-status';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { useAuth } from '@/hooks/useAuth';
 import { TrialBanner } from '@/components/trial/TrialBanner';
-import { LimitedSearch } from './LimitedSearch';
+import { FeatureLimitedAccess } from '@/components/trial/FeatureLimitedAccess'; // Import FeatureLimitedAccess
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 import type { Category as SupplierCategoryType, Supplier, PaymentMethod, ShippingMethod } from '@/types';
-import { brazilianStates } from '@/data/brazilian-states'; // Using pre-defined states
+import { brazilianStates } from '@/data/brazilian-states';
 
 interface Option {
   label: string;
@@ -41,14 +41,15 @@ const SearchPage = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { isInTrial, isFeatureAllowed } = useTrialStatus();
+  const { isInTrial, isFeatureAllowed, hasExpired } = useTrialStatus();
   const { user } = useAuth();
-  const [canAccessFeature, setCanAccessFeature] = useState(true);
+  const [isPageAccessible, setIsPageAccessible] = useState<boolean | null>(null);
+  const [accessDenialReason, setAccessDenialReason] = useState<'expired' | 'limited_trial' | null>(null);
 
   // Filter states
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
-  const [cityFilter, setCityFilter] = useState('all'); // Changed initial value from '' to 'all'
+  const [cityFilter, setCityFilter] = useState('all');
   const [minOrderMin, setMinOrderMin] = useState('');
   const [minOrderMax, setMinOrderMax] = useState('');
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -60,24 +61,34 @@ const SearchPage = () => {
   const [availableCities, setAvailableCities] = useState<Option[]>([]);
 
   useEffect(() => {
-    const checkFeatureAccess = async () => {
-      if (isInTrial) {
-        const hasAccess = await isFeatureAllowed('advanced_search');
-        setCanAccessFeature(hasAccess);
+    const determineAccess = async () => {
+      if (hasExpired) {
+        setIsPageAccessible(false);
+        setAccessDenialReason('expired');
+      } else if (isInTrial) {
+        const access = await isFeatureAllowed('advanced_search');
+        setIsPageAccessible(access);
+        if (!access) {
+          setAccessDenialReason('limited_trial');
+        } else {
+          setAccessDenialReason(null);
+        }
+      } else { // Not in trial (e.g., subscribed or never started/converted)
+        setIsPageAccessible(true);
+        setAccessDenialReason(null);
       }
     };
-    checkFeatureAccess();
-  }, [isInTrial, isFeatureAllowed]);
+    determineAccess();
+  }, [hasExpired, isInTrial, isFeatureAllowed]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      if (!canAccessFeature) return;
+      if (isPageAccessible === false || isPageAccessible === null) return; // Don't fetch if not accessible or access not determined yet
       try {
         const categoriesData = await fetchSupplierCategories();
         setSupplierCategories(categoriesData);
         
         const citiesData = await getDistinctCities();
-        // Filter out empty or null city values before mapping
         const validCities = citiesData.filter(city => city && city.trim() !== '');
         setAvailableCities(validCities.map(city => ({ label: city, value: city })).sort((a,b) => a.label.localeCompare(b.label)));
 
@@ -85,8 +96,11 @@ const SearchPage = () => {
         console.error('Error fetching initial filter data:', error);
       }
     };
-    fetchInitialData();
-  }, [canAccessFeature]);
+    // Only run if page is accessible
+    if (isPageAccessible) {
+        fetchInitialData();
+    }
+  }, [isPageAccessible]);
   
   const handlePaymentMethodChange = (method: PaymentMethod) => {
     setSelectedPaymentMethods(prev =>
@@ -101,13 +115,14 @@ const SearchPage = () => {
   };
 
   const handleSearch = useCallback(async () => {
+    if (!isPageAccessible) return; // Should not be callable if page not accessible
     setIsLoading(true);
     try {
       const filters: import('@/types').SearchFilters = {
         searchTerm: searchTerm.trim() || undefined,
         categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
         state: stateFilter !== 'all' ? stateFilter : undefined,
-        city: cityFilter !== 'all' ? cityFilter.trim() : undefined, // Updated logic for cityFilter
+        city: cityFilter !== 'all' ? cityFilter.trim() : undefined,
         minOrderMin: minOrderMin !== '' ? parseInt(minOrderMin, 10) : undefined,
         minOrderMax: minOrderMax !== '' ? parseInt(minOrderMax, 10) : undefined,
         paymentMethods: selectedPaymentMethods.length > 0 ? selectedPaymentMethods : undefined,
@@ -123,7 +138,7 @@ const SearchPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, user?.id]);
+  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, user?.id, isPageAccessible]);
 
   useEffect(() => {
     // Auto-search if not initial load and some filter changes, or searchTerm changes
@@ -134,24 +149,43 @@ const SearchPage = () => {
   const clearFilters = () => {
     setCategoryFilter('all');
     setStateFilter('all');
-    setCityFilter('all'); // Changed from '' to 'all'
+    setCityFilter('all');
     setMinOrderMin('');
     setMinOrderMax('');
     setSelectedPaymentMethods([]);
     setRequiresCnpjFilter('all');
     setSelectedShippingMethods([]);
     setHasWebsiteFilter('all');
-    // Optionally re-trigger search with cleared filters
-    // setSearchTerm(''); // also clear search term?
-    // handleSearch(); // after resetting, trigger search
   };
 
-  if (isInTrial && !canAccessFeature) {
+  if (isPageAccessible === null) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center items-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
+          <p className="ml-2 text-muted-foreground">Verificando acesso...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isPageAccessible === false) {
+    const title = accessDenialReason === 'expired' 
+      ? "Teste Gratuito Expirado" 
+      : "Acesso Restrito à Busca Avançada";
+    
+    const message = accessDenialReason === 'expired'
+      ? "Seu período de teste gratuito expirou. Assine um plano para continuar utilizando a busca avançada e ter acesso completo aos detalhes dos fornecedores."
+      : "A busca avançada é uma funcionalidade premium. Assine um plano ou, se aplicável, atualize seu plano para desbloquear todos os filtros e funcionalidades.";
+
     return (
       <AppLayout>
         <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <TrialBanner />
-          <LimitedSearch />
+          <FeatureLimitedAccess
+            title={title}
+            message={message}
+          />
         </div>
       </AppLayout>
     );
@@ -233,7 +267,7 @@ const SearchPage = () => {
                   <Select value={cityFilter} onValueChange={setCityFilter} name="city-filter">
                     <SelectTrigger> <SelectValue placeholder="Todas as cidades" /> </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todas as cidades</SelectItem> {/* Changed value from "" to "all" */}
+                      <SelectItem value="all">Todas as cidades</SelectItem>
                       {availableCities.map(city => (
                         <SelectItem key={city.value} value={city.value}>{city.label}</SelectItem>
                       ))}
@@ -310,7 +344,8 @@ const SearchPage = () => {
         
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
-            <p className="text-muted-foreground">Carregando resultados...</p>
+            <Loader2 className="h-6 w-6 animate-spin text-brand-purple" />
+            <p className="ml-2 text-muted-foreground">Carregando resultados...</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -329,12 +364,18 @@ const SearchPage = () => {
                       <div>
                         <h3 className="text-lg font-bold">{supplier.name}</h3>
                         <p className="text-sm text-muted-foreground">{supplier.city}, {supplier.state}</p>
-                        <p className="text-sm mt-2 line-clamp-2">{supplier.description}</p>
+                        <p className="text-sm mt-2 line-clamp-2">{supplier.isLockedForTrial ? "Detalhes disponíveis apenas para assinantes." : supplier.description}</p>
                       </div>
                       <div className="mt-4">
-                        <Button asChild size="sm" variant="outline" className="bg-brand-purple/10 hover:bg-brand-purple/20 border-brand-purple/30">
-                          <Link to={`/suppliers/${supplier.id}`}>Ver detalhes</Link>
-                        </Button>
+                        {supplier.isLockedForTrial ? (
+                           <Button size="sm" variant="outline" disabled className="bg-gray-100 border-gray-300 text-gray-500">
+                             Ver detalhes (Bloqueado)
+                           </Button>
+                        ) : (
+                          <Button asChild size="sm" variant="outline" className="bg-brand-purple/10 hover:bg-brand-purple/20 border-brand-purple/30">
+                            <Link to={`/suppliers/${supplier.id}`}>Ver detalhes</Link>
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </div>
@@ -343,12 +384,12 @@ const SearchPage = () => {
             ) : (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">Nenhum fornecedor encontrado com os critérios selecionados. Tente ajustar seus filtros ou o termo de busca.</p>
-                { (searchTerm || categoryFilter !== 'all' || stateFilter !== 'all' || cityFilter !== 'all' /* Updated condition */ || minOrderMin || minOrderMax || selectedPaymentMethods.length > 0 || requiresCnpjFilter !== 'all' || selectedShippingMethods.length > 0 || hasWebsiteFilter !== 'all') &&
+                { (searchTerm || categoryFilter !== 'all' || stateFilter !== 'all' || cityFilter !== 'all' || minOrderMin || minOrderMax || selectedPaymentMethods.length > 0 || requiresCnpjFilter !== 'all' || selectedShippingMethods.length > 0 || hasWebsiteFilter !== 'all') &&
                   <Button variant="link" onClick={() => { clearFilters(); handleSearch(); }} className="mt-2">Limpar filtros e buscar novamente</Button>
                 }
               </div>
             )}
-            {suppliers.length === 0 && !searchTerm && categoryFilter === 'all' && stateFilter === 'all' && cityFilter === 'all' /* Updated condition */ && !minOrderMin && !minOrderMax && selectedPaymentMethods.length === 0 && requiresCnpjFilter === 'all' && selectedShippingMethods.length === 0 && hasWebsiteFilter === 'all' && (
+            {suppliers.length === 0 && !searchTerm && categoryFilter === 'all' && stateFilter === 'all' && cityFilter === 'all' && !minOrderMin && !minOrderMax && selectedPaymentMethods.length === 0 && requiresCnpjFilter === 'all' && selectedShippingMethods.length === 0 && hasWebsiteFilter === 'all' && (
                  <div className="text-center py-12 text-muted-foreground">
                     Digite algo na busca ou utilize os filtros para encontrar fornecedores.
                  </div>
