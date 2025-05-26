@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload } from '@/types'; // PaymentMethod, ShippingMethod removed as they are not directly used here
+import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
+import { getAverageRatingsForSupplierIds } from '@/services/reviewService';
 
 // Placeholders para dados genéricos de fornecedores bloqueados em trial
 const LOCKED_SUPPLIER_PLACEHOLDERS = {
@@ -17,7 +18,7 @@ const LOCKED_SUPPLIER_PLACEHOLDERS = {
 };
 
 // Helper to map raw supplier data and sanitize if locked for trial
-const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): Supplier => {
+const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean, averageRating?: number): Supplier => {
   // The 'categories' property from rawSupplier will now be an array of objects like [{ category_id: 'uuid' }, ...]
   // due to the Supabase select query: '*, categories_data:suppliers_categories(category_id)'
   // We need to map this to an array of strings.
@@ -50,6 +51,7 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): S
     created_at: rawSupplier.created_at,
     updated_at: rawSupplier.updated_at,
     isLockedForTrial: isLocked,
+    averageRating: averageRating, // Adicionar averageRating
   };
 
   if (isLocked) {
@@ -83,24 +85,30 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   }
   console.log("supplierService: Raw suppliers fetched successfully:", rawSuppliers?.length);
 
-  if (!userId) { // If no user, return all suppliers without trial-based locking
-    return (rawSuppliers || []).map(rawSupplier => mapRawSupplierToDisplaySupplier(rawSupplier, false));
-  }
-  
-  const trialInfo = await getUserTrialInfo(userId);
+  if (!rawSuppliers || rawSuppliers.length === 0) return [];
 
-  return Promise.all((rawSuppliers || []).map(async rawSupplier => {
-    let isLocked = false;
-    if (trialInfo) {
-      if (trialInfo.trial_status === 'expired') {
-        isLocked = true;
-      } else if (trialInfo.trial_status === 'active') {
-        const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-        isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+  const supplierIds = rawSuppliers.map(s => s.id);
+  const averageRatingsMap = await getAverageRatingsForSupplierIds(supplierIds);
+
+  const processSuppliers = async () => {
+    return Promise.all((rawSuppliers).map(async rawSupplier => {
+      let isLocked = false;
+      if (userId) { // Apply trial logic only if userId is present
+        const trialInfo = await getUserTrialInfo(userId);
+        if (trialInfo) {
+          if (trialInfo.trial_status === 'expired') {
+            isLocked = true;
+          } else if (trialInfo.trial_status === 'active') {
+            const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
+            isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+          }
+        }
       }
-    }
-    return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
-  }));
+      return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked, averageRatingsMap.get(rawSupplier.id));
+    }));
+  };
+  
+  return processSuppliers();
 };
 
 // Fetch a single supplier by ID, optionally considering userId for RLS
@@ -123,22 +131,23 @@ export const getSupplierById = async (id: string, userId?: string): Promise<Supp
     return null;
   }
 
-  if (!userId) { // If no user, return supplier without trial-based locking
-    return mapRawSupplierToDisplaySupplier(rawSupplier, false);
-  }
+  const averageRatingsMap = await getAverageRatingsForSupplierIds([id]);
+  const averageRating = averageRatingsMap.get(id);
 
   let isLocked = false;
-  const trialInfo = await getUserTrialInfo(userId);
-  if (trialInfo) {
-    if (trialInfo.trial_status === 'expired') {
-      isLocked = true;
-    } else if (trialInfo.trial_status === 'active') {
-      const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-      isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+  if (userId) { // Apply trial logic only if userId is present
+    const trialInfo = await getUserTrialInfo(userId);
+    if (trialInfo) {
+      if (trialInfo.trial_status === 'expired') {
+        isLocked = true;
+      } else if (trialInfo.trial_status === 'active') {
+        const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
+        isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+      }
     }
   }
-  console.log(`supplierService: Supplier ${id} fetched. Is locked: ${isLocked} for user ${userId} with trial_status ${trialInfo?.trial_status}`);
-  return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
+  console.log(`supplierService: Supplier ${id} fetched. Is locked: ${isLocked} for user ${userId} with trial_status ${userId ? (await getUserTrialInfo(userId))?.trial_status : 'N/A'}`);
+  return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked, averageRating);
 };
 
 // Search suppliers with filters
@@ -221,26 +230,31 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
   }
   console.log("supplierService: Suppliers search completed. Raw found:", rawSuppliers?.length);
   
-  if (!userId) { // If no user, return all searched suppliers without trial-based locking
-    return (rawSuppliers || []).map(rawSupplier => mapRawSupplierToDisplaySupplier(rawSupplier, false));
-  }
+  if (!rawSuppliers || rawSuppliers.length === 0) return [];
 
-  const trialInfo = await getUserTrialInfo(userId);
-  
-  return Promise.all((rawSuppliers || []).map(async rawSupplier => {
-    let isLocked = false;
-    if (trialInfo) {
-      if (trialInfo.trial_status === 'expired') {
-        isLocked = true;
-      } else if (trialInfo.trial_status === 'active') {
-        const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-        isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+  const supplierIds = rawSuppliers.map(s => s.id);
+  const averageRatingsMap = await getAverageRatingsForSupplierIds(supplierIds);
+
+  const processSuppliers = async () => {
+    return Promise.all((rawSuppliers).map(async rawSupplier => {
+      let isLocked = false;
+      if (userId) { // Apply trial logic only if userId is present
+        const trialInfo = await getUserTrialInfo(userId);
+        if (trialInfo) {
+          if (trialInfo.trial_status === 'expired') {
+            isLocked = true;
+          } else if (trialInfo.trial_status === 'active') {
+            const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
+            isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
+          }
+        }
       }
-    }
-    return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
-  }));
-};
+      return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked, averageRatingsMap.get(rawSupplier.id));
+    }));
+  };
 
+  return processSuppliers();
+};
 
 // Fetch categories for a specific supplier
 export const getSupplierCategories = async (supplierId: string): Promise<string[]> => {
