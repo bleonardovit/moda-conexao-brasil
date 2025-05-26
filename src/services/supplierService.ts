@@ -26,7 +26,7 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): S
     shipping_methods: (rawSupplier.shipping_methods || []).filter(
       (method: string) => ['correios', 'delivery', 'transporter', 'excursion', 'air', 'custom'].includes(method)
     ),
-    categories: (rawSupplier.categories || []) as string[], // Assuming categories are stored as array of IDs or names
+    categories: (rawSupplier.categories || []) as string[], // This now expects suppliers.categories to be correctly populated
     images: (rawSupplier.images || []) as string[],
     avg_price: (rawSupplier.avg_price || 'medium') as 'low' | 'medium' | 'high',
     isLockedForTrial: isLocked, // Ensure this field is consistently set
@@ -272,24 +272,24 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     throw new Error('Supplier state is required and cannot be empty.');
   }
   
-  const { categories, ...baseSupplierData } = supplierInput;
+  const { categories: categoryIdsInput, ...baseSupplierData } = supplierInput;
   
   // Ensure required fields are passed correctly after validation
+  // Also, initialize suppliers.categories with the input category IDs if provided
   const supplierDataForTable = {
     ...baseSupplierData,
     code: supplierInput.code, 
     name: supplierInput.name, 
     description: supplierInput.description,
-    city: supplierInput.city, // Explicitly use the validated city
-    state: supplierInput.state, // Explicitly use the validated state
+    city: supplierInput.city, 
+    state: supplierInput.state, 
     images: baseSupplierData.images || [],
     payment_methods: baseSupplierData.payment_methods || [], 
     requires_cnpj: baseSupplierData.requires_cnpj ?? false, 
     shipping_methods: baseSupplierData.shipping_methods || [], 
     featured: baseSupplierData.featured || false,
     hidden: baseSupplierData.hidden || false,
-    // avg_price will be included from baseSupplierData if present, otherwise DB default or it's nullable
-    // custom_shipping_method will be included from baseSupplierData if present
+    categories: categoryIdsInput || [], // Initialize suppliers.categories here
   };
 
   const { data: newSupplierData, error } = await supabase
@@ -308,12 +308,14 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   
   const createdSupplierId = newSupplierData.id;
   
-  // If there are categories, associate them with the supplier
-  if (supplierInput.categories && supplierInput.categories.length > 0) {
-    await associateSupplierWithCategories(createdSupplierId, supplierInput.categories);
+  // If there are categories, associate them with the supplier in the join table
+  if (categoryIdsInput && categoryIdsInput.length > 0) {
+    await associateSupplierWithCategories(createdSupplierId, categoryIdsInput);
+    // The 'categories' array in the 'suppliers' table is already set during insert.
+    // No separate update needed here if `supplierDataForTable` includes `categories: categoryIdsInput`.
   }
   
-  const finalSupplier = await getSupplierById(createdSupplierId); // Pass userId if available for consistent locking
+  const finalSupplier = await getSupplierById(createdSupplierId); 
   if (!finalSupplier) {
     console.error('Critical error: Failed to retrieve supplier immediately after creation.');
     throw new Error('Failed to retrieve supplier after creation.');
@@ -345,35 +347,41 @@ const associateSupplierWithCategories = async (supplierId: string, categoryIds: 
 };
 
 // Update an existing supplier
-export const updateSupplier = async (id: string, updates: SupplierUpdatePayload, userId?: string): Promise<Supplier | null> => { // Added userId
+export const updateSupplier = async (id: string, updates: SupplierUpdatePayload, userId?: string): Promise<Supplier | null> => {
   console.log(`supplierService: Updating supplier with ID: ${id}`, updates);
   
-  const { categories, ...supplierUpdatesForTable } = updates;
+  const { categories: newCategoryIds, ...supplierUpdatesForTable } = updates;
+
+  // If newCategoryIds are provided, include them in the direct update to suppliers table
+  if (newCategoryIds !== undefined) {
+    (supplierUpdatesForTable as any).categories = newCategoryIds;
+  }
 
   if (Object.keys(supplierUpdatesForTable).length > 0) {
-    const { data: updatedDataBase, error } = await supabase
+    const { error: updateError } = await supabase
       .from('suppliers')
       .update(supplierUpdatesForTable)
       .eq('id', id)
-      .select()
-      .single();
+      .select() // select() is not strictly needed if we don't use the result, but good for consistency
+      .single(); // .single() might error if the row doesn't exist, .maybeSingle() is safer or just omit select().
 
-    if (error) {
-      console.error(`Error updating supplier base data with ID ${id}:`, error.message);
-      throw new Error(`Failed to update supplier base data: ${error.message}`);
+    if (updateError) {
+      console.error(`Error updating supplier base data with ID ${id}:`, updateError.message);
+      throw new Error(`Failed to update supplier base data: ${updateError.message}`);
     }
   }
   
-  // If categories were provided (even an empty array, meaning clear them), update the associations
-  if (categories !== undefined) {
+  // If categories were provided (even an empty array, meaning clear them), update the associations in suppliers_categories
+  if (newCategoryIds !== undefined) {
     await supabase
       .from('suppliers_categories')
       .delete()
       .eq('supplier_id', id);
       
-    if (categories.length > 0) {
-      await associateSupplierWithCategories(id, categories);
+    if (newCategoryIds.length > 0) {
+      await associateSupplierWithCategories(id, newCategoryIds);
     }
+    // The 'categories' array in the 'suppliers' table was updated in the previous step.
   }
   
   // Fetch the complete supplier data after updates, applying user-specific locking
