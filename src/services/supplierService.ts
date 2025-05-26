@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload, PaymentMethod, ShippingMethod } from '@/types';
+import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload } from '@/types'; // PaymentMethod, ShippingMethod removed as they are not directly used here
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
 
 // Placeholders para dados genéricos de fornecedores bloqueados em trial
@@ -18,19 +18,39 @@ const LOCKED_SUPPLIER_PLACEHOLDERS = {
 
 // Helper to map raw supplier data and sanitize if locked for trial
 const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): Supplier => {
-  const baseSupplier = {
-    ...rawSupplier,
+  // The 'categories' property from rawSupplier will now be an array of objects like [{ category_id: 'uuid' }, ...]
+  // due to the Supabase select query: '*, categories_data:suppliers_categories(category_id)'
+  // We need to map this to an array of strings.
+  const categoryIds = (rawSupplier.categories_data || []).map((cat: { category_id: string }) => cat.category_id);
+
+  const baseSupplier: Supplier = {
+    id: rawSupplier.id,
+    code: rawSupplier.code,
+    name: rawSupplier.name,
+    description: rawSupplier.description,
+    images: (rawSupplier.images || []) as string[],
+    instagram: rawSupplier.instagram,
+    whatsapp: rawSupplier.whatsapp,
+    website: rawSupplier.website,
+    min_order: rawSupplier.min_order,
     payment_methods: (rawSupplier.payment_methods || []).filter(
       (method: string) => ['pix', 'card', 'bankslip'].includes(method)
     ),
+    requires_cnpj: rawSupplier.requires_cnpj ?? false,
+    avg_price: (rawSupplier.avg_price || 'medium') as 'low' | 'medium' | 'high',
     shipping_methods: (rawSupplier.shipping_methods || []).filter(
       (method: string) => ['correios', 'delivery', 'transporter', 'excursion', 'air', 'custom'].includes(method)
     ),
-    categories: (rawSupplier.categories || []) as string[], // This now expects suppliers.categories to be correctly populated
-    images: (rawSupplier.images || []) as string[],
-    avg_price: (rawSupplier.avg_price || 'medium') as 'low' | 'medium' | 'high',
-    isLockedForTrial: isLocked, // Ensure this field is consistently set
-  } as Supplier;
+    custom_shipping_method: rawSupplier.custom_shipping_method,
+    city: rawSupplier.city,
+    state: rawSupplier.state,
+    categories: categoryIds, // Correctly mapped category IDs
+    featured: rawSupplier.featured ?? false,
+    hidden: rawSupplier.hidden ?? false,
+    created_at: rawSupplier.created_at,
+    updated_at: rawSupplier.updated_at,
+    isLockedForTrial: isLocked,
+  };
 
   if (isLocked) {
     return {
@@ -43,7 +63,6 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): S
       whatsapp: LOCKED_SUPPLIER_PLACEHOLDERS.whatsapp,
       website: LOCKED_SUPPLIER_PLACEHOLDERS.website,
       min_order: LOCKED_SUPPLIER_PLACEHOLDERS.min_order,
-      // Ensure other sensitive fields are also masked if needed
     };
   }
   return baseSupplier;
@@ -53,7 +72,8 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean): S
 // Data will be sanitized if user is in trial and supplier is not allowed
 export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   console.log(`supplierService: Fetching all suppliers. UserID: ${userId}`);
-  let query = supabase.from('suppliers').select('*').order('created_at', { ascending: false });
+  // Fetch categories along with supplier data
+  let query = supabase.from('suppliers').select('*, categories_data:suppliers_categories(category_id)').order('created_at', { ascending: false });
 
   const { data: rawSuppliers, error } = await query;
 
@@ -78,8 +98,6 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
         const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
         isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
       }
-      // For 'not_started', 'converted', or no trialInfo, isLocked remains false
-      // (access governed by subscription status, not trial limitations)
     }
     return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked);
   }));
@@ -89,9 +107,10 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
 // Data will be sanitized if user is in trial and supplier is not allowed
 export const getSupplierById = async (id: string, userId?: string): Promise<Supplier | null> => {
   console.log(`supplierService: Fetching supplier by ID: ${id}. UserID: ${userId}`);
+  // Fetch categories along with supplier data
   const { data: rawSupplier, error } = await supabase
     .from('suppliers')
-    .select('*')
+    .select('*, categories_data:suppliers_categories(category_id)')
     .eq('id', id)
     .maybeSingle(); 
 
@@ -125,16 +144,24 @@ export const getSupplierById = async (id: string, userId?: string): Promise<Supp
 // Search suppliers with filters
 export const searchSuppliers = async (filters: SearchFilters, userId?: string): Promise<Supplier[]> => {
   console.log("supplierService: Searching suppliers with filters:", filters, "UserId:", userId);
-  let query = supabase.from('suppliers').select('*');
+  
+  let selectString = '*, categories_data:suppliers_categories(category_id)';
+  // If filtering by category, we need an inner join to ensure the category exists for the supplier.
+  // And the filter will be applied on the joined data.
+  if (filters.categoryId && filters.categoryId !== 'all') {
+    selectString = '*, categories_data:suppliers_categories!inner(category_id)';
+  }
+  
+  let query = supabase.from('suppliers').select(selectString);
 
   if (filters.searchTerm) {
     query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
   }
   
   if (filters.categoryId && filters.categoryId !== 'all') {
-    // Assuming 'categories' is an array column in the 'suppliers' table containing category IDs or names.
-    // If 'categories' is a join table, this logic would need to be different (e.g. a subquery or function call).
-    query = query.contains('categories', [filters.categoryId]);
+    // Filter on the joined 'suppliers_categories' data.
+    // The alias 'categories_data' is for the selected data, the filter applies to the source.
+    query = query.eq('categories_data.category_id', filters.categoryId);
   }
   
   if (filters.state && filters.state !== 'all') {
@@ -165,17 +192,16 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
     }
   }
 
-  // Min Order Amount Filters
   const minOrderColumnExpression = `NULLIF(regexp_replace(min_order, '[^0-9.,]', '', 'g'), '')::numeric`;
 
-  if (filters.minOrderMin !== undefined && filters.minOrderMin !== null) { // Removed !== ''
+  if (filters.minOrderMin !== undefined && filters.minOrderMin !== null) {
     try {
         query = query.filter(minOrderColumnExpression, 'gte', filters.minOrderMin);
     } catch (e) {
         console.warn("Could not apply minOrderMin due to potential non-numeric min_order values or filter error", e);
     }
   }
-  if (filters.minOrderMax !== undefined && filters.minOrderMax !== null) { // Removed !== ''
+  if (filters.minOrderMax !== undefined && filters.minOrderMax !== null) {
      try {
         query = query.filter(minOrderColumnExpression, 'lte', filters.minOrderMax);
     } catch (e) {
@@ -220,8 +246,6 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
 export const getSupplierCategories = async (supplierId: string): Promise<string[]> => {
   console.log(`supplierService: Fetching categories for supplier ID: ${supplierId}`);
   
-  // Since we don't have a direct categories column in suppliers,
-  // we need to query the suppliers_categories join table
   const { data, error } = await supabase
     .from('suppliers_categories')
     .select('category_id')
@@ -232,7 +256,6 @@ export const getSupplierCategories = async (supplierId: string): Promise<string[
     return []; 
   }
   
-  // Extract category IDs from the result
   const categoryIds = data?.map(row => row.category_id) || [];
   console.log(`supplierService: Categories for supplier ${supplierId} fetched:`, categoryIds);
   return categoryIds;
@@ -289,7 +312,8 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     shipping_methods: baseSupplierData.shipping_methods || [], 
     featured: baseSupplierData.featured || false,
     hidden: baseSupplierData.hidden || false,
-    categories: categoryIdsInput || [], // Initialize suppliers.categories here
+    // DO NOT initialize suppliers.categories here as the column does not exist on the suppliers table.
+    // Categories are handled solely through the suppliers_categories join table.
   };
 
   const { data: newSupplierData, error } = await supabase
@@ -352,10 +376,10 @@ export const updateSupplier = async (id: string, updates: SupplierUpdatePayload,
   
   const { categories: newCategoryIds, ...supplierUpdatesForTable } = updates;
 
-  // If newCategoryIds are provided, include them in the direct update to suppliers table
-  if (newCategoryIds !== undefined) {
-    (supplierUpdatesForTable as any).categories = newCategoryIds;
-  }
+  // DO NOT update a 'categories' column in supplierUpdatesForTable as it doesn't exist.
+  // if (newCategoryIds !== undefined) {
+  //   (supplierUpdatesForTable as any).categories = newCategoryIds; // This line is removed
+  // }
 
   if (Object.keys(supplierUpdatesForTable).length > 0) {
     const { error: updateError } = await supabase
@@ -455,21 +479,19 @@ export const toggleSupplierVisibility = async (id: string, hidden: boolean): Pro
 
 // Helper function to get distinct states from suppliers
 export const getDistinctStates = async (): Promise<string[]> => {
-  // Removed RPC call as 'get_distinct_supplier_states' SQL function does not exist.
-  // Relying on direct query fallback.
   const { data: allSuppliers, error: supplierError } = await supabase.from('suppliers').select('state');
   if (supplierError) {
     console.error('Error fetching distinct states from suppliers table:', supplierError);
     return [];
   }
   if (!allSuppliers) return [];
-  const states = new Set(allSuppliers.map(s => s.state).filter(Boolean) as string[]); // Ensure state is string and filter out null/empty
+  const states = new Set(allSuppliers.map(s => s.state).filter(Boolean) as string[]);
   return Array.from(states).sort();
 };
 
 // Helper function to get distinct cities from suppliers
 export const getDistinctCities = async (state?: string): Promise<string[]> => {
-  let query = supabase.from('suppliers').select('city').neq('city', ''); // city is type text
+  let query = supabase.from('suppliers').select('city').neq('city', ''); 
   if (state && state !== 'all') {
     query = query.eq('state', state);
   }
@@ -478,11 +500,11 @@ export const getDistinctCities = async (state?: string): Promise<string[]> => {
     console.error('Error fetching distinct cities:', error);
     return [];
   }
-  if (!data) return []; // Handle case where data is null/undefined but no error
+  if (!data) return []; 
 
   const cityValues = data
-    .map(s => s.city) // s.city is string | null based on schema, or just string if not nullable
-    .filter((city): city is string => typeof city === 'string' && city.trim() !== ''); // Ensure it's a non-empty string
+    .map(s => s.city) 
+    .filter((city): city is string => typeof city === 'string' && city.trim() !== ''); 
 
   return Array.from(new Set(cityValues)).sort();
 };
