@@ -297,48 +297,51 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   
   const { categories: categoryIdsInput, ...baseSupplierData } = supplierInput;
   
-  // Ensure required fields are passed correctly after validation
-  // Also, initialize suppliers.categories with the input category IDs if provided
   const supplierDataForTable = {
     ...baseSupplierData,
-    code: supplierInput.code, 
-    name: supplierInput.name, 
-    description: supplierInput.description,
-    city: supplierInput.city, 
-    state: supplierInput.state, 
+    code: supplierInput.code!, 
+    name: supplierInput.name!, 
+    description: supplierInput.description!,
+    city: supplierInput.city!, 
+    state: supplierInput.state!, 
     images: baseSupplierData.images || [],
     payment_methods: baseSupplierData.payment_methods || [], 
     requires_cnpj: baseSupplierData.requires_cnpj ?? false, 
     shipping_methods: baseSupplierData.shipping_methods || [], 
-    featured: baseSupplierData.featured || false,
-    hidden: baseSupplierData.hidden || false,
-    // DO NOT initialize suppliers.categories here as the column does not exist on the suppliers table.
-    // Categories are handled solely through the suppliers_categories join table.
+    featured: baseSupplierData.featured ?? false,
+    hidden: baseSupplierData.hidden ?? false,
   };
 
-  const { data: newSupplierData, error } = await supabase
+  const { data: rawNewSupplier, error: createError } = await supabase
     .from('suppliers')
     .insert([supplierDataForTable])
-    .select()
+    .select('*, categories_data:suppliers_categories(category_id)')
     .single();
 
-  if (error) {
-    console.error('Error creating supplier:', error.message);
-    if (error.message.includes('duplicate key value violates unique constraint "suppliers_code_key"')) {
+  if (createError) {
+    console.error('Error creating supplier:', createError.message, 'Details:', createError.details);
+    if (createError.message.includes('duplicate key value violates unique constraint "suppliers_code_key"')) {
       throw new Error(`Failed to create supplier: Code '${supplierInput.code}' already exists.`);
     }
-    throw new Error(`Failed to create supplier: ${error.message}`);
+    throw new Error(`Failed to create supplier: ${createError.message}`);
   }
   
-  const createdSupplierId = newSupplierData.id;
+  // Robust check for rawNewSupplier and its 'id' property to satisfy TypeScript
+  if (!rawNewSupplier || typeof rawNewSupplier !== 'object' || !('id' in rawNewSupplier) || typeof (rawNewSupplier as any).id !== 'string') { 
+    console.error('Error creating supplier: rawNewSupplier data is invalid, null, or missing ID after insert.', rawNewSupplier);
+    throw new Error('Failed to create supplier: Invalid data returned after insert.');
+  }
+  
+  // By this point, rawNewSupplier is confirmed to be an object with a string 'id'.
+  const createdSupplierId = (rawNewSupplier as { id: string; [key: string]: any }).id;
   
   // If there are categories, associate them with the supplier in the join table
   if (categoryIdsInput && categoryIdsInput.length > 0) {
     await associateSupplierWithCategories(createdSupplierId, categoryIdsInput);
-    // The 'categories' array in the 'suppliers' table is already set during insert.
-    // No separate update needed here if `supplierDataForTable` includes `categories: categoryIdsInput`.
   }
   
+  // Fetch the complete supplier data after creation and category association
+  // This ensures the returned supplier object includes any mapped/joined category data correctly.
   const finalSupplier = await getSupplierById(createdSupplierId); 
   if (!finalSupplier) {
     console.error('Critical error: Failed to retrieve supplier immediately after creation.');
