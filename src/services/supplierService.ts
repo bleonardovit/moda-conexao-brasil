@@ -329,48 +329,40 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   const { data: rawNewSupplier, error: createError } = await supabase
     .from('suppliers')
     .insert([supplierDataForTable])
-    .select('*, categories_data:suppliers_categories(category_id)')
+    .select('*, categories_data:suppliers_categories(category_id)') // id is included in '*'
     .single();
 
   if (createError) {
     console.error('Error creating supplier:', createError.message, 'Details:', createError.details);
     if (createError.message.includes('duplicate key value violates unique constraint "suppliers_code_key"')) {
-      throw new Error(`Failed to create supplier: Code '${supplierInput.code}' already exists.`);
+      throw new Error(`Failed to create supplier: Code '${String(supplierInput.code)}' already exists.`);
     }
     throw new Error(`Failed to create supplier: ${createError.message}`);
   }
   
+  // If createError is null, rawNewSupplier should be the created supplier object.
+  // .single() would have resulted in `createError` if 0 or >1 rows were matched by the select after insert.
+  // So, if we are here, rawNewSupplier should ideally be the single inserted record.
+  // We still check for nullity as a safeguard.
   if (!rawNewSupplier) {
-    console.error('Error creating supplier: No data returned after insert (rawNewSupplier is null/undefined).');
+    console.error('Error creating supplier: No data returned after insert, though no explicit error was thrown by Supabase client.');
     throw new Error('Failed to create supplier: No data returned after insert.');
   }
-  
-  // Check if rawNewSupplier might be an error object (has 'message' but no 'id' or invalid 'id')
-  if (typeof rawNewSupplier === 'object' && rawNewSupplier !== null && 'message' in rawNewSupplier) {
-    const hasValidId = 'id' in rawNewSupplier && 
-                       typeof (rawNewSupplier as any).id === 'string' && 
-                       (rawNewSupplier as any).id.trim() !== '';
-    if (!hasValidId) {
-      console.error('Error creating supplier: The data returned from Supabase looks like an error object without a valid ID.', rawNewSupplier);
-      throw new Error(`Failed to create supplier: ${(rawNewSupplier as { message: string }).message || 'Unknown error from data object'}`);
-    }
-    console.warn('Supplier data contains a "message" property but also a valid ID. Proceeding with ID.', rawNewSupplier);
-  }
 
-  // After the above check, we assert that rawNewSupplier should be the actual data.
-  if (
-    typeof rawNewSupplier !== 'object' || // Should already be true if we passed the null check
-    rawNewSupplier === null || // Should already be true
-    !('id' in rawNewSupplier) || // Check if 'id' key exists
-    typeof (rawNewSupplier as any).id !== 'string' || // Check if 'id' value is a string
-    ((rawNewSupplier as any).id as string).trim() === '' // Check if 'id' string is not empty
-  ) {
+  // At this point, rawNewSupplier is known to be non-null.
+  // Its type is inferred from the select query. It should have an 'id' property.
+  // We perform a runtime check for robustness and to satisfy TypeScript.
+  
+  // To help TypeScript understand, we cast rawNewSupplier to a type that might have an 'id'.
+  const insertedSupplierObject = rawNewSupplier as { id?: unknown; [key: string]: any };
+
+  if (typeof insertedSupplierObject.id !== 'string' || insertedSupplierObject.id.trim() === '') {
     console.error('Error creating supplier: Returned data is missing a valid "id" string property, or "id" is empty.', rawNewSupplier);
     throw new Error('Failed to create supplier: Invalid data structure returned (id missing, not a string, or empty).');
   }
   
-  // At this point, rawNewSupplier is confirmed to be an object with a non-empty string 'id'.
-  const createdSupplierId = (rawNewSupplier as { id: string }).id;
+  // Now, insertedSupplierObject.id is confirmed to be a non-empty string.
+  const createdSupplierId = insertedSupplierObject.id;
   
   // If there are categories, associate them with the supplier in the join table
   if (categoryIdsInput && categoryIdsInput.length > 0) {
