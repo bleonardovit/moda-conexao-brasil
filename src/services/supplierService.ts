@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
@@ -340,14 +341,19 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     throw new Error(`Failed to create supplier: ${createError.message}`);
   }
   
-  // Robust check for rawNewSupplier and its 'id' property to satisfy TypeScript
-  if (!rawNewSupplier || typeof rawNewSupplier !== 'object' || !('id' in rawNewSupplier) || typeof (rawNewSupplier as any).id !== 'string') { 
-    console.error('Error creating supplier: rawNewSupplier data is invalid, null, or missing ID after insert.', rawNewSupplier);
-    throw new Error('Failed to create supplier: Invalid data returned after insert.');
+  // Make sure rawNewSupplier is defined and has an id before proceeding
+  if (!rawNewSupplier) {
+    console.error('Error creating supplier: No data returned after insert.');
+    throw new Error('Failed to create supplier: No data returned after insert.');
   }
   
-  // By this point, rawNewSupplier is confirmed to be an object with a string 'id'.
-  const createdSupplierId = (rawNewSupplier as { id: string; [key: string]: any }).id;
+  // Type guard to ensure rawNewSupplier has an id property
+  if (!('id' in rawNewSupplier) || typeof rawNewSupplier.id !== 'string') {
+    console.error('Error creating supplier: Invalid data structure returned after insert.', rawNewSupplier);
+    throw new Error('Failed to create supplier: Invalid data structure returned after insert.');
+  }
+  
+  const createdSupplierId = rawNewSupplier.id;
   
   // If there are categories, associate them with the supplier in the join table
   if (categoryIdsInput && categoryIdsInput.length > 0) {
@@ -355,7 +361,6 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   }
   
   // Fetch the complete supplier data after creation and category association
-  // This ensures the returned supplier object includes any mapped/joined category data correctly.
   const finalSupplier = await getSupplierById(createdSupplierId); 
   if (!finalSupplier) {
     console.error('Critical error: Failed to retrieve supplier immediately after creation.');
