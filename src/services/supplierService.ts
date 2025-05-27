@@ -342,29 +342,30 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   
   // Make sure rawNewSupplier is defined
   if (!rawNewSupplier) {
-    console.error('Error creating supplier: No data returned after insert.');
+    console.error('Error creating supplier: No data returned after insert (rawNewSupplier is null/undefined).');
     throw new Error('Failed to create supplier: No data returned after insert.');
   }
   
-  // Check 1: Does it have an 'id' property?
-  if (!('id' in rawNewSupplier)) {
-    console.error('Error creating supplier: Returned data object is missing an "id" property.', rawNewSupplier);
-    // Check if it has a 'message' property, suggesting it might be an error object passed as data
-    if (typeof rawNewSupplier === 'object' && rawNewSupplier !== null && 'message' in rawNewSupplier) {
-        console.error("Suspected error object received as data. Message:", (rawNewSupplier as any).message);
-    }
-    throw new Error('Failed to create supplier: Invalid data structure returned after insert (missing id).');
+  // Check if rawNewSupplier might be an error object.
+  // Supabase error objects typically have a 'message' property. Valid supplier data MUST have an 'id'.
+  // We cast to 'any' here to inspect properties without premature TypeScript errors.
+  const potentialError = rawNewSupplier as any; 
+  if (typeof potentialError === 'object' && potentialError !== null && 'message' in potentialError && !('id' in potentialError)) {
+    console.error('Error creating supplier: The data returned from Supabase looks like an error object.', potentialError);
+    throw new Error(`Failed to create supplier: ${potentialError.message || 'Unknown error from data object'}`);
   }
 
-  // Check 2: Is the 'id' property a string?
-  // At this point, 'id' in rawNewSupplier is true, so rawNewSupplier.id is safe to access.
-  if (typeof rawNewSupplier.id !== 'string') {
-    console.error(`Error creating supplier: "id" property is present but not a string (type: ${typeof rawNewSupplier.id}).`, rawNewSupplier);
-    throw new Error('Failed to create supplier: Invalid data structure returned after insert (id not a string).');
+  // Now, we expect rawNewSupplier to be the actual supplier data.
+  // Let's verify the 'id' property's existence and type.
+  const supplierData = rawNewSupplier as { id?: unknown, [key: string]: any }; // Assume it could be supplier-like
+
+  if (typeof supplierData.id !== 'string' || supplierData.id.trim() === '') {
+    console.error('Error creating supplier: Returned data is missing a valid "id" string property, or "id" is empty.', rawNewSupplier);
+    throw new Error('Failed to create supplier: Invalid data structure returned (id missing, not a string, or empty).');
   }
   
-  // If both checks pass, rawNewSupplier has an 'id' property and it's a string.
-  const createdSupplierId = rawNewSupplier.id;
+  // If all checks pass, supplierData.id is a valid, non-empty string.
+  const createdSupplierId = supplierData.id;
   
   // If there are categories, associate them with the supplier in the join table
   if (categoryIdsInput && categoryIdsInput.length > 0) {
