@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
@@ -341,18 +340,30 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     throw new Error(`Failed to create supplier: ${createError.message}`);
   }
   
-  // Make sure rawNewSupplier is defined and has an id before proceeding
+  // Make sure rawNewSupplier is defined
   if (!rawNewSupplier) {
     console.error('Error creating supplier: No data returned after insert.');
     throw new Error('Failed to create supplier: No data returned after insert.');
   }
   
-  // Type guard to ensure rawNewSupplier has an id property
-  if (!('id' in rawNewSupplier) || typeof rawNewSupplier.id !== 'string') {
-    console.error('Error creating supplier: Invalid data structure returned after insert.', rawNewSupplier);
-    throw new Error('Failed to create supplier: Invalid data structure returned after insert.');
+  // Check 1: Does it have an 'id' property?
+  if (!('id' in rawNewSupplier)) {
+    console.error('Error creating supplier: Returned data object is missing an "id" property.', rawNewSupplier);
+    // Check if it has a 'message' property, suggesting it might be an error object passed as data
+    if (typeof rawNewSupplier === 'object' && rawNewSupplier !== null && 'message' in rawNewSupplier) {
+        console.error("Suspected error object received as data. Message:", (rawNewSupplier as any).message);
+    }
+    throw new Error('Failed to create supplier: Invalid data structure returned after insert (missing id).');
+  }
+
+  // Check 2: Is the 'id' property a string?
+  // At this point, 'id' in rawNewSupplier is true, so rawNewSupplier.id is safe to access.
+  if (typeof rawNewSupplier.id !== 'string') {
+    console.error(`Error creating supplier: "id" property is present but not a string (type: ${typeof rawNewSupplier.id}).`, rawNewSupplier);
+    throw new Error('Failed to create supplier: Invalid data structure returned after insert (id not a string).');
   }
   
+  // If both checks pass, rawNewSupplier has an 'id' property and it's a string.
   const createdSupplierId = rawNewSupplier.id;
   
   // If there are categories, associate them with the supplier in the join table
