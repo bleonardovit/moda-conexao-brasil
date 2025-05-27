@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Supplier, SearchFilters, SupplierCreationPayload, SupplierUpdatePayload } from '@/types';
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
@@ -70,6 +69,17 @@ const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean, av
   }
   return baseSupplier;
 };
+
+// Type guard to check if a response is a valid supplier with an ID
+function isValidSupplierResponse(obj: any): obj is { id: string; [key: string]: any } {
+  return (
+    obj !== null && 
+    typeof obj === 'object' && 
+    'id' in obj && 
+    typeof obj.id === 'string' && 
+    obj.id.trim() !== ''
+  );
+}
 
 // Fetch all suppliers, optionally filtered by user if RLS is on user_id
 // Data will be sanitized if user is in trial and supplier is not allowed
@@ -341,23 +351,14 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     throw new Error(`Failed to create supplier: ${createError.message}`);
   }
   
-  // Perform runtime checks to ensure rawNewSupplier is what we expect.
-  // This check will now properly guard against rawNewSupplier being an error object that doesn't have 'id'
-  // or if 'id' is not a non-empty string.
-  if (
-    !rawNewSupplier || 
-    typeof rawNewSupplier !== 'object' || 
-    rawNewSupplier === null ||
-    !('id' in rawNewSupplier) || // Check if 'id' property exists
-    typeof (rawNewSupplier as any).id !== 'string' || // Check if 'id' is a string
-    (rawNewSupplier as any).id.trim() === '' // Check if 'id' string is not empty
-  ) {
+  // Use the type guard to validate the response
+  if (!isValidSupplierResponse(rawNewSupplier)) {
     console.error('Error creating supplier: Invalid or no data returned after insert, or data is missing a valid "id" string property.', rawNewSupplier);
     throw new Error('Failed to create supplier: Invalid or no data returned after insert, or "id" is invalid.');
   }
   
-  // At this point, rawNewSupplier is confirmed to be an object with an 'id' property that is a non-empty string.
-  const createdSupplierId = (rawNewSupplier as { id: string; [key: string]: any }).id;
+  // At this point, rawNewSupplier is confirmed to have a valid id property
+  const createdSupplierId = rawNewSupplier.id;
   
   // If there are categories, associate them with the supplier in the join table
   if (categoryIdsInput && categoryIdsInput.length > 0) {
