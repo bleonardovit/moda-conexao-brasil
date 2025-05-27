@@ -329,7 +329,7 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   const { data: rawNewSupplier, error: createError } = await supabase
     .from('suppliers')
     .insert([supplierDataForTable])
-    .select('*, categories_data:suppliers_categories(category_id)') // id is included in '*'
+    .select('*, categories_data:suppliers_categories(category_id)')
     .single();
 
   if (createError) {
@@ -340,20 +340,15 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
     throw new Error(`Failed to create supplier: ${createError.message}`);
   }
   
-  // If createError is null, rawNewSupplier should be the created supplier object.
-  // .single() would have resulted in `createError` if 0 or >1 rows were matched by the select after insert.
-  // So, if we are here, rawNewSupplier should ideally be the single inserted record.
-  // We still check for nullity as a safeguard.
-  if (!rawNewSupplier) {
-    console.error('Error creating supplier: No data returned after insert, though no explicit error was thrown by Supabase client.');
-    throw new Error('Failed to create supplier: No data returned after insert.');
+  // After .single(), if createError is null, rawNewSupplier should be the data object.
+  // Perform runtime checks to ensure rawNewSupplier is what we expect.
+  if (!rawNewSupplier || typeof rawNewSupplier !== 'object') {
+    console.error('Error creating supplier: No data or invalid data returned after insert, though no explicit error was thrown by Supabase client.', rawNewSupplier);
+    throw new Error('Failed to create supplier: Invalid or no data returned after insert.');
   }
 
-  // At this point, rawNewSupplier is known to be non-null.
-  // Its type is inferred from the select query. It should have an 'id' property.
-  // We perform a runtime check for robustness and to satisfy TypeScript.
-  
-  // To help TypeScript understand, we cast rawNewSupplier to a type that might have an 'id'.
+  // Ensure the 'id' property exists and is a non-empty string.
+  // We cast to a more generic object type first to satisfy TypeScript before checking 'id'.
   const insertedSupplierObject = rawNewSupplier as { id?: unknown; [key: string]: any };
 
   if (typeof insertedSupplierObject.id !== 'string' || insertedSupplierObject.id.trim() === '') {
@@ -370,6 +365,7 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   }
   
   // Fetch the complete supplier data after creation and category association
+  // The userId is not passed here as this is an internal fetch after creation, not subject to trial locks.
   const finalSupplier = await getSupplierById(createdSupplierId); 
   if (!finalSupplier) {
     console.error('Critical error: Failed to retrieve supplier immediately after creation.');

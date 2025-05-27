@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Instagram, 
@@ -10,7 +9,6 @@ import {
   Share2, 
   Star,
   Heart,
-  // Mail, // Mail icon was imported but not used in the provided snippet
   MapPin,
   Clock
 } from 'lucide-react';
@@ -20,7 +18,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Card, 
   CardContent, 
-  // CardDescription, // Not used in the provided snippet
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
@@ -34,9 +31,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Input } from '@/components/ui/input'; // Not used in the provided snippet, but kept for consistency
 import type { Supplier, Review, Category } from '@/types';
-import { getSupplierById } from '@/services/supplierService';
+import { getSupplierById, getSuppliers } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
 import { 
   getReviewsBySupplierId, 
@@ -56,13 +52,17 @@ const reviewFormSchema = z.object({
 
 type ReviewFormValues = z.infer<typeof reviewFormSchema>;
 
+// Simple type for supplier navigation list items
+type NavSupplier = Pick<Supplier, 'id'>;
+
+
 export default function SupplierDetail() {
   const { id: supplierId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const { favorites, toggleFavorite, isFavorite } = useFavorites(); // favorites state is not directly used, but hooks are kept
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
   const [selectedRating, setSelectedRating] = useState(0);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
@@ -77,6 +77,11 @@ export default function SupplierDetail() {
   const { isInTrial, isSupplierAllowed } = useTrialStatus();
   const [isAccessible, setIsAccessible] = useState(true);
 
+  // State for navigation
+  const [allSuppliersForNav, setAllSuppliersForNav] = useState<NavSupplier[]>([]);
+  const [isNavListLoading, setIsNavListLoading] = useState<boolean>(true);
+
+
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewFormSchema),
     defaultValues: {
@@ -86,11 +91,17 @@ export default function SupplierDetail() {
   });
   
   useEffect(() => {
+    // Reset states when supplierId changes
+    setSupplier(null);
+    setLoading(true);
+    setError(null);
+    setReviews([]);
+    setActiveImageIndex(0); // Reset image index
+
     if (supplierId) {
       const fetchSupplierDetailsAndReviews = async () => {
         setLoading(true);
         setError(null);
-        setReviews([]);
         try {
           const fetchedSupplier = await getSupplierById(supplierId, user?.id);
           if (fetchedSupplier) {
@@ -100,7 +111,7 @@ export default function SupplierDetail() {
               const hasAccess = await isSupplierAllowed(supplierId);
               setIsAccessible(hasAccess);
             } else {
-              setIsAccessible(true); // Not in trial or no user, so accessible by default for trial logic
+              setIsAccessible(true); 
             }
 
             setLoadingReviews(true);
@@ -127,9 +138,8 @@ export default function SupplierDetail() {
     } else {
       setError('ID do fornecedor não fornecido.');
       setLoading(false);
-      setReviews([]);
     }
-  }, [supplierId, toast, user?.id, isInTrial, isSupplierAllowed]);
+  }, [supplierId, user?.id, isInTrial, isSupplierAllowed, toast]); // Removed navigate from deps, as it should be stable
   
   useEffect(() => {
     const fetchAllCategories = async () => {
@@ -143,24 +153,72 @@ export default function SupplierDetail() {
     fetchAllCategories();
   }, []);
 
+  // Effect for fetching all suppliers for navigation
+  useEffect(() => {
+    const fetchNavSuppliers = async () => {
+      setIsNavListLoading(true);
+      try {
+        // getSuppliers sorts by created_at desc. We only need IDs for navigation.
+        // Pass user?.id if trial logic should affect the list of navigable suppliers.
+        // For now, assume we navigate through all non-hidden suppliers.
+        const allSuppliersData = await getSuppliers(user?.id); 
+        setAllSuppliersForNav(allSuppliersData.map(s => ({ id: s.id }))); // Store only IDs
+      } catch (err) {
+        console.error("Erro ao buscar lista de fornecedores para navegação:", err);
+        toast({ title: "Erro ao carregar lista para navegação", variant: "destructive", duration: 3000 });
+        setAllSuppliersForNav([]); // Clear on error
+      } finally {
+        setIsNavListLoading(false);
+      }
+    };
+    fetchNavSuppliers();
+  }, [user?.id, toast]); // Re-fetch if user changes (due to trial status potentially)
+
+  const { currentIndex, previousSupplierId, nextSupplierId } = useMemo(() => {
+    if (!supplierId || allSuppliersForNav.length === 0) {
+      return { currentIndex: -1, previousSupplierId: null, nextSupplierId: null };
+    }
+    const idx = allSuppliersForNav.findIndex(s => s.id === supplierId);
+    if (idx === -1) {
+      return { currentIndex: -1, previousSupplierId: null, nextSupplierId: null };
+    }
+    
+    const prevId = idx > 0 ? allSuppliersForNav[idx - 1].id : allSuppliersForNav[allSuppliersForNav.length - 1].id;
+    const nextId = idx < allSuppliersForNav.length - 1 ? allSuppliersForNav[idx + 1].id : allSuppliersForNav[0].id;
+    
+    return {
+      currentIndex: idx,
+      previousSupplierId: allSuppliersForNav.length > 1 ? prevId : null,
+      nextSupplierId: allSuppliersForNav.length > 1 ? nextId : null,
+    };
+  }, [supplierId, allSuppliersForNav]);
+
+  const goToPreviousSupplier = () => {
+    if (previousSupplierId) {
+      navigate(`/suppliers/${previousSupplierId}`);
+    } else {
+      toast({ title: "Navegação", description: "Não há fornecedor anterior ou a lista está carregando.", duration: 2000 });
+    }
+  };
+  
+  const goToNextSupplier = () => {
+    if (nextSupplierId) {
+      navigate(`/suppliers/${nextSupplierId}`);
+    } else {
+      toast({ title: "Navegação", description: "Não há próximo fornecedor ou a lista está carregando.", duration: 2000 });
+    }
+  };
+  
   const getCategoryNameFromId = (categoryId: string): string => {
     const foundCategory = allCategories.find(cat => cat.id === categoryId);
     return foundCategory ? foundCategory.name : categoryId;
   };
-
-  const goToPreviousSupplier = () => {
-    toast({ title: "Navegação indisponível", description: "A navegação para fornecedor anterior/seguinte está temporariamente desabilitada.", duration: 3000 });
-  };
-  
-  const goToNextSupplier = () => {
-    toast({ title: "Navegação indisponível", description: "A navegação para fornecedor anterior/seguinte está temporariamente desabilitada.", duration: 3000 });
-  };
-  
+    
   const averageRating = reviews.length > 0 
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
     : 0;
     
-  const ratingDistribution: number[] = [0, 0, 0, 0, 0]; // Explicitly typed
+  const ratingDistribution: number[] = [0, 0, 0, 0, 0]; 
   reviews.forEach(review => {
     if (review.rating >= 1 && review.rating <= 5) {
       ratingDistribution[review.rating - 1]++;
@@ -176,8 +234,6 @@ export default function SupplierDetail() {
       const currentlyFavorite = isFavorite(supplier.id);
       toggleFavorite(supplier.id); 
       
-      // Note: isFavorite(supplier.id) will reflect the state *before* the toggle in the same render cycle.
-      // So, if it *was* favorite, it's now unfavorited.
       const message = !currentlyFavorite
         ? `${supplier.name} adicionado aos favoritos`
         : `${supplier.name} removido dos favoritos`;
@@ -239,7 +295,7 @@ export default function SupplierDetail() {
         description: "Obrigado por compartilhar sua opinião!",
         duration: 2000,
       });
-      form.reset({ rating: 0, comment: "" }); // Reset form with default values
+      form.reset({ rating: 0, comment: "" }); 
       setSelectedRating(0);
     } catch (err: any) {
       console.error("Erro ao salvar review:", err);
@@ -251,8 +307,8 @@ export default function SupplierDetail() {
       });
     }
   };
-  
-  if (loading) {
+
+  if (loading || (isNavListLoading && allSuppliersForNav.length === 0) ) { // Show loading if supplier details or nav list is initially loading
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -331,7 +387,7 @@ export default function SupplierDetail() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-8"> {/* Added container and padding */}
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <Button 
@@ -349,8 +405,9 @@ export default function SupplierDetail() {
                 variant="outline"
                 size="icon"
                 onClick={goToPreviousSupplier}
-                disabled // Kept disabled as per user's code
+                disabled={!previousSupplierId || isNavListLoading || allSuppliersForNav.length <=1}
                 className="h-8 w-8"
+                aria-label="Fornecedor anterior"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
@@ -359,8 +416,9 @@ export default function SupplierDetail() {
                 variant="outline"
                 size="icon"
                 onClick={goToNextSupplier}
-                disabled // Kept disabled as per user's code
+                disabled={!nextSupplierId || isNavListLoading || allSuppliersForNav.length <=1}
                 className="h-8 w-8"
+                aria-label="Próximo fornecedor"
               >
                 <ArrowRight className="h-4 w-4" />
               </Button>
