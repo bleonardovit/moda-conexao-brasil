@@ -1,224 +1,196 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier, SearchFilters } from '@/types';
-import { getUserTrialInfo, getAllowedSuppliersForTrial } from '@/services/trialService';
-import { getAverageRatingsForSupplierIds } from '@/services/reviewService';
-import { mapRawSupplierToDisplaySupplier } from './mapper';
+import type { Supplier } from '@/types';
+import { mapRawSupplierToDisplaySupplier, isValidSupplierResponse } from './mapper';
+import { getSupplierCategories, associateSupplierWithCategories } from './categories';
 
-// Fetch all suppliers, optionally filtered by user if RLS is on user_id
-// Data will be sanitized if user is in trial and supplier is not allowed
-export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
-  console.log(`supplierService: Fetching all suppliers. UserID: ${userId}`);
-  // Fetch categories along with supplier data
-  let query = supabase.from('suppliers').select('*, categories_data:suppliers_categories(category_id)').order('created_at', { ascending: false });
+export const fetchSuppliers = async (): Promise<Supplier[]> => {
+  console.log('supplierService: Fetching suppliers...');
 
-  const { data: rawSuppliers, error } = await query;
+  const { data, error } = await supabase
+    .from('suppliers')
+    .select('*, categories_data:suppliers_categories(category_id)')
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching suppliers:', error.message);
-    throw new Error(`Failed to fetch suppliers: ${error.message}`);
+    return [];
   }
-  console.log("supplierService: Raw suppliers fetched successfully:", rawSuppliers?.length);
 
-  if (!rawSuppliers || rawSuppliers.length === 0) return [];
-
-  const supplierIds = rawSuppliers.map(s => s.id);
-  const averageRatingsMap = await getAverageRatingsForSupplierIds(supplierIds);
-
-  const processSuppliers = async () => {
-    return Promise.all((rawSuppliers).map(async rawSupplier => {
-      let isLocked = false;
-      if (userId) { // Apply trial logic only if userId is present
-        const trialInfo = await getUserTrialInfo(userId);
-        if (trialInfo) {
-          if (trialInfo.trial_status === 'expired') {
-            isLocked = true;
-          } else if (trialInfo.trial_status === 'active') {
-            const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-            isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
-          }
-        }
-      }
-      return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked, averageRatingsMap.get(rawSupplier.id));
-    }));
-  };
-  
-  return processSuppliers();
+  console.log('supplierService: Suppliers fetched successfully.');
+  return data.map(supplier => mapRawSupplierToDisplaySupplier(supplier, false));
 };
 
-// Fetch a single supplier by ID, optionally considering userId for RLS
-// Data will be sanitized if user is in trial and supplier is not allowed
-export const getSupplierById = async (id: string, userId?: string): Promise<Supplier | null> => {
-  console.log(`supplierService: Fetching supplier by ID: ${id}. UserID: ${userId}`);
-  // Fetch categories along with supplier data
-  const { data: rawSupplier, error } = await supabase
+export const getSupplierById = async (id: string, isLocked: boolean = false, averageRating?: number): Promise<Supplier | null> => {
+  console.log(`supplierService: Fetching supplier by ID: ${id}`);
+
+  const { data, error } = await supabase
     .from('suppliers')
     .select('*, categories_data:suppliers_categories(category_id)')
     .eq('id', id)
-    .maybeSingle(); 
+    .single();
 
   if (error) {
-    console.error(`Error fetching supplier with ID ${id}:`, error.message);
-    throw new Error(`Failed to fetch supplier: ${error.message}`);
-  }
-  
-  if (!rawSupplier) {
+    console.error(`Error fetching supplier ${id}:`, error.message);
     return null;
   }
 
-  const averageRatingsMap = await getAverageRatingsForSupplierIds([id]);
-  const averageRating = averageRatingsMap.get(id);
-
-  let isLocked = false;
-  if (userId) { // Apply trial logic only if userId is present
-    const trialInfo = await getUserTrialInfo(userId);
-    if (trialInfo) {
-      if (trialInfo.trial_status === 'expired') {
-        isLocked = true;
-      } else if (trialInfo.trial_status === 'active') {
-        const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-        isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
-      }
-    }
+  if (!data) {
+    console.log(`Supplier with ID ${id} not found.`);
+    return null;
   }
-  console.log(`supplierService: Supplier ${id} fetched. Is locked: ${isLocked} for user ${userId} with trial_status ${userId ? (await getUserTrialInfo(userId))?.trial_status : 'N/A'}`);
-  return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked, averageRating);
+
+  console.log(`supplierService: Supplier ${id} fetched successfully.`);
+  return mapRawSupplierToDisplaySupplier(data, isLocked, averageRating);
 };
 
-// Search suppliers with filters
-export const searchSuppliers = async (filters: SearchFilters, userId?: string): Promise<Supplier[]> => {
-  console.log("supplierService: Searching suppliers with filters:", filters, "UserId:", userId);
+export const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>): Promise<Supplier> => {
+  console.log('supplierService: Creating new supplier:', supplierData);
   
-  let selectString = '*, categories_data:suppliers_categories(category_id)';
-  // If filtering by category, we need an inner join to ensure the category exists for the supplier.
-  // And the filter will be applied on the joined data.
-  if (filters.categoryId && filters.categoryId !== 'all') {
-    selectString = '*, categories_data:suppliers_categories!inner(category_id)';
-  }
-  
-  let query = supabase.from('suppliers').select(selectString);
-
-  if (filters.searchTerm) {
-    query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
-  }
-  
-  if (filters.categoryId && filters.categoryId !== 'all') {
-    // Filter on the joined 'suppliers_categories' data.
-    // The alias 'categories_data' is for the selected data, the filter applies to the source.
-    query = query.eq('categories_data.category_id', filters.categoryId);
-  }
-  
-  if (filters.state && filters.state !== 'all') {
-    query = query.eq('state', filters.state);
-  }
-  
-  if (filters.city && filters.city.trim() !== '') {
-    query = query.ilike('city', `%${filters.city.trim()}%`);
-  }
-  
-  if (filters.paymentMethods && filters.paymentMethods.length > 0) {
-    query = query.overlaps('payment_methods', filters.paymentMethods as string[]);
-  }
-
-  if (filters.requiresCnpj !== null && filters.requiresCnpj !== undefined) {
-    query = query.eq('requires_cnpj', filters.requiresCnpj);
-  }
-
-  if (filters.shippingMethods && filters.shippingMethods.length > 0) {
-    query = query.overlaps('shipping_methods', filters.shippingMethods as string[]);
-  }
-
-  if (filters.hasWebsite !== null && filters.hasWebsite !== undefined) {
-    if (filters.hasWebsite) {
-      query = query.not('website', 'is', null).neq('website', '');
-    } else {
-      query = query.or('website.is.null,website.eq.');
-    }
-  }
-
-  const minOrderColumnExpression = `NULLIF(regexp_replace(min_order, '[^0-9.,]', '', 'g'), '')::numeric`;
-
-  if (filters.minOrderMin !== undefined && filters.minOrderMin !== null) {
-    try {
-        query = query.filter(minOrderColumnExpression, 'gte', filters.minOrderMin);
-    } catch (e) {
-        console.warn("Could not apply minOrderMin due to potential non-numeric min_order values or filter error", e);
-    }
-  }
-  if (filters.minOrderMax !== undefined && filters.minOrderMax !== null) {
-     try {
-        query = query.filter(minOrderColumnExpression, 'lte', filters.minOrderMax);
-    } catch (e) {
-        console.warn("Could not apply minOrderMax due to potential non-numeric min_order values or filter error", e);
-    }
-  }
-  
-  query = query.eq('hidden', false); // Ensure only non-hidden suppliers are fetched
-  query = query.order('featured', { ascending: false }) // Prioritize featured suppliers
-               .order('created_at', { ascending: false }); // Then by creation date
-
-  const { data: rawSuppliers, error } = await query;
+  const { data, error } = await supabase
+    .from('suppliers')
+    .insert({
+      code: supplierData.code,
+      name: supplierData.name,
+      description: supplierData.description,
+      images: supplierData.images || [],
+      instagram: supplierData.instagram,
+      whatsapp: supplierData.whatsapp,
+      website: supplierData.website,
+      min_order: supplierData.min_order,
+      payment_methods: supplierData.payment_methods || [],
+      requires_cnpj: supplierData.requires_cnpj ?? false,
+      avg_price: supplierData.avg_price || 'medium',
+      shipping_methods: supplierData.shipping_methods || [],
+      custom_shipping_method: supplierData.custom_shipping_method,
+      city: supplierData.city,
+      state: supplierData.state,
+      featured: supplierData.featured ?? false,
+      hidden: supplierData.hidden ?? false,
+    })
+    .select()
+    .single();
 
   if (error) {
-    console.error('Error searching suppliers:', error.message);
-    throw new Error(`Failed to search suppliers: ${error.message}`);
+    console.error('Error creating supplier:', error.message);
+    throw new Error(`Error creating supplier: ${error.message}`);
   }
-  console.log("supplierService: Suppliers search completed. Raw found:", rawSuppliers?.length);
+
+  if (!isValidSupplierResponse(data)) {
+    console.error('Invalid supplier response:', data);
+    throw new Error('Invalid response when creating supplier');
+  }
+
+  console.log('supplierService: Supplier created successfully:', data.id);
+
+  // Associate with categories if provided
+  if (supplierData.categories && supplierData.categories.length > 0) {
+    await associateSupplierWithCategories(data.id, supplierData.categories);
+  }
+
+  return mapRawSupplierToDisplaySupplier(data, false);
+};
+
+export const updateSupplier = async (id: string, supplierData: Partial<Supplier>): Promise<Supplier> => {
+  console.log('supplierService: Updating supplier:', id);
   
-  if (!rawSuppliers || rawSuppliers.length === 0) return [];
+  const { data, error } = await supabase
+    .from('suppliers')
+    .update({
+      code: supplierData.code,
+      name: supplierData.name,
+      description: supplierData.description,
+      images: supplierData.images,
+      instagram: supplierData.instagram,
+      whatsapp: supplierData.whatsapp,
+      website: supplierData.website,
+      min_order: supplierData.min_order,
+      payment_methods: supplierData.payment_methods,
+      requires_cnpj: supplierData.requires_cnpj,
+      avg_price: supplierData.avg_price,
+      shipping_methods: supplierData.shipping_methods,
+      custom_shipping_method: supplierData.custom_shipping_method,
+      city: supplierData.city,
+      state: supplierData.state,
+      featured: supplierData.featured,
+      hidden: supplierData.hidden,
+    })
+    .eq('id', id)
+    .select()
+    .single();
 
-  const supplierIds = rawSuppliers.map(s => s.id);
-  const averageRatingsMap = await getAverageRatingsForSupplierIds(supplierIds);
-
-  const processSuppliers = async () => {
-    return Promise.all((rawSuppliers).map(async rawSupplier => {
-      let isLocked = false;
-      if (userId) { // Apply trial logic only if userId is present
-        const trialInfo = await getUserTrialInfo(userId);
-        if (trialInfo) {
-          if (trialInfo.trial_status === 'expired') {
-            isLocked = true;
-          } else if (trialInfo.trial_status === 'active') {
-            const allowedSupplierIdsForTrial = await getAllowedSuppliersForTrial(userId);
-            isLocked = !allowedSupplierIdsForTrial.includes(rawSupplier.id);
-          }
-        }
-      }
-      return mapRawSupplierToDisplaySupplier(rawSupplier, isLocked, averageRatingsMap.get(rawSupplier.id));
-    }));
-  };
-
-  return processSuppliers();
-};
-
-// Helper function to get distinct states from suppliers
-export const getDistinctStates = async (): Promise<string[]> => {
-  const { data: allSuppliers, error: supplierError } = await supabase.from('suppliers').select('state');
-  if (supplierError) {
-    console.error('Error fetching distinct states from suppliers table:', supplierError);
-    return [];
-  }
-  if (!allSuppliers) return [];
-  const states = new Set(allSuppliers.map(s => s.state).filter(Boolean) as string[]);
-  return Array.from(states).sort();
-};
-
-// Helper function to get distinct cities from suppliers
-export const getDistinctCities = async (state?: string): Promise<string[]> => {
-  let query = supabase.from('suppliers').select('city').neq('city', ''); 
-  if (state && state !== 'all') {
-    query = query.eq('state', state);
-  }
-  const { data, error } = await query;
   if (error) {
-    console.error('Error fetching distinct cities:', error);
-    return [];
+    console.error('Error updating supplier:', error.message);
+    throw new Error(`Error updating supplier: ${error.message}`);
   }
-  if (!data) return []; 
 
-  const cityValues = data
-    .map(s => s.city) 
-    .filter((city): city is string => typeof city === 'string' && city.trim() !== ''); 
+  if (!isValidSupplierResponse(data)) {
+    console.error('Invalid supplier response:', data);
+    throw new Error('Invalid response when updating supplier');
+  }
 
-  return Array.from(new Set(cityValues)).sort();
+  console.log('supplierService: Supplier updated successfully:', data.id);
+
+  // Handle categories update
+  if (supplierData.categories !== undefined) {
+    // Clear existing categories
+    await supabase
+      .from('suppliers_categories')
+      .delete()
+      .eq('supplier_id', data.id);
+    
+    // Add new categories if any
+    if (supplierData.categories.length > 0) {
+      await associateSupplierWithCategories(data.id, supplierData.categories);
+    }
+  }
+
+  return mapRawSupplierToDisplaySupplier(data, false);
+};
+
+export const deleteSupplier = async (id: string): Promise<void> => {
+  console.log('supplierService: Deleting supplier:', id);
+  
+  const { error } = await supabase
+    .from('suppliers')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting supplier:', error.message);
+    throw new Error(`Error deleting supplier: ${error.message}`);
+  }
+
+  console.log('supplierService: Supplier deleted successfully:', id);
+};
+
+export const updateSupplierFeaturedStatus = async (id: string, featured: boolean): Promise<void> => {
+  console.log(`supplierService: Updating featured status for supplier ${id} to ${featured}`);
+  
+  const { error } = await supabase
+    .from('suppliers')
+    .update({ featured: featured })
+    .eq('id', id);
+
+  if (error) {
+    console.error(`Error updating featured status for supplier ${id}:`, error.message);
+    throw new Error(`Error updating featured status for supplier ${id}: ${error.message}`);
+  }
+
+  console.log(`supplierService: Updated featured status for supplier ${id} to ${featured}`);
+};
+
+export const updateSupplierHiddenStatus = async (id: string, hidden: boolean): Promise<void> => {
+  console.log(`supplierService: Updating hidden status for supplier ${id} to ${hidden}`);
+  
+  const { error } = await supabase
+    .from('suppliers')
+    .update({ hidden: hidden })
+    .eq('id', id);
+
+  if (error) {
+    console.error(`Error updating hidden status for supplier ${id}:`, error.message);
+    throw new Error(`Error updating hidden status for supplier ${id}: ${error.message}`);
+  }
+
+  console.log(`supplierService: Updated hidden status for supplier ${id} to ${hidden}`);
 };

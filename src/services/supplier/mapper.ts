@@ -1,6 +1,6 @@
 
 import type { Supplier } from '@/types';
-import { LOCKED_SUPPLIER_PLACEHOLDERS } from './types';
+import { LOCKED_SUPPLIER_PLACEHOLDERS, isValidSupplierResponse } from './types';
 
 // Helper to map raw supplier data and sanitize if locked for trial
 export const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: boolean, averageRating?: number): Supplier => {
@@ -54,3 +54,6 @@ export const mapRawSupplierToDisplaySupplier = (rawSupplier: any, isLocked: bool
   }
   return baseSupplier;
 };
+
+// Export the type guard for use in other modules
+export { isValidSupplierResponse };
