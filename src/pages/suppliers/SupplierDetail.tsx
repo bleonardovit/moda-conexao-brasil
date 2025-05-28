@@ -10,8 +10,6 @@ import { useFavorites } from '@/hooks/use-favorites';
 import { LockedSupplierDetail } from '@/components/trial/LockedSupplierDetail';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { useIsMobile } from '@/hooks/use-mobile';
 import type { Supplier, Category, Review } from '@/types';
 import { getSupplierById } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
@@ -30,7 +28,6 @@ export default function SupplierDetail() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
   const { user } = useAuth();
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -170,59 +167,6 @@ export default function SupplierDetail() {
     return stars;
   };
 
-  const renderThumbnails = () => {
-    if (!supplier?.images || supplier.images.length === 0) return null;
-
-    // Se for mobile e tem mais de 4 imagens, usar carrossel
-    if (isMobile && supplier.images.length > 4) {
-      return (
-        <Carousel
-          opts={{
-            align: "start",
-            loop: false,
-            dragFree: true,
-            containScroll: "trimSnaps"
-          }}
-          className="w-full max-w-full"
-        >
-          <CarouselContent className="-ml-2">
-            {supplier.images.map((image, index) => (
-              <CarouselItem key={index} className="pl-2 basis-1/4 min-w-0">
-                <img
-                  src={image}
-                  alt={`${supplier.name} - Thumbnail ${index + 1}`}
-                  className={`w-full aspect-square rounded-md object-cover cursor-pointer ${
-                    index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'
-                  }`}
-                  onClick={() => handleImageClick(index)}
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="left-1" />
-          <CarouselNext className="right-1" />
-        </Carousel>
-      );
-    }
-
-    // Comportamento original para desktop ou quando tem 4 ou menos imagens
-    return (
-      <div className="flex gap-2 overflow-x-auto">
-        {supplier.images.map((image, index) => (
-          <img
-            key={index}
-            src={image}
-            alt={`${supplier.name} - Thumbnail ${index + 1}`}
-            className={`w-20 h-20 rounded-md object-cover cursor-pointer ${
-              index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'
-            }`}
-            onClick={() => handleImageClick(index)}
-          />
-        ))}
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <AppLayout>
@@ -273,7 +217,17 @@ export default function SupplierDetail() {
                   alt={`${supplier.name} - Imagem ${currentImageIndex + 1}`}
                   className="w-full rounded-lg aspect-video object-cover"
                 />
-                {renderThumbnails()}
+                <div className="flex gap-2 overflow-x-auto">
+                  {supplier.images.map((image, index) => (
+                    <img
+                      key={index}
+                      src={image}
+                      alt={`${supplier.name} - Thumbnail ${index + 1}`}
+                      className={`w-20 h-20 rounded-md object-cover cursor-pointer ${index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'}`}
+                      onClick={() => handleImageClick(index)}
+                    />
+                  ))}
+                </div>
               </div>
             ) : (
               <Card>
