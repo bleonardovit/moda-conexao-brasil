@@ -37,6 +37,44 @@ export const getReviewsBySupplierId = async (supplierId: string): Promise<Review
   }
 };
 
+// Alias for backward compatibility
+export const getSupplierReviews = getReviewsBySupplierId;
+
+/**
+ * Calcula e retorna a média de avaliação para um fornecedor específico.
+ */
+export const getSupplierAverageRating = async (supplierId: string): Promise<number | null> => {
+  if (!supplierId) {
+    console.error('Supplier ID is required to fetch average rating.');
+    return null;
+  }
+
+  try {
+    const { data: reviews, error } = await supabase
+      .from('reviews')
+      .select('rating')
+      .eq('supplier_id', supplierId);
+
+    if (error) {
+      console.error(`Error fetching reviews for average rating calculation for supplier ${supplierId}:`, error);
+      return null;
+    }
+
+    if (!reviews || reviews.length === 0) {
+      return null;
+    }
+
+    const totalRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0);
+    const averageRating = totalRating / reviews.length;
+    
+    console.log(`reviewService: Calculated average rating for supplier ${supplierId}:`, averageRating);
+    return averageRating;
+  } catch (err) {
+    console.error('Exception in getSupplierAverageRating:', err);
+    return null;
+  }
+};
+
 /**
  * Cria uma nova review no banco de dados.
  */
