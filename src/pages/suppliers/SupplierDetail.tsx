@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
+import { LockedSupplierDetail } from '@/components/trial/LockedSupplierDetail';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Supplier, Category, Review } from '@/types';
@@ -193,12 +194,7 @@ export default function SupplierDetail() {
   if (supplier.isLockedForTrial) {
     return (
       <AppLayout>
-        <div className="flex flex-col items-center justify-center h-64 space-y-4">
-          <p className="text-lg text-muted-foreground">Este fornecedor está disponível apenas para assinantes</p>
-          <Button onClick={() => navigate('/suppliers')}>
-            Voltar para fornecedores
-          </Button>
-        </div>
+        <LockedSupplierDetail supplier={supplier} />
       </AppLayout>
     );
   }
@@ -206,7 +202,7 @@ export default function SupplierDetail() {
   return (
     <AppLayout>
       <div className="container relative py-10">
-        <Button variant="ghost" onClick={() => navigate('/suppliers')} className="absolute top-2 left-2 md:top-0 md:left-0">
+        <Button variant="ghost" onClick={handleGoBack} className="absolute top-2 left-2 md:top-0 md:left-0">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
@@ -228,7 +224,7 @@ export default function SupplierDetail() {
                       src={image}
                       alt={`${supplier.name} - Thumbnail ${index + 1}`}
                       className={`w-20 h-20 rounded-md object-cover cursor-pointer ${index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'}`}
-                      onClick={() => setCurrentImageIndex(index)}
+                      onClick={() => handleImageClick(index)}
                     />
                   ))}
                 </div>

@@ -130,7 +130,7 @@ const SearchPage = () => {
         shippingMethods: selectedShippingMethods.length > 0 ? selectedShippingMethods : undefined,
         hasWebsite: hasWebsiteFilter === 'yes' ? true : hasWebsiteFilter === 'no' ? false : null,
       };
-      const results = await searchSuppliers(filters); // Fixed: removed userId parameter
+      const results = await searchSuppliers(filters, user?.id);
       setSuppliers(results);
     } catch (error) {
       console.error('Error searching suppliers:', error);
@@ -138,7 +138,7 @@ const SearchPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, isPageAccessible]); // Removed user?.id dependency
+  }, [searchTerm, categoryFilter, stateFilter, cityFilter, minOrderMin, minOrderMax, selectedPaymentMethods, requiresCnpjFilter, selectedShippingMethods, hasWebsiteFilter, user?.id, isPageAccessible]);
 
   useEffect(() => {
     // Auto-search if not initial load and some filter changes, or searchTerm changes
