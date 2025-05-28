@@ -57,14 +57,14 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
 
   // Apply category filter
   if (filters.categoryId && filters.categoryId !== 'all') {
-    // First get suppliers that have this category
-    const { data: categorySuppliers } = await supabase
-      .from('suppliers_categories')
-      .select('supplier_id')
-      .eq('category_id', filters.categoryId);
-    
-    const supplierIds = categorySuppliers?.map(item => item.supplier_id) || [];
-    query = query.in('id', supplierIds);
+    // We need to join with suppliers_categories table
+    query = query.in('id', 
+      supabase
+        .from('suppliers_categories')
+        .select('supplier_id')
+        .eq('category_id', filters.categoryId)
+        .then(({ data }) => data?.map(item => item.supplier_id) || [])
+    );
   }
 
   // Apply state filter
