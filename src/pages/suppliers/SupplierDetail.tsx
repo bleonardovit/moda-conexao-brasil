@@ -250,7 +250,7 @@ export default function SupplierDetail() {
   if (supplier.isLockedForTrial) {
     return (
       <AppLayout>
-        <LockedSupplierDetail supplier={supplier} />
+        <LockedSupplierDetail />
       </AppLayout>
     );
   }
