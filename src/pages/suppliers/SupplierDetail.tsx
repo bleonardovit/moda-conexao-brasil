@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Instagram, MessageCircle, Star, Heart, MapPin, CreditCard, Truck, Building, ShoppingCart, Info } from 'lucide-react';
@@ -185,13 +186,13 @@ export default function SupplierDetail() {
           }}
           className="w-full max-w-full"
         >
-          <CarouselContent className="-ml-2">
+          <CarouselContent className="-ml-1">
             {supplier.images.map((image, index) => (
-              <CarouselItem key={index} className="pl-2 basis-1/4 min-w-0">
+              <CarouselItem key={index} className="pl-1 basis-1/4 min-w-0">
                 <img
                   src={image}
                   alt={`${supplier.name} - Thumbnail ${index + 1}`}
-                  className={`w-full aspect-square rounded-md object-cover cursor-pointer ${
+                  className={`w-full h-16 rounded-md object-cover cursor-pointer ${
                     index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'
                   }`}
                   onClick={() => handleImageClick(index)}
@@ -207,13 +208,13 @@ export default function SupplierDetail() {
 
     // Comportamento original para desktop ou quando tem 4 ou menos imagens
     return (
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex gap-2 overflow-x-auto pb-2">
         {supplier.images.map((image, index) => (
           <img
             key={index}
             src={image}
             alt={`${supplier.name} - Thumbnail ${index + 1}`}
-            className={`w-20 h-20 rounded-md object-cover cursor-pointer ${
+            className={`w-16 h-16 md:w-20 md:h-20 rounded-md object-cover cursor-pointer flex-shrink-0 ${
               index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'
             }`}
             onClick={() => handleImageClick(index)}
