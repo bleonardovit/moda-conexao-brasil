@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
 import { useToast } from '@/hooks/use-toast';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Supplier, Category, Review } from '@/types';
 import { getSupplierById } from '@/services/supplierService';
@@ -29,7 +27,6 @@ export default function SupplierDetail() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
   const { user } = useAuth();
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -169,59 +166,6 @@ export default function SupplierDetail() {
     return stars;
   };
 
-  const renderThumbnailGallery = () => {
-    if (!supplier || supplier.images.length === 0) return null;
-
-    // For mobile with more than 4 images, use carousel
-    if (isMobile && supplier.images.length > 4) {
-      return (
-        <Carousel
-          opts={{
-            align: "start",
-            slidesToScroll: 1,
-            containScroll: "trimSnaps",
-            dragFree: true,
-          }}
-          className="w-full"
-        >
-          <CarouselContent className="-ml-2">
-            {supplier.images.map((image, index) => (
-              <CarouselItem key={index} className="pl-2 basis-1/4">
-                <img
-                  src={image}
-                  alt={`${supplier.name} - Thumbnail ${index + 1}`}
-                  className={`w-full h-20 rounded-md object-cover cursor-pointer ${
-                    index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'
-                  }`}
-                  onClick={() => setCurrentImageIndex(index)}
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="left-0" />
-          <CarouselNext className="right-0" />
-        </Carousel>
-      );
-    }
-
-    // For desktop or mobile with 4 or fewer images, use regular flex layout
-    return (
-      <div className="flex gap-2 overflow-x-auto">
-        {supplier.images.map((image, index) => (
-          <img
-            key={index}
-            src={image}
-            alt={`${supplier.name} - Thumbnail ${index + 1}`}
-            className={`w-20 h-20 rounded-md object-cover cursor-pointer flex-shrink-0 ${
-              index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'
-            }`}
-            onClick={() => setCurrentImageIndex(index)}
-          />
-        ))}
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <AppLayout>
@@ -277,7 +221,17 @@ export default function SupplierDetail() {
                   alt={`${supplier.name} - Imagem ${currentImageIndex + 1}`}
                   className="w-full rounded-lg aspect-video object-cover"
                 />
-                {renderThumbnailGallery()}
+                <div className="flex gap-2 overflow-x-auto">
+                  {supplier.images.map((image, index) => (
+                    <img
+                      key={index}
+                      src={image}
+                      alt={`${supplier.name} - Thumbnail ${index + 1}`}
+                      className={`w-20 h-20 rounded-md object-cover cursor-pointer ${index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'}`}
+                      onClick={() => setCurrentImageIndex(index)}
+                    />
+                  ))}
+                </div>
               </div>
             ) : (
               <Card>
