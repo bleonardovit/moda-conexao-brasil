@@ -85,7 +85,6 @@ export const createSupplier = async (supplierInput: SupplierCreationPayload): Pr
   }
   
   // Fetch the complete supplier data after creation and category association
-  // The userId is not passed here as this is an internal fetch after creation, not subject to trial locks.
   const finalSupplier = await getSupplierById(createdSupplierId); 
   if (!finalSupplier) {
     console.error('Critical error: Failed to retrieve supplier immediately after creation.');
@@ -127,7 +126,7 @@ export const updateSupplier = async (id: string, updates: SupplierUpdatePayload,
     }
   }
   
-  // Fetch the complete supplier data after updates, applying user-specific locking
+  // Fetch the complete supplier data after updates
   const finalSupplier = await getSupplierById(id, userId); 
   if (!finalSupplier) {
     console.error(`Failed to retrieve supplier ${id} after update.`);
@@ -194,4 +193,12 @@ export const toggleSupplierVisibility = async (id: string, hidden: boolean): Pro
   }
   
   console.log(`supplierService: Visibility for supplier ${id} updated successfully.`);
+};
+
+export const updateSupplierFeaturedStatus = async (id: string, featured: boolean): Promise<void> => {
+  return toggleSupplierFeatured(id, featured);
+};
+
+export const updateSupplierHiddenStatus = async (id: string, hidden: boolean): Promise<void> => {
+  return toggleSupplierVisibility(id, hidden);
 };
