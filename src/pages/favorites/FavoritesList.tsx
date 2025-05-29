@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
@@ -8,129 +7,110 @@ import { useTrialStatus } from '@/hooks/use-trial-status';
 import { FeatureLimitedAccess } from '@/components/trial/FeatureLimitedAccess';
 import { Button } from '@/components/ui/button';
 import { TrialBanner } from '@/components/trial/TrialBanner';
-import { Heart, Trash2, Loader2 } from 'lucide-react'; // Added Loader2
+import { Heart, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Supplier } from '@/types';
 
 export default function FavoritesList() {
-  const { favorites, removeFavorite, isLoading: isLoadingFavoritesHook } = useFavorites(); // Get isLoading from hook
+  const { favorites, removeFavorite } = useFavorites();
   const [favoriteSuppliers, setFavoriteSuppliers] = useState<Supplier[]>([]);
-  const [isLoadingPageContent, setIsLoadingPageContent] = useState(true); // For fetching supplier details
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { isInTrial, isFeatureAllowed, hasExpired } = useTrialStatus(); // Added hasExpired
-  const [canAccessFeature, setCanAccessFeature] = useState<boolean | null>(null); // Init with null
-
-  const getAccessDeniedMessage = useCallback(() => {
-    if (hasExpired) {
-      return "Seu período de teste expirou. Assine para acessar e gerenciar seus favoritos.";
-    }
-    return "A funcionalidade de favoritos é exclusiva para assinantes. Assine um plano para começar a salvar seus fornecedores preferidos.";
-  }, [hasExpired]);
+  const { isInTrial, isFeatureAllowed } = useTrialStatus();
+  const [canAccessFeature, setCanAccessFeature] = useState(true);
 
   useEffect(() => {
-    const checkAccess = async () => {
-      const hasAccess = await isFeatureAllowed('favorites');
-      setCanAccessFeature(hasAccess);
-    };
-    checkAccess();
-  }, [isFeatureAllowed]);
-
-  useEffect(() => {
-    const fetchFavoriteSuppliers = async () => {
-      if (canAccessFeature === false || isLoadingFavoritesHook) {
-        // If no access or favorites hook still loading, don't fetch details
-        // If favorites hook finished and cleared favorites due to no access, this will also not run.
-        setIsLoadingPageContent(false);
-        if(canAccessFeature === false) setFavoriteSuppliers([]); // Clear suppliers if access denied
-        return;
-      }
-      
-      // Only proceed if canAccessFeature is true
-      if (canAccessFeature === true) {
-        setIsLoadingPageContent(true);
-        try {
-          const suppliers: Supplier[] = [];
-          for (const favoriteId of favorites) {
-            try {
-              // Pass user?.id to getSupplierById for consistent trial locking logic
-              // However, if the supplier is favorited, it implies it was accessible at some point.
-              // The primary lock here is on the favorites feature itself.
-              const supplier = await getSupplierById(favoriteId); 
-              if (supplier) {
-                suppliers.push(supplier);
-              }
-            } catch (error) {
-              console.error(`Error fetching supplier ${favoriteId}:`, error);
-            }
-          }
-          setFavoriteSuppliers(suppliers);
-        } catch (error) {
-          console.error('Error fetching favorite suppliers:', error);
-          toast({
-            title: "Erro ao carregar detalhes dos favoritos",
-            description: "Não foi possível carregar os detalhes dos seus fornecedores favoritos.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsLoadingPageContent(false);
-        }
+    const checkFeatureAccess = async () => {
+      if (isInTrial) {
+        const hasAccess = await isFeatureAllowed('favorites');
+        setCanAccessFeature(hasAccess);
       }
     };
     
-    // Run if canAccessFeature is determined and not loading from favorites hook
-    if (canAccessFeature !== null && !isLoadingFavoritesHook) {
-      fetchFavoriteSuppliers();
-    }
-  }, [favorites, toast, canAccessFeature, isLoadingFavoritesHook]);
+    checkFeatureAccess();
+  }, [isInTrial, isFeatureAllowed]);
+
+  useEffect(() => {
+    const fetchFavoriteSuppliers = async () => {
+      if (!canAccessFeature) {
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        const suppliers: Supplier[] = [];
+        
+        for (const favoriteId of favorites) {
+          try {
+            const supplier = await getSupplierById(favoriteId);
+            if (supplier) {
+              suppliers.push(supplier);
+            }
+          } catch (error) {
+            console.error(`Error fetching supplier ${favoriteId}:`, error);
+          }
+        }
+        
+        setFavoriteSuppliers(suppliers);
+      } catch (error) {
+        console.error('Error fetching favorite suppliers:', error);
+        toast({
+          title: "Erro ao carregar favoritos",
+          description: "Não foi possível carregar seus favoritos. Por favor, tente novamente mais tarde.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchFavoriteSuppliers();
+  }, [favorites, toast, canAccessFeature]);
 
   const handleRemoveFavorite = (supplierId: string) => {
-    removeFavorite(supplierId); // This now has access checks within useFavorites
-    // Optimistic update handled by useFavorites re-triggering useEffect
+    removeFavorite(supplierId);
+    setFavoriteSuppliers(prev => prev.filter(s => s.id !== supplierId));
     toast({
       title: "Removido dos favoritos",
       description: "Fornecedor removido dos seus favoritos"
     });
   };
-  
-  // Overall loading state: page is loading if access check is pending OR favorites hook is loading OR page content is loading
-  const isLoading = canAccessFeature === null || isLoadingFavoritesHook || isLoadingPageContent;
 
-  if (canAccessFeature === false && canAccessFeature !== null) { // Ensure check is complete
+  if (!canAccessFeature) {
     return (
       <AppLayout>
-        <div className="max-w-4xl mx-auto py-6 px-4"> {/* Added px-4 for consistency */}
+        <div className="max-w-4xl mx-auto py-6">
           <TrialBanner />
           <FeatureLimitedAccess 
             title="Favoritos Indisponíveis" 
-            message={getAccessDeniedMessage()}
-            // featureName="favoritos" // Not strictly needed if message is comprehensive
+            message="Durante o período de teste gratuito, o recurso de favoritos está disponível apenas para assinantes." 
+            featureName="favoritos"
           />
         </div>
       </AppLayout>
     );
   }
 
+  // Rest of the component for users with access
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-8 space-y-6"> {/* Added container and padding */}
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Meus Favoritos</h1>
         </div>
         
-        <TrialBanner /> {/* Consider conditional rendering based on isInTrial */}
+        <TrialBanner />
         
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
-            <p className="ml-2 text-muted-foreground">Carregando seus favoritos...</p>
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">Carregando favoritos...</p>
           </div>
         ) : favoriteSuppliers.length === 0 ? (
-          <div className="bg-card text-card-foreground rounded-lg shadow p-8 text-center border"> {/* Adjusted styling */}
-            <Heart className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+            <Heart className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
             <h2 className="text-xl font-semibold mb-2">Nenhum favorito adicionado</h2>
-            <p className="text-muted-foreground mb-6">
-              Você ainda não adicionou nenhum fornecedor aos favoritos. Explore e adicione os que mais gostar!
-            </p>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">Você ainda não adicionou nenhum fornecedor aos favoritos.</p>
             <Button asChild>
               <Link to="/suppliers">Ver fornecedores</Link>
             </Button>
@@ -138,30 +118,24 @@ export default function FavoritesList() {
         ) : (
           <div className="space-y-4">
             {favoriteSuppliers.map(supplier => (
-              <div key={supplier.id} className="bg-card text-card-foreground rounded-lg shadow overflow-hidden border"> {/* Adjusted styling */}
+              <div key={supplier.id} className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <div className="p-6">
                   <div className="flex items-start justify-between">
-                    {/* If supplier is locked due to trial, link might lead to locked page, which is fine */}
                     <Link to={`/suppliers/${supplier.id}`} className="hover:underline">
                       <h3 className="text-lg font-semibold">{supplier.name}</h3>
                     </Link>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                      className="text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                       onClick={() => handleRemoveFavorite(supplier.id)}
-                      aria-label="Remover dos favoritos"
                     >
                       <Trash2 className="h-5 w-5" />
+                      <span className="sr-only">Remover dos favoritos</span>
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {supplier.city && supplier.state ? `${supplier.city}, ${supplier.state}` : 'Localização não informada'}
-                  </p>
-                  {/* Display placeholder if supplier data is locked */}
-                  <p className="mt-2 line-clamp-2 text-sm"> 
-                    {supplier.isLockedForTrial ? "Detalhes disponíveis apenas para assinantes." : supplier.description}
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{supplier.city}, {supplier.state}</p>
+                  <p className="mt-2 line-clamp-2">{supplier.description}</p>
                   <div className="mt-4">
                     <Button asChild size="sm">
                       <Link to={`/suppliers/${supplier.id}`}>Ver detalhes</Link>

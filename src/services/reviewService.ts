@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Review } from '@/types'; // Assumindo que Review está em @/types
 // import { getUser } from './userService'; // REMOVIDO - userService não encontrado no momento
@@ -36,9 +35,6 @@ export const getReviewsBySupplierId = async (supplierId: string): Promise<Review
     throw err;
   }
 };
-
-// Alias for SupplierDetail compatibility
-export const getSupplierReviews = getReviewsBySupplierId;
 
 /**
  * Cria uma nova review no banco de dados.
@@ -104,82 +100,3 @@ export const createReview = async (reviewData: CreateReviewData, userId: string)
     throw err;
   }
 }; 
-
-/**
- * Calcula e retorna as médias de avaliação para uma lista de IDs de fornecedores.
- */
-export const getAverageRatingsForSupplierIds = async (supplierIds: string[]): Promise<Map<string, number>> => {
-  if (!supplierIds || supplierIds.length === 0) {
-    return new Map();
-  }
-
-  const { data: reviews, error } = await supabase
-    .from('reviews')
-    .select('supplier_id, rating')
-    .in('supplier_id', supplierIds);
-
-  if (error) {
-    console.error('Error fetching reviews for average rating calculation:', error);
-    return new Map();
-  }
-
-  if (!reviews) {
-    return new Map();
-  }
-
-  const ratingSums = new Map<string, number>();
-  const reviewCounts = new Map<string, number>();
-
-  for (const review of reviews) {
-    if (review.supplier_id && typeof review.rating === 'number') {
-      ratingSums.set(review.supplier_id, (ratingSums.get(review.supplier_id) || 0) + review.rating);
-      reviewCounts.set(review.supplier_id, (reviewCounts.get(review.supplier_id) || 0) + 1);
-    }
-  }
-
-  const averageRatings = new Map<string, number>();
-  for (const [supplierId, totalRating] of ratingSums) {
-    const count = reviewCounts.get(supplierId) || 0;
-    if (count > 0) {
-      averageRatings.set(supplierId, totalRating / count);
-    }
-  }
-  
-  console.log("reviewService: Calculated average ratings for suppliers:", averageRatings);
-  return averageRatings;
-};
-
-/**
- * Gets the average rating for a single supplier
- */
-export const getSupplierAverageRating = async (supplierId: string): Promise<number | null> => {
-  if (!supplierId) {
-    console.error('Supplier ID is required to fetch average rating.');
-    return null;
-  }
-
-  try {
-    const { data: reviews, error } = await supabase
-      .from('reviews')
-      .select('rating')
-      .eq('supplier_id', supplierId);
-
-    if (error) {
-      console.error(`Error fetching reviews for supplier ${supplierId}:`, error);
-      return null;
-    }
-
-    if (!reviews || reviews.length === 0) {
-      return null;
-    }
-
-    const totalRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0);
-    const averageRating = totalRating / reviews.length;
-
-    console.log(`reviewService: Average rating for supplier ${supplierId}: ${averageRating}`);
-    return averageRating;
-  } catch (err) {
-    console.error('Exception in getSupplierAverageRating:', err);
-    return null;
-  }
-};

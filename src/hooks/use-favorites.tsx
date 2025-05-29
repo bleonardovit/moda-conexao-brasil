@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from "@/hooks/use-toast";
-import { useTrialStatus } from '@/hooks/use-trial-status';
 
 type FavoriteItem = {
   id: string;
@@ -17,30 +17,14 @@ export function useFavorites() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isAuthenticated = !!user;
-  const { isFeatureAllowed, hasExpired } = useTrialStatus();
 
-  const getAccessDeniedMessage = useCallback(() => {
-    return hasExpired 
-      ? "Seu período de teste expirou. Assine para gerenciar seus favoritos."
-      : "A funcionalidade de favoritos não está disponível no seu plano atual. Considere fazer um upgrade.";
-  }, [hasExpired]);
-
-  // Carregar favoritos do banco de dados ou localStorage
+  // Carregar favoritos do banco de dados quando o usuário estiver autenticado
   useEffect(() => {
     const fetchFavorites = async () => {
       setIsLoading(true);
-
-      const canAccessFavorites = await isFeatureAllowed('favorites');
-      if (!canAccessFavorites) {
-        // Se o usuário não pode acessar, limpa os favoritos locais e do estado.
-        // Não mostra toast aqui, pois a UI (FavoritesList) cuidará da mensagem.
-        setFavorites([]);
-        localStorage.removeItem('supplier-favorites');
-        setIsLoading(false);
-        return;
-      }
       
       if (!isAuthenticated) {
+        // Se não estiver autenticado, carrega do localStorage
         const savedFavorites = localStorage.getItem('supplier-favorites');
         setFavorites(savedFavorites ? JSON.parse(savedFavorites) : []);
         setIsLoading(false);
@@ -57,13 +41,18 @@ export function useFavorites() {
           throw error;
         }
         
+        // Extrair apenas os IDs dos fornecedores
         const supplierIds = data.map(item => item.supplier_id);
         setFavorites(supplierIds);
+        
+        // Sincronizar com localStorage para uso offline
         localStorage.setItem('supplier-favorites', JSON.stringify(supplierIds));
       } catch (error) {
         console.error('Erro ao carregar favoritos:', error);
+        // Fallback para localStorage
         const savedFavorites = localStorage.getItem('supplier-favorites');
         setFavorites(savedFavorites ? JSON.parse(savedFavorites) : []);
+        
         toast({
           variant: "destructive",
           title: "Erro ao carregar favoritos",
@@ -75,21 +64,12 @@ export function useFavorites() {
     };
     
     fetchFavorites();
-  }, [isAuthenticated, user?.id, toast, isFeatureAllowed, getAccessDeniedMessage]); // Removed getAccessDeniedMessage as it's not used here directly for toast
+  }, [isAuthenticated, user?.id, toast]);
 
   const addFavorite = async (supplierId: string) => {
-    const canAccessFavorites = await isFeatureAllowed('favorites');
-    if (!canAccessFavorites) {
-      toast({
-        variant: "default", // Changed from "warning"
-        title: "Acesso Negado",
-        description: getAccessDeniedMessage()
-      });
-      return;
-    }
-
     if (favorites.includes(supplierId)) return;
     
+    // Adicionar imediatamente à lista local para feedback instantâneo
     setFavorites(prev => [...prev, supplierId]);
     localStorage.setItem('supplier-favorites', JSON.stringify([...favorites, supplierId]));
     
@@ -107,9 +87,11 @@ export function useFavorites() {
         }
       } catch (error) {
         console.error('Erro ao adicionar favorito:', error);
+        // Reverter a alteração local se houver erro no banco de dados
         const updatedFavorites = favorites.filter(id => id !== supplierId);
         setFavorites(updatedFavorites);
         localStorage.setItem('supplier-favorites', JSON.stringify(updatedFavorites));
+        
         toast({
           variant: "destructive",
           title: "Erro ao adicionar favorito",
@@ -120,16 +102,7 @@ export function useFavorites() {
   };
 
   const removeFavorite = async (supplierId: string) => {
-    const canAccessFavorites = await isFeatureAllowed('favorites');
-    if (!canAccessFavorites) {
-      toast({
-        variant: "default", // Changed from "warning"
-        title: "Acesso Negado",
-        description: getAccessDeniedMessage()
-      });
-      return;
-    }
-
+    // Remover imediatamente da lista local para feedback instantâneo
     const updatedFavorites = favorites.filter(id => id !== supplierId);
     setFavorites(updatedFavorites);
     localStorage.setItem('supplier-favorites', JSON.stringify(updatedFavorites));
@@ -147,8 +120,10 @@ export function useFavorites() {
         }
       } catch (error) {
         console.error('Erro ao remover favorito:', error);
-        setFavorites([...favorites]); // Revert to original favorites before this attempt
-        localStorage.setItem('supplier-favorites', JSON.stringify(favorites)); // Revert localStorage
+        // Reverter a alteração local se houver erro no banco de dados
+        setFavorites([...favorites]);
+        localStorage.setItem('supplier-favorites', JSON.stringify(favorites));
+        
         toast({
           variant: "destructive",
           title: "Erro ao remover favorito",
@@ -158,21 +133,11 @@ export function useFavorites() {
     }
   };
 
-  const toggleFavorite = async (supplierId: string) => {
-    const canAccessFavorites = await isFeatureAllowed('favorites');
-    if (!canAccessFavorites) {
-      toast({
-        variant: "default", // Changed from "warning"
-        title: "Acesso Negado",
-        description: getAccessDeniedMessage()
-      });
-      return;
-    }
-
+  const toggleFavorite = (supplierId: string) => {
     if (isFavorite(supplierId)) {
-      await removeFavorite(supplierId);
+      removeFavorite(supplierId);
     } else {
-      await addFavorite(supplierId);
+      addFavorite(supplierId);
     }
   };
 

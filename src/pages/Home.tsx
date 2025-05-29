@@ -162,7 +162,7 @@ export default function Home() {
   
   // Fetch recent suppliers
   const { data: allSuppliers, isLoading: loadingSuppliers } = useQuery({
-    queryKey: ['suppliers', user?.id, 'withAverageRating'], // Added a new key part to reflect change
+    queryKey: ['suppliers', user?.id],
     queryFn: () => getSuppliers(user?.id),
     enabled: true,
   });
@@ -181,6 +181,7 @@ export default function Home() {
         setAllCategories(categoriesData);
       } catch (err) {
         console.error("Erro ao buscar todas as categorias:", err);
+        // Optionally, set an error state here to inform the user
       }
     };
     fetchAllCategories();
@@ -193,12 +194,9 @@ export default function Home() {
         .slice(0, 4)
     : [];
 
-  // Atualizar lógica para Fornecedores Populares
-  const popularSuppliers = allSuppliers
-    ? [...allSuppliers]
-        .filter(supplier => !supplier.hidden) // Considerar apenas não ocultos
-        .sort((a, b) => (b.averageRating ?? 0) - (a.averageRating ?? 0)) // Classificar por média de avaliação
-        .slice(0, isMobile ? 3 : 5) // Mostrar 5 no desktop, 3 no mobile, por exemplo
+  // Get popular suppliers (featured)
+  const popularSuppliers = allSuppliers 
+    ? allSuppliers.filter(supplier => supplier.featured)
     : [];
   
   // Get recent articles
@@ -281,26 +279,16 @@ export default function Home() {
           </div>
         ) : popularSuppliers.length > 0 ? (
           <div className="w-full max-w-full overflow-x-auto">
-            <Carousel 
-              opts={{
-                align: "start",
-                loop: popularSuppliers.length > (isMobile ? 1 : (popularSuppliers.length > 2 ? 2 : 1) ), // Loop if more items than visible
-              }}
-              className="w-full max-w-full"
-            >
+            <Carousel className="w-full max-w-full">
               <CarouselContent className="-ml-2 md:-ml-4">
                 {popularSuppliers.map(supplier => (
-                  <CarouselItem key={supplier.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 w-full max-w-full">
+                  <CarouselItem key={supplier.id} className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3 w-full max-w-full">
                     <SupplierCard supplier={supplier} allCategories={allCategories} />
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              {popularSuppliers.length > (isMobile ? 1 : 3) && ( // Mostrar botões apenas se houver itens suficientes para scroll
-                <>
-                  <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
-                  <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
-                </>
-              )}
+              <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
+              <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
             </Carousel>
           </div>
         ) : (
@@ -308,7 +296,7 @@ export default function Home() {
             <Star className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Nenhum fornecedor em destaque</h3>
             <p className="text-muted-foreground mb-4">
-              Não há fornecedores populares (com avaliações suficientes) no sistema.
+              Não há fornecedores em destaque no sistema.
             </p>
           </div>
         )}

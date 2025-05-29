@@ -21,17 +21,6 @@ const LandingPage = () => {
     }
   };
 
-  // Force light mode for landing page
-  useEffect(() => {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light');
-    
-    return () => {
-      // Don't reset theme when leaving landing page
-      // Let the app's normal theme logic handle it
-    };
-  }, []);
-
   // If there's no landing page images saved, this will use the defaults
   useEffect(() => {
     // This is just to ensure the component re-renders if images change
@@ -39,7 +28,7 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Add the ImageEditor component - only for admins */}
       <ImageEditor isAdmin={true} />
       
@@ -51,34 +40,34 @@ const LandingPage = () => {
             <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] flex items-center justify-center">
               <span className="text-white font-bold text-sm">CB</span>
             </div>
-            <span className="ml-2 font-bold text-xl hidden sm:inline text-gray-900">Conexão Brasil</span>
+            <span className="ml-2 font-bold text-xl hidden sm:inline">Conexão Brasil</span>
           </div>
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <button onClick={() => scrollToSection('benefits')} className="text-gray-600 hover:text-gray-900">
+            <button onClick={() => scrollToSection('benefits')} className="text-muted-foreground hover:text-foreground">
               Benefícios
             </button>
-            <button onClick={() => scrollToSection('testimonials')} className="text-gray-600 hover:text-gray-900">
+            <button onClick={() => scrollToSection('testimonials')} className="text-muted-foreground hover:text-foreground">
               Depoimentos
             </button>
-            <button onClick={() => scrollToSection('plans')} className="text-gray-600 hover:text-gray-900">
+            <button onClick={() => scrollToSection('plans')} className="text-muted-foreground hover:text-foreground">
               Planos
             </button>
-            <button onClick={() => scrollToSection('faq')} className="text-gray-600 hover:text-gray-900">
+            <button onClick={() => scrollToSection('faq')} className="text-muted-foreground hover:text-foreground">
               FAQ
             </button>
-            <button onClick={() => scrollToSection('contact')} className="text-gray-600 hover:text-gray-900">
+            <button onClick={() => scrollToSection('contact')} className="text-muted-foreground hover:text-foreground">
               Contato
             </button>
           </nav>
           
           {/* CTA Buttons */}
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate('/auth/login')} className="border-gray-300 text-gray-900 hover:bg-gray-50">
+            <Button variant="outline" onClick={() => navigate('/auth/login')}>
               Login
             </Button>
-            <Button onClick={() => navigate('/auth/register')} className="bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90 text-white">
+            <Button onClick={() => navigate('/auth/register')} className="bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90">
               Cadastre-se
             </Button>
           </div>
@@ -92,8 +81,8 @@ const LandingPage = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="grid md:grid-cols-2 gap-10 items-center">
               <div className="flex flex-col space-y-6">
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900">Encontre os Melhores Fornecedores de Moda do Brasil em um Só Lugar</h1>
-                <p className="text-lg text-gray-600">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Encontre os Melhores Fornecedores de Moda do Brasil em um Só Lugar</h1>
+                <p className="text-lg text-muted-foreground">
                   Acesse uma rede exclusiva de fornecedores verificados para impulsionar seu negócio de moda.
                 </p>
                 <div>
@@ -122,8 +111,8 @@ const LandingPage = () => {
         <section id="benefits" className="py-16 md:py-24 bg-white">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Por que Escolher o Fabricante & Fornecedores?</h2>
-              <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-bold">Por que Escolher o Fabricante & Fornecedores?</h2>
+              <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
                 Solução completa para conectar você aos melhores fornecedores do mercado da moda
               </p>
             </div>
@@ -147,12 +136,12 @@ const LandingPage = () => {
                   description: "Suporte dedicado para auxiliar em suas negociações."
                 }
               ].map((benefit, index) => (
-                <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow flex flex-col items-center text-center border border-gray-200">
+                <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow flex flex-col items-center text-center">
                   <div className="w-12 h-12 bg-gradient-to-r from-[#9b87f5] to-[#D946EF] rounded-full flex items-center justify-center mb-4">
                     <Check className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900">{benefit.title}</h3>
-                  <p className="text-gray-600">{benefit.description}</p>
+                  <h3 className="text-lg font-semibold mb-2">{benefit.title}</h3>
+                  <p className="text-muted-foreground">{benefit.description}</p>
                 </div>
               ))}
             </div>
@@ -163,8 +152,8 @@ const LandingPage = () => {
         <section id="testimonials" className="py-16 md:py-24 bg-gradient-to-br from-[#9b87f5]/10 to-[#D946EF]/10">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">O que Nossas Usuárias Dizem</h2>
-              <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-bold">O que Nossas Usuárias Dizem</h2>
+              <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
                 Veja como nossa plataforma tem ajudado empreendedoras de moda por todo o Brasil
               </p>
             </div>
@@ -184,7 +173,7 @@ const LandingPage = () => {
                   image: mockImages.testimonial2
                 }
               ].map((testimonial, index) => (
-                <div key={index} className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <div key={index} className="bg-white p-6 rounded-lg shadow-md">
                   <div className="flex items-center mb-4">
                     <img 
                       src={testimonial.image} 
@@ -192,11 +181,11 @@ const LandingPage = () => {
                       className="w-12 h-12 rounded-full object-cover mr-4"
                     />
                     <div>
-                      <p className="font-semibold text-gray-900">{testimonial.name}</p>
-                      <p className="text-sm text-gray-600">{testimonial.location}</p>
+                      <p className="font-semibold">{testimonial.name}</p>
+                      <p className="text-sm text-muted-foreground">{testimonial.location}</p>
                     </div>
                   </div>
-                  <p className="text-gray-600 italic">"{testimonial.quote}"</p>
+                  <p className="text-muted-foreground italic">"{testimonial.quote}"</p>
                 </div>
               ))}
             </div>
@@ -207,8 +196,8 @@ const LandingPage = () => {
         <section id="demo" className="py-16 md:py-24 bg-white">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Veja o Aplicativo em Ação</h2>
-              <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-bold">Veja o Aplicativo em Ação</h2>
+              <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
                 Explore as funcionalidades que tornam o Fabricante & Fornecedores a escolha ideal para empreendedoras de moda.
               </p>
             </div>
@@ -219,14 +208,14 @@ const LandingPage = () => {
                 { image: "images/filtros.png", title: "Filtros Avançados" },
                 { image: "images/perfil.jpeg", title: "Perfil Detalhado" }
               ].map((screen, index) => (
-                <div key={index} className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow border border-gray-200">
+                <div key={index} className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
                   <img 
                     src={screen.image} 
                     alt={screen.title} 
                     className="w-full h-48 object-cover"
                   />
-                  <div className="p-4 bg-white">
-                    <h3 className="font-medium text-center text-gray-900">{screen.title}</h3>
+                  <div className="p-4">
+                    <h3 className="font-medium text-center">{screen.title}</h3>
                   </div>
                 </div>
               ))}
@@ -238,39 +227,39 @@ const LandingPage = () => {
         <section id="plans" className="py-16 md:py-24 bg-gradient-to-br from-[#9b87f5]/10 to-[#D946EF]/10">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Escolha o Plano Perfeito para Você</h2>
-              <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-bold">Escolha o Plano Perfeito para Você</h2>
+              <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
                 Nossos planos são projetados para atender diferentes necessidades e estágios de negócio
               </p>
             </div>
             
             <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {/* Monthly Plan */}
-              <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h3 className="text-xl font-bold text-center mb-4 text-gray-900">Plano Mensal</h3>
+              <div className="bg-white p-6 rounded-lg shadow-md border border-border">
+                <h3 className="text-xl font-bold text-center mb-4">Plano Mensal</h3>
                 <div className="text-center mb-6">
-                  <span className="text-3xl font-bold text-gray-900">R$ 9,70</span>
-                  <span className="text-gray-600">/mês</span>
+                  <span className="text-3xl font-bold">R$ 9,70</span>
+                  <span className="text-muted-foreground">/mês</span>
                 </div>
                 
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Acesso a fornecedores verificados</span>
+                    <span>Acesso a fornecedores verificados</span>
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Suporte padrão</span>
+                    <span>Suporte padrão</span>
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Filtros básicos</span>
+                    <span>Filtros básicos</span>
                   </li>
                 </ul>
                 
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-4">Ideal para quem quer começar</p>
-                  <Button onClick={() => navigate('/auth/register?plan=monthly')} className="w-full bg-gray-900 hover:bg-gray-800 text-white">
+                  <p className="text-sm text-muted-foreground mb-4">Ideal para quem quer começar</p>
+                  <Button onClick={() => navigate('/auth/register?plan=monthly')} className="w-full">
                     Assinar Plano Mensal
                   </Button>
                 </div>
@@ -281,38 +270,38 @@ const LandingPage = () => {
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#9b87f5] text-white px-3 py-1 rounded-full text-sm">
                   Melhor Oferta!
                 </div>
-                <h3 className="text-xl font-bold text-center mb-4 text-gray-900">Plano Anual</h3>
+                <h3 className="text-xl font-bold text-center mb-4">Plano Anual</h3>
                 <div className="text-center mb-6">
-                  <span className="text-3xl font-bold text-gray-900">R$ 87,00</span>
-                  <span className="text-gray-600 block text-sm">Pagamento único anual</span>
+                  <span className="text-3xl font-bold">R$ 87,00</span>
+                  <span className="text-muted-foreground block text-sm">Pagamento único anual</span>
                   <p className="text-sm text-green-600 font-medium">De <span className="line-through">R$ 116,40</span> por R$ 87,00 à vista</p>
-                  <p className="text-xs text-gray-600">(Economize R$ 29,40 - Oferta Limitada)</p>
+                  <p className="text-xs text-muted-foreground">(Economize R$ 29,40 - Oferta Limitada)</p>
                 </div>
                 
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Acesso ilimitado a fornecedores</span>
+                    <span>Acesso ilimitado a fornecedores</span>
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Suporte prioritário</span>
+                    <span>Suporte prioritário</span>
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Filtros avançados</span>
+                    <span>Filtros avançados</span>
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Conteúdo exclusivo</span>
+                    <span>Conteúdo exclusivo</span>
                   </li>
                 </ul>
                 
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-4">Ideal para quem busca o melhor custo-benefício</p>
+                  <p className="text-sm text-muted-foreground mb-4">Ideal para quem busca o melhor custo-benefício</p>
                   <Button 
                     onClick={() => navigate('/auth/register?plan=yearly')}
-                    className="w-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90 text-white"
+                    className="w-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90"
                   >
                     Assinar Plano Anual
                   </Button>
@@ -326,45 +315,45 @@ const LandingPage = () => {
         <section id="faq" className="py-16 md:py-24 bg-white">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Dúvidas Frequentes</h2>
-              <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-bold">Dúvidas Frequentes</h2>
+              <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
                 Encontre respostas para as perguntas mais comuns sobre nossa plataforma
               </p>
             </div>
             
             <div className="max-w-3xl mx-auto">
               <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="item-1" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">Como posso me cadastrar?</AccordionTrigger>
-                  <AccordionContent className="text-gray-600">
+                <AccordionItem value="item-1">
+                  <AccordionTrigger>Como posso me cadastrar?</AccordionTrigger>
+                  <AccordionContent>
                     Clique em "Cadastre-se" no topo da página e preencha o formulário com suas informações.
                   </AccordionContent>
                 </AccordionItem>
                 
-                <AccordionItem value="item-2" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">Posso mudar de plano depois?</AccordionTrigger>
-                  <AccordionContent className="text-gray-600">
+                <AccordionItem value="item-2">
+                  <AccordionTrigger>Posso mudar de plano depois?</AccordionTrigger>
+                  <AccordionContent>
                     Sim, você pode alterar seu plano a qualquer momento através do portal de gerenciamento de assinatura.
                   </AccordionContent>
                 </AccordionItem>
                 
-                <AccordionItem value="item-3" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">Os fornecedores são realmente verificados?</AccordionTrigger>
-                  <AccordionContent className="text-gray-600">
+                <AccordionItem value="item-3">
+                  <AccordionTrigger>Os fornecedores são realmente verificados?</AccordionTrigger>
+                  <AccordionContent>
                     Sim, todos os fornecedores passam por um processo de verificação antes de serem listados.
                   </AccordionContent>
                 </AccordionItem>
                 
-                <AccordionItem value="item-4" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">Como posso entrar em contato com o suporte?</AccordionTrigger>
-                  <AccordionContent className="text-gray-600">
+                <AccordionItem value="item-4">
+                  <AccordionTrigger>Como posso entrar em contato com o suporte?</AccordionTrigger>
+                  <AccordionContent>
                     Você pode entrar em contato através do e-mail suporte@conexaobrasil.com ou pelo chat disponível na plataforma.
                   </AccordionContent>
                 </AccordionItem>
                 
-                <AccordionItem value="item-5" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">O que acontece após o cadastro?</AccordionTrigger>
-                  <AccordionContent className="text-gray-600">
+                <AccordionItem value="item-5">
+                  <AccordionTrigger>O que acontece após o cadastro?</AccordionTrigger>
+                  <AccordionContent>
                     Após o cadastro e a confirmação do pagamento da assinatura, você terá acesso imediato à plataforma conforme o plano escolhido.
                   </AccordionContent>
                 </AccordionItem>
@@ -378,8 +367,8 @@ const LandingPage = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="grid md:grid-cols-2 gap-10 items-center">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900">Entre em Contato</h2>
-                <p className="text-gray-600 mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold mb-4">Entre em Contato</h2>
+                <p className="text-muted-foreground mb-6">
                   Estamos aqui para ajudar! Envie-nos suas dúvidas ou entre em contato por um dos nossos canais.
                 </p>
                 
@@ -391,8 +380,8 @@ const LandingPage = () => {
                       </svg>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">Telefone</p>
-                      <p className="text-gray-600">(11) 3456-7890</p>
+                      <p className="font-semibold">Telefone</p>
+                      <p className="text-muted-foreground">(11) 3456-7890</p>
                     </div>
                   </div>
                   
@@ -404,8 +393,8 @@ const LandingPage = () => {
                       </svg>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">Email</p>
-                      <p className="text-gray-600">contato@conexaobrasil.com</p>
+                      <p className="font-semibold">Email</p>
+                      <p className="text-muted-foreground">contato@conexaobrasil.com</p>
                     </div>
                   </div>
                   
@@ -417,42 +406,42 @@ const LandingPage = () => {
                       </svg>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">Endereço</p>
-                      <p className="text-gray-600">Av. Paulista, 1000 - São Paulo, SP</p>
+                      <p className="font-semibold">Endereço</p>
+                      <p className="text-muted-foreground">Av. Paulista, 1000 - São Paulo, SP</p>
                     </div>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h3 className="text-xl font-semibold mb-4 text-gray-900">Envie uma mensagem</h3>
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold mb-4">Envie uma mensagem</h3>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label htmlFor="name" className="text-sm font-medium text-gray-900">Nome</label>
-                      <Input id="name" placeholder="Seu nome" className="border-gray-300" />
+                      <label htmlFor="name" className="text-sm font-medium">Nome</label>
+                      <Input id="name" placeholder="Seu nome" />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="email" className="text-sm font-medium text-gray-900">Email</label>
-                      <Input id="email" type="email" placeholder="Seu email" className="border-gray-300" />
+                      <label htmlFor="email" className="text-sm font-medium">Email</label>
+                      <Input id="email" type="email" placeholder="Seu email" />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <label htmlFor="subject" className="text-sm font-medium text-gray-900">Assunto</label>
-                    <Input id="subject" placeholder="Assunto da mensagem" className="border-gray-300" />
+                    <label htmlFor="subject" className="text-sm font-medium">Assunto</label>
+                    <Input id="subject" placeholder="Assunto da mensagem" />
                   </div>
                   
                   <div className="space-y-2">
-                    <label htmlFor="message" className="text-sm font-medium text-gray-900">Mensagem</label>
+                    <label htmlFor="message" className="text-sm font-medium">Mensagem</label>
                     <textarea
                       id="message"
                       placeholder="Sua mensagem"
-                      className="flex min-h-[120px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                      className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                     ></textarea>
                   </div>
                   
-                  <Button className="w-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90 text-white">
+                  <Button className="w-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] hover:opacity-90">
                     Enviar Mensagem
                   </Button>
                 </div>
@@ -496,34 +485,34 @@ const LandingPage = () => {
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] flex items-center justify-center">
                   <span className="text-white font-bold text-sm">CB</span>
                 </div>
-                <span className="ml-2 font-bold text-xl text-gray-900">Conexão Brasil</span>
+                <span className="ml-2 font-bold text-xl">Conexão Brasil</span>
               </div>
-              <p className="text-gray-600 text-sm">
+              <p className="text-muted-foreground text-sm">
                 Conectando empreendedores aos melhores fornecedores de moda do Brasil.
               </p>
             </div>
             
             <div>
-              <h3 className="font-semibold text-lg mb-4 text-gray-900">Links Rápidos</h3>
+              <h3 className="font-semibold text-lg mb-4">Links Rápidos</h3>
               <ul className="space-y-2">
-                <li><button onClick={() => scrollToSection('benefits')} className="text-gray-600 hover:text-gray-900">Benefícios</button></li>
-                <li><button onClick={() => scrollToSection('plans')} className="text-gray-600 hover:text-gray-900">Planos</button></li>
-                <li><button onClick={() => scrollToSection('faq')} className="text-gray-600 hover:text-gray-900">FAQ</button></li>
-                <li><button onClick={() => scrollToSection('contact')} className="text-gray-600 hover:text-gray-900">Contato</button></li>
+                <li><button onClick={() => scrollToSection('benefits')} className="text-muted-foreground hover:text-foreground">Benefícios</button></li>
+                <li><button onClick={() => scrollToSection('plans')} className="text-muted-foreground hover:text-foreground">Planos</button></li>
+                <li><button onClick={() => scrollToSection('faq')} className="text-muted-foreground hover:text-foreground">FAQ</button></li>
+                <li><button onClick={() => scrollToSection('contact')} className="text-muted-foreground hover:text-foreground">Contato</button></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-semibold text-lg mb-4 text-gray-900">Legal</h3>
+              <h3 className="font-semibold text-lg mb-4">Legal</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-gray-900">Termos de Uso</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-gray-900">Política de Privacidade</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-gray-900">Política de Cookies</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground">Termos de Uso</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground">Política de Privacidade</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground">Política de Cookies</a></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-semibold text-lg mb-4 text-gray-900">Redes Sociais</h3>
+              <h3 className="font-semibold text-lg mb-4">Redes Sociais</h3>
               <div className="flex space-x-4">
                 <a href="#" className="w-10 h-10 rounded-full bg-[#9b87f5]/10 flex items-center justify-center text-[#9b87f5] hover:bg-[#9b87f5]/20 transition-colors">
                   <Instagram size={20} />
@@ -538,7 +527,7 @@ const LandingPage = () => {
             </div>
           </div>
           
-          <div className="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-600">
+          <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} Conexão Brasil. Todos os direitos reservados.</p>
           </div>
         </div>

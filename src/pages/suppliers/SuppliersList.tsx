@@ -124,8 +124,8 @@ export default function SuppliersList() {
           label: 'Todos os Estados',
           value: 'all'
         }, ...uniqueStates.map(st => ({
-          label: st as string,
-          value: st as string
+          label: st,
+          value: st
         }))]);
 
         const uniqueCities = Array.from(new Set(visibleSuppliers.map(s => s.city))).filter(Boolean);
@@ -133,8 +133,8 @@ export default function SuppliersList() {
           label: 'Todas as Cidades',
           value: 'all'
         }, ...uniqueCities.map(city => ({
-          label: city as string,
-          value: city as string
+          label: city,
+          value: city
         }))]);
       } catch (error) {
         console.error('Error fetching suppliers:', error);

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,7 +19,7 @@ import Register from "./pages/auth/Register";
 import ResetPassword from "./pages/auth/ResetPassword";
 import ResetConfirmation from "./pages/auth/ResetConfirmation";
 import Payment from "./pages/auth/Payment";
-import SelectPlan from "./pages/auth/SelectPlan";
+import SelectPlan from "./pages/auth/SelectPlan"; // Adicionada importação
 
 // Páginas do app
 import SuppliersList from "./pages/suppliers/SuppliersList";
@@ -43,13 +44,6 @@ import SecurityMonitoring from "./pages/admin/SecurityMonitoring";
 
 // Configuração do React Query
 import { defaultQueryOptions } from "./lib/react-query-config";
-
-// Imports para ExpiredTrialGate
-import { useTrialStatus } from '@/hooks/use-trial-status';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { TrialBanner } from '@/components/trial/TrialBanner';
-import { FeatureLimitedAccess } from '@/components/trial/FeatureLimitedAccess';
-import { Loader2 } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: defaultQueryOptions,
@@ -80,7 +74,7 @@ const AppRoutes = () => {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
     isAdmin: false,
-    hasSubscription: true // Note: This logic might need review for strict subscription checks
+    hasSubscription: true
   });
   
   // Efeito para verificar o status de autenticação baseado no user do AuthProvider
@@ -145,59 +139,6 @@ const AppRoutes = () => {
     }
     return <>{children}</>;
   };
-  
-  // Novo componente para bloquear acesso se o trial expirou
-  const ExpiredTrialGate = ({ children }: { children: React.ReactNode }) => {
-    const { hasExpired, daysRemaining } = useTrialStatus(); // daysRemaining can help determine if status is resolved
-    const [isLoadingTrialStatus, setIsLoadingTrialStatus] = useState(true);
-
-    useEffect(() => {
-      // A simple way to know if useTrialStatus has likely resolved its initial state.
-      // `hasExpired` will be boolean (true/false) once resolved from its initial undefined/null state.
-      // `daysRemaining` is also a good indicator.
-      // This timeout is a pragmatic way to wait for useTrialStatus to likely finish its first run.
-      const timer = setTimeout(() => {
-        if (typeof hasExpired === 'boolean') {
-           setIsLoadingTrialStatus(false);
-        }
-      }, 500); // Adjust timeout as needed, or ideally useTrialStatus would provide a loading flag.
-      
-      // If already resolved, clear loading immediately
-      if (typeof hasExpired === 'boolean') {
-        setIsLoadingTrialStatus(false);
-        clearTimeout(timer);
-      }
-      
-      return () => clearTimeout(timer);
-    }, [hasExpired]);
-
-    if (isLoadingTrialStatus && auth.isAuthenticated) { // Only show loader if authenticated and trial status is pending
-       return (
-         <AppLayout>
-            <div className="flex justify-center items-center h-screen">
-              <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
-              <p className="ml-2 text-muted-foreground">Verificando status da sua conta...</p>
-            </div>
-         </AppLayout>
-       );
-    }
-
-    if (hasExpired) {
-      return (
-        <AppLayout>
-          <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <TrialBanner />
-            <FeatureLimitedAccess
-              title="Teste Gratuito Expirado"
-              message="Seu período de teste gratuito expirou. Para continuar utilizando esta funcionalidade e ter acesso completo aos recursos, por favor, assine um de nossos planos."
-              featureName="este recurso"
-            />
-          </div>
-        </AppLayout>
-      );
-    }
-    return <>{children}</>;
-  };
 
   // Componente para rota protegida que requer assinatura ativa
   const SubscriptionRoute = ({ children }: { children: React.ReactNode }) => {
@@ -208,7 +149,7 @@ const AppRoutes = () => {
     if (!auth.hasSubscription) {
       // Redirecionar para página de assinatura (a ser implementada)
       console.log('Redirecionando para assinatura');
-      return <Navigate to="/auth/select-plan" />; // Changed to select-plan
+      return <Navigate to="/subscription" replace />;
     }
     return <>{children}</>;
   };
@@ -252,56 +193,45 @@ const AppRoutes = () => {
       {/* Rotas de autenticação - apenas para usuários não autenticados */}
       <Route path="/auth/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
       <Route path="/auth/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
-      <Route path="/auth/select-plan" element={<SelectPlan />} />
+      <Route path="/auth/select-plan" element={<SelectPlan />} /> {/* Rota adicionada */}
       <Route path="/auth/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
       <Route path="/auth/reset-confirmation" element={<PublicOnlyRoute><ResetConfirmation /></PublicOnlyRoute>} />
-      <Route path="/auth/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} /> {/* Payment should be protected */}
+      <Route path="/auth/payment" element={<Payment />} />
       
       {/* Fornecedores */}
       <Route 
         path="/suppliers" 
         element={
           <ProtectedRoute>
-            <ExpiredTrialGate>
-              <SuppliersList />
-            </ExpiredTrialGate>
+            <SuppliersList />
           </ProtectedRoute>
         } 
       />
       <Route 
         path="/suppliers/:id" 
         element={
-          <ProtectedRoute>
-            <ExpiredTrialGate>
-              {/* SubscriptionRoute could still be here if non-trial users also need subscription */}
-              <SubscriptionRoute> 
-                <SupplierDetail />
-              </SubscriptionRoute>
-            </ExpiredTrialGate>
-          </ProtectedRoute>
+          <SubscriptionRoute>
+            <SupplierDetail />
+          </SubscriptionRoute>
         } 
       />
       
-      {/* Página de favoritos */}
+      {/* Página de favoritos - needed additional trial restrictions */}
       <Route 
         path="/favorites" 
         element={
           <ProtectedRoute>
-            <ExpiredTrialGate>
-              <Favorites />
-            </ExpiredTrialGate>
+            <Favorites />
           </ProtectedRoute>
         } 
       />
       
-      {/* Página de busca */}
+      {/* Página de busca - needed additional trial restrictions */}
       <Route 
         path="/search" 
         element={
           <ProtectedRoute>
-            <ExpiredTrialGate>
-              <SearchPage />
-            </ExpiredTrialGate>
+            <SearchPage />
           </ProtectedRoute>
         } 
       />
@@ -338,27 +268,17 @@ const AppRoutes = () => {
       <Route 
         path="/articles" 
         element={
-          <ProtectedRoute>
-            <ExpiredTrialGate>
-               {/* SubscriptionRoute could still be here if non-trial users also need subscription */}
-              <SubscriptionRoute>
-                <ArticlesPage />
-              </SubscriptionRoute>
-            </ExpiredTrialGate>
-          </ProtectedRoute>
+          <SubscriptionRoute>
+            <ArticlesPage />
+          </SubscriptionRoute>
         } 
       />
       <Route 
         path="/articles/:id" 
         element={
-          <ProtectedRoute>
-            <ExpiredTrialGate>
-              {/* SubscriptionRoute could still be here if non-trial users also need subscription */}
-              <SubscriptionRoute>
-                <ArticleDetailPage />
-              </SubscriptionRoute>
-            </ExpiredTrialGate>
-          </ProtectedRoute>
+          <SubscriptionRoute>
+            <ArticleDetailPage />
+          </SubscriptionRoute>
         } 
       />
       
