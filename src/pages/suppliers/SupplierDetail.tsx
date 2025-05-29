@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Instagram, MessageCircle, Star, Heart, MapPin, CreditCard, Truck, Building, ShoppingCart, Info } from 'lucide-react';
@@ -6,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
 import { LockedSupplierDetail } from '@/components/trial/LockedSupplierDetail';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Supplier, Category, Review } from '@/types';
 import { getSupplierById } from '@/services/supplierService';
@@ -29,6 +32,7 @@ export default function SupplierDetail() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',
     containScroll: 'trimSnaps',
@@ -111,14 +115,6 @@ export default function SupplierDetail() {
       default:
         return 'Não informado';
     }
-  };
-
-  const handlePrevImage = () => {
-    setCurrentImageIndex((prevIndex) => (prevIndex > 0 ? prevIndex - 1 : supplier ? supplier.images.length - 1 : 0));
-  };
-
-  const handleNextImage = () => {
-    setCurrentImageIndex((prevIndex) => (supplier && prevIndex < supplier.images.length - 1 ? prevIndex + 1 : 0));
   };
 
   const handleImageClick = (index: number) => {
@@ -213,6 +209,8 @@ export default function SupplierDetail() {
     );
   }
 
+  const shouldUseCarousel = isMobile && supplier.images.length > 4;
+
   return (
     <AppLayout>
       <div className="container relative py-10">
@@ -232,14 +230,33 @@ export default function SupplierDetail() {
                   className="w-full rounded-lg aspect-video object-cover"
                 />
                 <div className="relative">
-                  <div className="overflow-hidden" ref={emblaRef}>
-                    <div className="flex gap-2">
+                  {shouldUseCarousel ? (
+                    <div className="overflow-hidden" ref={emblaRef}>
+                      <div className="flex gap-2">
+                        {supplier.images.map((image, index) => (
+                          <div key={index} className="flex-[0_0_25%] min-w-[80px]">
+                            <img
+                              src={image}
+                              alt={`${supplier.name} - Thumbnail ${index + 1}`}
+                              className={`w-full h-20 rounded-md object-cover cursor-pointer transition-all ${
+                                index === currentImageIndex 
+                                  ? 'ring-2 ring-primary scale-105' 
+                                  : 'hover:scale-105'
+                              }`}
+                              onClick={() => handleImageClick(index)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 overflow-x-auto">
                       {supplier.images.map((image, index) => (
-                        <div key={index} className="flex-[0_0_20%] min-w-[80px]">
+                        <div key={index} className="flex-shrink-0">
                           <img
                             src={image}
                             alt={`${supplier.name} - Thumbnail ${index + 1}`}
-                            className={`w-full h-20 rounded-md object-cover cursor-pointer transition-all ${
+                            className={`w-20 h-20 rounded-md object-cover cursor-pointer transition-all ${
                               index === currentImageIndex 
                                 ? 'ring-2 ring-primary scale-105' 
                                 : 'hover:scale-105'
@@ -249,8 +266,8 @@ export default function SupplierDetail() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                  {supplier.images.length > 4 && (
+                  )}
+                  {shouldUseCarousel && (
                     <>
                       <Button
                         variant="ghost"
@@ -281,8 +298,9 @@ export default function SupplierDetail() {
             )}
           </div>
 
-          {/* Supplier Details */}
+          {/* Supplier Details with Tabs */}
           <div className="md:order-2 space-y-4">
+            {/* Header Section */}
             <div className="flex justify-between items-start">
               <h1 className="text-2xl font-bold">{supplier.name}</h1>
               <Button
@@ -312,100 +330,157 @@ export default function SupplierDetail() {
               )}
             </div>
 
-            <p className="text-muted-foreground">{supplier.description}</p>
+            {/* Tabs Section */}
+            <Tabs defaultValue="informacoes" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="informacoes">Informações</TabsTrigger>
+                <TabsTrigger value="condicoes">Condições</TabsTrigger>
+                <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="informacoes" className="space-y-4">
+                <div className="space-y-4">
+                  <p className="text-muted-foreground">{supplier.description}</p>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span>{supplier.city}, {supplier.state}</span>
+                      <Button variant="link" onClick={handleOpenMap} className="p-0">
+                        Ver no mapa
+                        <ExternalLink className="ml-1 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
 
-            <Separator />
+                  <Separator />
 
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold">Informações</h2>
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{supplier.city}, {supplier.state}</span>
-                <Button variant="link" onClick={handleOpenMap} className="p-0">
-                  Ver no mapa
-                  <ExternalLink className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
-              {supplier.min_order && (
-                <div className="flex items-center space-x-2">
-                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                  <span>Pedido mínimo: {supplier.min_order}</span>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">Contato</h3>
+                    {supplier.website && (
+                      <div className="flex items-center space-x-2">
+                        <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                        <Button variant="link" onClick={handleOpenWebsite} className="p-0">
+                          Website
+                        </Button>
+                      </div>
+                    )}
+                    {supplier.instagram && (
+                      <div className="flex items-center space-x-2">
+                        <Instagram className="h-4 w-4 text-muted-foreground" />
+                        <Button variant="link" onClick={handleOpenInstagram} className="p-0">
+                          @{supplier.instagram}
+                        </Button>
+                      </div>
+                    )}
+                    {supplier.whatsapp && (
+                      <div className="flex items-center space-x-2">
+                        <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        <Button variant="link" onClick={handleOpenWhatsApp} className="p-0">
+                          WhatsApp
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Categorias</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {supplier.categories.map(categoryId => {
+                        const name = categoryName(categoryId);
+                        return (
+                          <Badge key={categoryId} className={categoryStyle(name)}>
+                            {name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center space-x-2">
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  Formas de pagamento: {supplier.payment_methods.map((method, index) => (
-                  <span key={index}>
-                    {method}
-                    {index < supplier.payment_methods.length - 1 ? ', ' : ''}
-                  </span>
-                ))}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Truck className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  Formas de envio: {supplier.shipping_methods.map((method, index) => (
-                  <span key={index}>
-                    {method}
-                    {index < supplier.shipping_methods.length - 1 ? ', ' : ''}
-                  </span>
-                ))}
-                  {supplier.custom_shipping_method && `, ${supplier.custom_shipping_method}`}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Building className="h-4 w-4 text-muted-foreground" />
-                <span>Preço médio: {formatAvgPrice(supplier.avg_price)}</span>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold">Contato</h2>
-              {supplier.website && (
-                <div className="flex items-center space-x-2">
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  <Button variant="link" onClick={handleOpenWebsite} className="p-0">
-                    Website
-                  </Button>
+              </TabsContent>
+              
+              <TabsContent value="condicoes" className="space-y-4">
+                <div className="space-y-4">
+                  {supplier.min_order && (
+                    <div className="flex items-center space-x-2">
+                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                      <span>Pedido mínimo: {supplier.min_order}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      Formas de pagamento: {supplier.payment_methods.map((method, index) => (
+                      <span key={index}>
+                        {method}
+                        {index < supplier.payment_methods.length - 1 ? ', ' : ''}
+                      </span>
+                    ))}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Truck className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      Formas de envio: {supplier.shipping_methods.map((method, index) => (
+                      <span key={index}>
+                        {method}
+                        {index < supplier.shipping_methods.length - 1 ? ', ' : ''}
+                      </span>
+                    ))}
+                      {supplier.custom_shipping_method && `, ${supplier.custom_shipping_method}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                    <span>Preço médio: {formatAvgPrice(supplier.avg_price)}</span>
+                  </div>
                 </div>
-              )}
-              {supplier.instagram && (
-                <div className="flex items-center space-x-2">
-                  <Instagram className="h-4 w-4 text-muted-foreground" />
-                  <Button variant="link" onClick={handleOpenInstagram} className="p-0">
-                    @{supplier.instagram}
-                  </Button>
+              </TabsContent>
+              
+              <TabsContent value="avaliacoes" className="space-y-4">
+                <div className="space-y-4">
+                  {reviews.length > 0 ? (
+                    <div className="space-y-4">
+                      {reviews.map((review) => (
+                        <Card key={review.id}>
+                          <CardContent className="pt-4">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="font-semibold">{review.user_name}</span>
+                              <div className="flex">
+                                {Array.from({ length: 5 }, (_, i) => (
+                                  <Star 
+                                    key={i} 
+                                    className={`h-4 w-4 ${
+                                      i < review.rating 
+                                        ? 'text-yellow-500 fill-yellow-500' 
+                                        : 'text-gray-300'
+                                    }`} 
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            {review.comment && (
+                              <p className="text-sm text-muted-foreground">{review.comment}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {new Date(review.created_at).toLocaleDateString('pt-BR')}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">Nenhuma avaliação disponível ainda.</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              {supplier.whatsapp && (
-                <div className="flex items-center space-x-2">
-                  <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                  <Button variant="link" onClick={handleOpenWhatsApp} className="p-0">
-                    WhatsApp
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            <div>
-              <h2 className="text-lg font-semibold">Categorias</h2>
-              <div className="flex flex-wrap gap-2">
-                {supplier.categories.map(categoryId => {
-                  const name = categoryName(categoryId);
-                  return (
-                    <Badge key={categoryId} className={categoryStyle(name)}>
-                      {name}
-                    </Badge>
-                  );
-                })}
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
