@@ -10,6 +10,8 @@ import { useFavorites } from '@/hooks/use-favorites';
 import { LockedSupplierDetail } from '@/components/trial/LockedSupplierDetail';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { Supplier, Category, Review } from '@/types';
 import { getSupplierById } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
@@ -28,6 +30,7 @@ export default function SupplierDetail() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -217,17 +220,39 @@ export default function SupplierDetail() {
                   alt={`${supplier.name} - Imagem ${currentImageIndex + 1}`}
                   className="w-full rounded-lg aspect-video object-cover"
                 />
-                <div className="flex gap-2 overflow-x-auto">
-                  {supplier.images.map((image, index) => (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={`${supplier.name} - Thumbnail ${index + 1}`}
-                      className={`w-20 h-20 rounded-md object-cover cursor-pointer ${index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'}`}
-                      onClick={() => handleImageClick(index)}
-                    />
-                  ))}
-                </div>
+                
+                {/* Conditional carousel for mobile with more than 4 images */}
+                {isMobile && supplier.images.length > 4 ? (
+                  <Carousel className="w-full">
+                    <CarouselContent className="-ml-2">
+                      {supplier.images.map((image, index) => (
+                        <CarouselItem key={index} className="pl-2 basis-1/4">
+                          <img
+                            src={image}
+                            alt={`${supplier.name} - Thumbnail ${index + 1}`}
+                            className={`w-full h-20 rounded-md object-cover cursor-pointer ${index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'}`}
+                            onClick={() => handleImageClick(index)}
+                          />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="left-0" />
+                    <CarouselNext className="right-0" />
+                  </Carousel>
+                ) : (
+                  /* Normal scroll for desktop or mobile with 4 or fewer images */
+                  <div className="flex gap-2 overflow-x-auto">
+                    {supplier.images.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`${supplier.name} - Thumbnail ${index + 1}`}
+                        className={`w-20 h-20 rounded-md object-cover cursor-pointer ${index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'}`}
+                        onClick={() => handleImageClick(index)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <Card>
