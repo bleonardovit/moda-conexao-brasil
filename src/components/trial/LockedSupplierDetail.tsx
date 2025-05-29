@@ -3,8 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Lock, Timer } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import type { Supplier } from "@/types";
 
-export function LockedSupplierDetail() {
+interface LockedSupplierDetailProps {
+  supplier?: Supplier;
+}
+
+export function LockedSupplierDetail({ supplier }: LockedSupplierDetailProps) {
   return (
     <Card className="shadow-lg">
       <CardContent className="pt-6">
