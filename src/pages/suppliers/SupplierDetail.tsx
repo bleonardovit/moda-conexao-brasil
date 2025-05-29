@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Instagram, MessageCircle, Star, Heart, MapPin, CreditCard, Truck, Building, ShoppingCart, Info } from 'lucide-react';
+import useEmblaCarousel from 'embla-carousel-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,19 @@ export default function SupplierDetail() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: 'start',
+    containScroll: 'trimSnaps',
+    dragFree: true,
+  });
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -217,16 +231,45 @@ export default function SupplierDetail() {
                   alt={`${supplier.name} - Imagem ${currentImageIndex + 1}`}
                   className="w-full rounded-lg aspect-video object-cover"
                 />
-                <div className="flex gap-2 overflow-x-auto">
-                  {supplier.images.map((image, index) => (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={`${supplier.name} - Thumbnail ${index + 1}`}
-                      className={`w-20 h-20 rounded-md object-cover cursor-pointer ${index === currentImageIndex ? 'ring-2 ring-primary' : 'ring-0'}`}
-                      onClick={() => handleImageClick(index)}
-                    />
-                  ))}
+                <div className="relative">
+                  <div className="overflow-hidden" ref={emblaRef}>
+                    <div className="flex gap-2">
+                      {supplier.images.map((image, index) => (
+                        <div key={index} className="flex-[0_0_20%] min-w-[80px]">
+                          <img
+                            src={image}
+                            alt={`${supplier.name} - Thumbnail ${index + 1}`}
+                            className={`w-full h-20 rounded-md object-cover cursor-pointer transition-all ${
+                              index === currentImageIndex 
+                                ? 'ring-2 ring-primary scale-105' 
+                                : 'hover:scale-105'
+                            }`}
+                            onClick={() => handleImageClick(index)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {supplier.images.length > 4 && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm"
+                        onClick={scrollPrev}
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm"
+                        onClick={scrollNext}
+                      >
+                        <ArrowLeft className="h-4 w-4 rotate-180" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
