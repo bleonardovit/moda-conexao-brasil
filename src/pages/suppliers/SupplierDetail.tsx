@@ -10,7 +10,6 @@ import {
   Share2, 
   Star,
   Heart,
-  // Mail, // Mail icon was imported but not used in the provided snippet
   MapPin,
   Clock
 } from 'lucide-react';
@@ -20,7 +19,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Card, 
   CardContent, 
-  // CardDescription, // Not used in the provided snippet
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
@@ -34,7 +32,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Input } from '@/components/ui/input'; // Not used in the provided snippet, but kept for consistency
 import type { Supplier, Review, Category } from '@/types';
 import { getSupplierById } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
@@ -46,6 +43,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useTrialStatus } from '@/hooks/use-trial-status';
 import { LockedSupplierDetail } from '@/components/trial/LockedSupplierDetail';
+import { FeatureLimitedAccess } from '@/components/trial/FeatureLimitedAccess';
 
 const reviewFormSchema = z.object({
   rating: z.number().min(1, { message: "Selecione pelo menos uma estrela."}).max(5),
@@ -62,7 +60,7 @@ export default function SupplierDetail() {
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const { favorites, toggleFavorite, isFavorite } = useFavorites(); // favorites state is not directly used, but hooks are kept
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
   const [selectedRating, setSelectedRating] = useState(0);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
@@ -74,7 +72,7 @@ export default function SupplierDetail() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState<boolean>(false);
 
-  const { isInTrial, isSupplierAllowed } = useTrialStatus();
+  const { isInTrial, isSupplierAllowed, hasExpired } = useTrialStatus();
   const [isAccessible, setIsAccessible] = useState(true);
 
   const form = useForm<ReviewFormValues>({
@@ -84,9 +82,17 @@ export default function SupplierDetail() {
       comment: "",
     },
   });
+
+  // Check for expired trial and block access
+  useEffect(() => {
+    if (hasExpired) {
+      setLoading(false);
+      return; // Don't load supplier data if trial expired
+    }
+  }, [hasExpired]);
   
   useEffect(() => {
-    if (supplierId) {
+    if (supplierId && !hasExpired) {
       const fetchSupplierDetailsAndReviews = async () => {
         setLoading(true);
         setError(null);
@@ -100,7 +106,7 @@ export default function SupplierDetail() {
               const hasAccess = await isSupplierAllowed(supplierId);
               setIsAccessible(hasAccess);
             } else {
-              setIsAccessible(true); // Not in trial or no user, so accessible by default for trial logic
+              setIsAccessible(true);
             }
 
             setLoadingReviews(true);
@@ -124,12 +130,12 @@ export default function SupplierDetail() {
         }
       };
       fetchSupplierDetailsAndReviews();
-    } else {
+    } else if (!supplierId) {
       setError('ID do fornecedor não fornecido.');
       setLoading(false);
       setReviews([]);
     }
-  }, [supplierId, toast, user?.id, isInTrial, isSupplierAllowed]);
+  }, [supplierId, toast, user?.id, isInTrial, isSupplierAllowed, hasExpired]);
   
   useEffect(() => {
     const fetchAllCategories = async () => {
@@ -142,6 +148,33 @@ export default function SupplierDetail() {
     };
     fetchAllCategories();
   }, []);
+
+  // If trial has expired, show the blocked access component
+  if (hasExpired) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/suppliers')}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              Voltar
+            </Button>
+          </div>
+          
+          <FeatureLimitedAccess 
+            title="Acesso Bloqueado"
+            message="Seu período de teste gratuito expirou. Para continuar acessando os detalhes dos fornecedores, você precisa assinar um plano."
+            featureName="detalhes dos fornecedores"
+          />
+        </div>
+      </AppLayout>
+    );
+  }
 
   const getCategoryNameFromId = (categoryId: string): string => {
     const foundCategory = allCategories.find(cat => cat.id === categoryId);
@@ -160,7 +193,7 @@ export default function SupplierDetail() {
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
     : 0;
     
-  const ratingDistribution: number[] = [0, 0, 0, 0, 0]; // Explicitly typed
+  const ratingDistribution: number[] = [0, 0, 0, 0, 0];
   reviews.forEach(review => {
     if (review.rating >= 1 && review.rating <= 5) {
       ratingDistribution[review.rating - 1]++;
@@ -176,8 +209,6 @@ export default function SupplierDetail() {
       const currentlyFavorite = isFavorite(supplier.id);
       toggleFavorite(supplier.id); 
       
-      // Note: isFavorite(supplier.id) will reflect the state *before* the toggle in the same render cycle.
-      // So, if it *was* favorite, it's now unfavorited.
       const message = !currentlyFavorite
         ? `${supplier.name} adicionado aos favoritos`
         : `${supplier.name} removido dos favoritos`;
@@ -239,7 +270,7 @@ export default function SupplierDetail() {
         description: "Obrigado por compartilhar sua opinião!",
         duration: 2000,
       });
-      form.reset({ rating: 0, comment: "" }); // Reset form with default values
+      form.reset({ rating: 0, comment: "" });
       setSelectedRating(0);
     } catch (err: any) {
       console.error("Erro ao salvar review:", err);
@@ -331,7 +362,7 @@ export default function SupplierDetail() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-8"> {/* Added container and padding */}
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <Button 
@@ -349,7 +380,7 @@ export default function SupplierDetail() {
                 variant="outline"
                 size="icon"
                 onClick={goToPreviousSupplier}
-                disabled // Kept disabled as per user's code
+                disabled
                 className="h-8 w-8"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -359,7 +390,7 @@ export default function SupplierDetail() {
                 variant="outline"
                 size="icon"
                 onClick={goToNextSupplier}
-                disabled // Kept disabled as per user's code
+                disabled
                 className="h-8 w-8"
               >
                 <ArrowRight className="h-4 w-4" />
@@ -537,7 +568,6 @@ export default function SupplierDetail() {
                       'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
                       'Acessórios': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
                       'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
-                      // Add more as needed
                     };
                     
                     return (
@@ -787,52 +817,6 @@ export default function SupplierDetail() {
               </div>
             </TabsContent>
           </Tabs>
-          
-          {/* Similar suppliers section - kept commented as per user's code */}
-          {/*
-          <div className="mt-8">
-            <h2 className="text-xl font-bold mb-4">Fornecedores similares</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              // MOCK_SUPPLIERS.filter(s => 
-              //   s.id !== supplier.id && 
-              //   s.categories.some(c => supplier.categories.includes(c))
-              // ).slice(0, 2).map(similar => (
-              //   <Card key={similar.id} className="overflow-hidden card-hover">
-              //     <div className="flex h-32">
-              //       <div className="w-1/3 bg-muted">
-              //         <img 
-              //           src={similar.images[0]} 
-              //           alt={similar.name}
-              //           className="w-full h-full object-cover"
-              //         />
-              //       </div>
-              //       <div className="w-2/3 p-3">
-              //         <h3 className="font-medium text-sm">{similar.name}</h3>
-              //         <p className="text-xs text-muted-foreground mb-1">
-              //           {similar.city}, {similar.state}
-              //         </p>
-              //         <div className="flex flex-wrap gap-1 mb-2">
-              //           {similar.categories.map(category => (
-              //             <Badge key={category} variant="outline" className="text-xs">
-              //               {category}
-              //             </Badge>
-              //           ))}
-              //         </div>
-              //         <Button 
-              //           size="sm" 
-              //           variant="link" 
-              //           className="p-0 h-auto text-primary"
-              //           onClick={() => navigate(`/suppliers/${similar.id}`)}
-              //         >
-              //           Ver detalhes
-              //         </Button>
-              //       </div>
-              //     </div>
-              //   </Card>
-              // ))
-            </div>
-          </div>
-          */}
         </div>
       </div>
     </AppLayout>
