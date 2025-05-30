@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -6,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Heart, Star, ArrowRight, Users, Book } from 'lucide-react';
+import { Heart, Star, ArrowRight, Users, Book, Loader2 } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { useFavorites } from '@/hooks/use-favorites';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -214,7 +213,7 @@ export default function Home() {
   } = useImageEditor();
   const landingImages = getImages();
   const { user } = useAuth();
-  const { hasExpired: trialHasExpired } = useTrialStatus();
+  const { hasExpired: trialHasExpired, isLoading: trialLoading } = useTrialStatus();
 
   // Fetch recent suppliers
   const {
@@ -223,7 +222,7 @@ export default function Home() {
   } = useQuery({
     queryKey: ['suppliers', user?.id, 'withAverageRating'],
     queryFn: () => getSuppliers(user?.id),
-    enabled: true
+    enabled: !trialLoading // Só carrega após verificação do trial
   });
 
   // Fetch articles
@@ -232,12 +231,15 @@ export default function Home() {
     isLoading: loadingArticles
   } = useQuery({
     queryKey: ['articles'],
-    queryFn: () => getArticles()
+    queryFn: () => getArticles(),
+    enabled: !trialLoading // Só carrega após verificação do trial
   });
 
   // Fetch all categories
   useEffect(() => {
     const fetchAllCategories = async () => {
+      if (trialLoading) return; // Espera verificação do trial
+      
       try {
         const categoriesData = await getCategories();
         setAllCategories(categoriesData);
@@ -246,7 +248,17 @@ export default function Home() {
       }
     };
     fetchAllCategories();
-  }, []);
+  }, [trialLoading]);
+
+  // Se ainda está carregando a verificação do trial, mostra loading
+  if (trialLoading) {
+    return <AppLayout>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-purple mr-2" />
+          <p className="text-muted-foreground">Verificando acesso...</p>
+        </div>
+      </AppLayout>;
+  }
 
   // Get recent suppliers (sorted by creation date)
   const recentSuppliers = allSuppliers ? [...allSuppliers].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 4) : [];

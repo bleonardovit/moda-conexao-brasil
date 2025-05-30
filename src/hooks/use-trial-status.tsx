@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -17,24 +18,30 @@ export interface TrialStatus {
   allowedSupplierIds: string[];
   isSupplierAllowed: (supplierId: string) => Promise<boolean>;
   isFeatureAllowed: (featureKey: string) => Promise<boolean>;
+  isLoading: boolean; // Novo estado para controlar loading
 }
 
 export function useTrialStatus(): TrialStatus {
   const { user } = useAuth();
+  // Estados iniciais seguros - assumir expirado/sem acesso até provar o contrário
   const [isInTrial, setIsInTrial] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [hoursRemaining, setHoursRemaining] = useState(0);
-  const [hasExpired, setHasExpired] = useState(false);
+  const [hasExpired, setHasExpired] = useState(true); // Inicia como expirado para segurança
   const [allowedSupplierIds, setAllowedSupplierIds] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // Novo estado de loading
 
   useEffect(() => {
     const checkTrialStatus = async () => {
+      setIsLoading(true); // Marca como carregando no início
+      
       if (!user?.id) {
         setIsInTrial(false);
-        setHasExpired(false); // Reset expired state if no user
+        setHasExpired(true); // Manter como expirado se não há usuário
         setDaysRemaining(0);
         setHoursRemaining(0);
-        setAllowedSupplierIds([]); // Clear allowed suppliers
+        setAllowedSupplierIds([]);
+        setIsLoading(false); // Finaliza loading
         return;
       }
 
@@ -50,7 +57,7 @@ export function useTrialStatus(): TrialStatus {
         if (trialInfo) {
           if (trialInfo.trial_status === 'active') {
             setIsInTrial(true);
-            setHasExpired(false);
+            setHasExpired(false); // Só marca como não expirado após confirmação
             
             // Calculate days and hours remaining
             if (trialInfo.trial_end_date) {
@@ -67,7 +74,6 @@ export function useTrialStatus(): TrialStatus {
               } else {
                 setDaysRemaining(0);
                 setHoursRemaining(0);
-                // setHasExpired(true); // This will be set based on trial_status from DB
               }
             }
             const suppliers = await getAllowedSuppliersForTrial(user.id);
@@ -80,32 +86,38 @@ export function useTrialStatus(): TrialStatus {
             setAllowedSupplierIds([]);
           } else { // e.g., 'not_started', 'converted'
             setIsInTrial(false);
-            setHasExpired(false);
+            setHasExpired(false); // Usuário convertido ou com assinatura
             setDaysRemaining(0);
             setHoursRemaining(0);
             setAllowedSupplierIds([]);
           }
         } else { // No trial info found
           setIsInTrial(false);
-          setHasExpired(false);
+          setHasExpired(true); // Padrão seguro
           setDaysRemaining(0);
           setHoursRemaining(0);
           setAllowedSupplierIds([]);
         }
       } catch (error) {
         console.error('Error checking trial status:', error);
+        // Em caso de erro, manter valores seguros
         setIsInTrial(false);
-        setHasExpired(false); // Ensure reset on error
+        setHasExpired(true);
         setDaysRemaining(0);
         setHoursRemaining(0);
         setAllowedSupplierIds([]);
+      } finally {
+        setIsLoading(false); // Sempre finaliza o loading
       }
     };
     
     checkTrialStatus();
     
     // Set up interval to update the time remaining & status
-    const interval = setInterval(checkTrialStatus, 60 * 1000); // Update every minute
+    const interval = setInterval(() => {
+      // No intervalo, não altera o loading pois é uma atualização
+      checkTrialStatus();
+    }, 60 * 1000); // Update every minute
     
     return () => clearInterval(interval);
   }, [user?.id]);
@@ -126,14 +138,11 @@ export function useTrialStatus(): TrialStatus {
       console.error('Error checking supplier access:', error);
       return false;
     }
-  }, [user?.id, isInTrial, hasExpired]); // Added hasExpired to dependency array
+  }, [user?.id, isInTrial, hasExpired]);
   
   const isFeatureAllowed = useCallback(async (featureKey: string): Promise<boolean> => {
     try {
-      // user?.id can be null for anonymous users, checkFeatureAccess handles this.
       const accessResult = await checkFeatureAccess(user?.id, featureKey);
-      // A feature is considered "allowed" if its access level is anything other than 'none'.
-      // Specific limitations (like count or blur) are handled by the components themselves.
       return accessResult.access !== 'none';
     } catch (error) {
       console.error(`Error checking feature access for ${featureKey}:`, error);
@@ -148,6 +157,7 @@ export function useTrialStatus(): TrialStatus {
     hasExpired,
     allowedSupplierIds,
     isSupplierAllowed,
-    isFeatureAllowed
+    isFeatureAllowed,
+    isLoading // Retorna o estado de loading
   };
 }

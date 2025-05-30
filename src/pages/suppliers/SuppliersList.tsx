@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
@@ -9,6 +8,7 @@ import { getSuppliers } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
 import { useAuth } from '@/hooks/useAuth';
 import { useTrialStatus } from '@/hooks/use-trial-status';
+import { Loader2 } from 'lucide-react';
 
 import { SupplierSearchAndActions } from '@/components/suppliers/SupplierSearchAndActions';
 import { SupplierFilters } from '@/components/suppliers/SupplierFilters';
@@ -58,7 +58,7 @@ export default function SuppliersList() {
     toast
   } = useToast();
   const { user } = useAuth();
-  const { hasExpired: trialHasExpired, isSupplierAllowed } = useTrialStatus();
+  const { hasExpired: trialHasExpired, isSupplierAllowed, isLoading: trialLoading } = useTrialStatus();
 
   const [isLoading, setIsLoading] = useState(true);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -87,6 +87,8 @@ export default function SuppliersList() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (trialLoading) return; // Espera verificação do trial
+      
       try {
         setIsLoading(true);
         const [suppliersData, categoriesData] = await Promise.all([
@@ -146,7 +148,19 @@ export default function SuppliersList() {
       }
     };
     fetchData();
-  }, [toast, user?.id, trialHasExpired]);
+  }, [toast, user?.id, trialHasExpired, trialLoading]);
+
+  // Se ainda está carregando a verificação do trial, mostra loading
+  if (trialLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-purple mr-2" />
+          <p className="text-muted-foreground">Verificando acesso...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const filteredSuppliers = suppliers.filter(supplier => {
     if (!supplier.categories) {
@@ -229,6 +243,7 @@ export default function SuppliersList() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-purple mr-2" />
           <p className="text-muted-foreground">Carregando fornecedores...</p>
         </div>
       </AppLayout>

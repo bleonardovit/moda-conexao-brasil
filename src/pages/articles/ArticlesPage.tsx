@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { getArticles, getCategories, getLatestPublishedArticleIdForCategory, getLatestPublishedArticleIdsPerCategory } from '@/services/articleService';
 import { ArticleCard } from '@/components/articles/ArticleCard';
@@ -12,7 +13,7 @@ import type { AccessCheckResult } from '@/types/featureAccess';
 
 export default function ArticlesPage() {
   const { user } = useAuth();
-  const { hasExpired: trialHasExpired } = useTrialStatus();
+  const { hasExpired: trialHasExpired, isLoading: trialLoading } = useTrialStatus();
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<ArticleCategory[]>([]);
@@ -23,6 +24,8 @@ export default function ArticlesPage() {
 
   useEffect(() => {
     async function loadCategories() {
+      if (trialLoading) return; // Espera verificação do trial
+      
       try {
         const categoriesData = await getCategories();
         setCategories(categoriesData);
@@ -31,10 +34,12 @@ export default function ArticlesPage() {
       }
     }
     loadCategories();
-  }, []);
+  }, [trialLoading]);
 
   useEffect(() => {
     async function determineAccessAndLoadArticles() {
+      if (trialLoading) return; // Espera verificação do trial
+      
       if (categories.length === 0 && !selectedCategory) {
           return; 
       }
@@ -94,7 +99,19 @@ export default function ArticlesPage() {
     }
 
     determineAccessAndLoadArticles();
-  }, [user, selectedCategory, categories, trialHasExpired]);
+  }, [user, selectedCategory, categories, trialHasExpired, trialLoading]);
+
+  // Se ainda está carregando a verificação do trial, mostra loading
+  if (trialLoading) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-purple mr-2" />
+          <p className="text-muted-foreground">Verificando acesso...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const articlesToDisplay = articles.map(article => {
     let isLockedLogically: boolean;
