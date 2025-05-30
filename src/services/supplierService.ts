@@ -8,5 +8,7 @@ export * from './supplier/mapper';
 export { 
   createSupplier as createSupplierMutation,
   updateSupplier as updateSupplierMutation,
-  deleteSupplier as deleteSupplierMutation
+  deleteSupplier as deleteSupplierMutation,
+  toggleSupplierFeatured,
+  toggleSupplierVisibility
 } from './supplier/mutations';

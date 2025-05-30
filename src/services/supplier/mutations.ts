@@ -128,7 +128,7 @@ export const updateSupplier = async (id: string, updates: SupplierUpdatePayload,
   }
   
   // Fetch the complete supplier data after updates, applying user-specific locking
-  const finalSupplier = await getSupplierById(id, userId); 
+  const finalSupplier = await getSupplierById(id, false); 
   if (!finalSupplier) {
     console.error(`Failed to retrieve supplier ${id} after update.`);
     return null; 
