@@ -1,6 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier, SearchFilters } from '@/types';
+import type { Supplier, SearchFilters, SupplierCreationPayload } from '@/types';
 import { mapRawSupplierToDisplaySupplier, isValidSupplierResponse } from './mapper';
 import { getSupplierCategories, associateSupplierWithCategories } from './categories';
 import { getAverageRatingsForSupplierIds } from '../reviewService';
@@ -211,15 +210,15 @@ export const getSupplierById = async (id: string, isLocked: boolean = false, ave
   return mapRawSupplierToDisplaySupplier(data, isLocked, averageRating);
 };
 
-export const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>): Promise<Supplier> => {
+export const createSupplier = async (supplierData: SupplierCreationPayload): Promise<Supplier> => {
   console.log('supplierService: Creating new supplier:', supplierData);
   
   const { data, error } = await supabase
     .from('suppliers')
     .insert({
-      code: supplierData.code,
-      name: supplierData.name,
-      description: supplierData.description,
+      code: supplierData.code || '',
+      name: supplierData.name || '',
+      description: supplierData.description || '',
       images: supplierData.images || [],
       instagram: supplierData.instagram,
       whatsapp: supplierData.whatsapp,
@@ -230,8 +229,8 @@ export const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'create
       avg_price: supplierData.avg_price || 'medium',
       shipping_methods: supplierData.shipping_methods || [],
       custom_shipping_method: supplierData.custom_shipping_method,
-      city: supplierData.city,
-      state: supplierData.state,
+      city: supplierData.city || '',
+      state: supplierData.state || '',
       featured: supplierData.featured ?? false,
       hidden: supplierData.hidden ?? false,
     })
