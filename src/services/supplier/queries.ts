@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import type { Supplier } from '@/types';
+import type { Supplier, SearchFilters } from '@/types';
 import { mapRawSupplierToDisplaySupplier, isValidSupplierResponse } from './mapper';
 import { getSupplierCategories, associateSupplierWithCategories } from './categories';
 import { getAverageRatingsForSupplierIds } from '../reviewService';
@@ -56,14 +57,71 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   return suppliersWithRatings;
 };
 
-export const searchSuppliers = async (searchTerm: string, userId?: string): Promise<Supplier[]> => {
-  console.log('supplierService: Searching suppliers with term:', searchTerm);
+export const searchSuppliers = async (filters: SearchFilters, userId?: string): Promise<Supplier[]> => {
+  console.log('supplierService: Searching suppliers with filters:', filters);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('suppliers')
-    .select('*, categories_data:suppliers_categories(category_id)')
-    .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%`)
-    .order('created_at', { ascending: false });
+    .select('*, categories_data:suppliers_categories(category_id)');
+
+  // Apply search term filter
+  if (filters.searchTerm) {
+    query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%,code.ilike.%${filters.searchTerm}%`);
+  }
+
+  // Apply category filter
+  if (filters.categoryId) {
+    query = query.eq('suppliers_categories.category_id', filters.categoryId);
+  }
+
+  // Apply state filter
+  if (filters.state) {
+    query = query.eq('state', filters.state);
+  }
+
+  // Apply city filter
+  if (filters.city) {
+    query = query.eq('city', filters.city);
+  }
+
+  // Apply min order filters
+  if (filters.minOrderMin !== undefined || filters.minOrderMax !== undefined) {
+    if (filters.minOrderMin !== undefined && filters.minOrderMax !== undefined) {
+      query = query.gte('min_order::integer', filters.minOrderMin).lte('min_order::integer', filters.minOrderMax);
+    } else if (filters.minOrderMin !== undefined) {
+      query = query.gte('min_order::integer', filters.minOrderMin);
+    } else if (filters.minOrderMax !== undefined) {
+      query = query.lte('min_order::integer', filters.minOrderMax);
+    }
+  }
+
+  // Apply payment methods filter
+  if (filters.paymentMethods && filters.paymentMethods.length > 0) {
+    query = query.overlaps('payment_methods', filters.paymentMethods);
+  }
+
+  // Apply CNPJ requirement filter
+  if (filters.requiresCnpj !== null && filters.requiresCnpj !== undefined) {
+    query = query.eq('requires_cnpj', filters.requiresCnpj);
+  }
+
+  // Apply shipping methods filter
+  if (filters.shippingMethods && filters.shippingMethods.length > 0) {
+    query = query.overlaps('shipping_methods', filters.shippingMethods);
+  }
+
+  // Apply website filter
+  if (filters.hasWebsite !== null && filters.hasWebsite !== undefined) {
+    if (filters.hasWebsite) {
+      query = query.not('website', 'is', null).neq('website', '');
+    } else {
+      query = query.or('website.is.null,website.eq.');
+    }
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error searching suppliers:', error.message);
@@ -71,7 +129,7 @@ export const searchSuppliers = async (searchTerm: string, userId?: string): Prom
   }
 
   if (!data || data.length === 0) {
-    console.log('supplierService: No suppliers found for search term.');
+    console.log('supplierService: No suppliers found for search filters.');
     return [];
   }
 
@@ -90,6 +148,44 @@ export const searchSuppliers = async (searchTerm: string, userId?: string): Prom
 
   console.log('supplierService: Search completed successfully.');
   return suppliersWithRatings;
+};
+
+export const getDistinctCities = async (): Promise<string[]> => {
+  console.log('supplierService: Fetching distinct cities...');
+
+  const { data, error } = await supabase
+    .from('suppliers')
+    .select('city')
+    .not('city', 'is', null)
+    .neq('city', '');
+
+  if (error) {
+    console.error('Error fetching distinct cities:', error.message);
+    return [];
+  }
+
+  const cities = [...new Set(data.map(item => item.city).filter(Boolean))].sort();
+  console.log('supplierService: Distinct cities fetched successfully.');
+  return cities;
+};
+
+export const getDistinctStates = async (): Promise<string[]> => {
+  console.log('supplierService: Fetching distinct states...');
+
+  const { data, error } = await supabase
+    .from('suppliers')
+    .select('state')
+    .not('state', 'is', null)
+    .neq('state', '');
+
+  if (error) {
+    console.error('Error fetching distinct states:', error.message);
+    return [];
+  }
+
+  const states = [...new Set(data.map(item => item.state).filter(Boolean))].sort();
+  console.log('supplierService: Distinct states fetched successfully.');
+  return states;
 };
 
 export const getSupplierById = async (id: string, isLocked: boolean = false, averageRating?: number): Promise<Supplier | null> => {
