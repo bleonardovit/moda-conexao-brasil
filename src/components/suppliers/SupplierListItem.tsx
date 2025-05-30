@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react';
 import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard';
 import { useTrialStatus } from '@/hooks/use-trial-status';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { Supplier } from '@/types';
 
 interface SupplierListItemProps {
@@ -26,10 +27,46 @@ export function SupplierListItem({
   getCategoryStyle,
   formatAvgPrice,
 }: SupplierListItemProps) {
-  const { hasExpired } = useTrialStatus();
+  const { hasExpired, isLoading } = useTrialStatus();
 
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
+  }
+
+  // Se ainda está carregando o status do trial, mostrar apenas a foto com loading
+  if (isLoading) {
+    return (
+      <Card key={supplier.id} className="overflow-hidden card-hover">
+        <div className="sm:flex">
+          <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
+            <img
+              src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'}
+              alt="Carregando..."
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <CardContent className="sm:w-2/3 md:w-3/4 p-4 flex items-center justify-center">
+            <div className="space-y-3 w-full">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-1/4" />
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-6 w-16" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </div>
+          </CardContent>
+        </div>
+      </Card>
+    );
   }
 
   // Se o trial expirou, mostrar versão completamente bloqueada

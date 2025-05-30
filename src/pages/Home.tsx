@@ -34,12 +34,45 @@ const SupplierCard = ({
   } = useFavorites();
   const [isHovering, setIsHovering] = useState(false);
   const isMobile = useIsMobile();
-  const { hasExpired } = useTrialStatus();
+  const { hasExpired, isLoading } = useTrialStatus();
   
   const getCategoryNameFromId = (categoryId: string): string => {
     const foundCategory = allCategories.find(cat => cat.id === categoryId);
     return foundCategory ? foundCategory.name : categoryId;
   };
+
+  // Se ainda está carregando o status do trial, mostrar apenas a foto com loading
+  if (isLoading) {
+    return (
+      <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
+        <div className="relative overflow-hidden w-full" style={{
+          height: isMobile ? '130px' : '180px'
+        }}>
+          <img
+            src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'}
+            alt="Carregando..."
+            className="w-full h-full object-cover"
+            onError={e => {
+              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158';
+            }}
+          />
+        </div>
+        <CardContent className="p-4">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-3/4" />
+            <div className="flex gap-2">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+            <div className="flex justify-between items-center mt-3">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-4 w-1/4" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Se o trial expirou, mostrar versão completamente bloqueada
   if (hasExpired) {
@@ -170,6 +203,7 @@ const SkeletonCard = () => {
       </CardContent>
     </Card>;
 };
+
 export default function Home() {
   const isMobile = useIsMobile();
   const [allCategories, setAllCategories] = useState<Category[]>([]);

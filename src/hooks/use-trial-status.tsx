@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -14,6 +15,7 @@ export interface TrialStatus {
   daysRemaining: number;
   hoursRemaining: number;
   hasExpired: boolean;
+  isLoading: boolean;
   allowedSupplierIds: string[];
   isSupplierAllowed: (supplierId: string) => Promise<boolean>;
   isFeatureAllowed: (featureKey: string) => Promise<boolean>;
@@ -24,21 +26,25 @@ export function useTrialStatus(): TrialStatus {
   const [isInTrial, setIsInTrial] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [hoursRemaining, setHoursRemaining] = useState(0);
-  const [hasExpired, setHasExpired] = useState(false);
+  const [hasExpired, setHasExpired] = useState(true); // Start restrictive
+  const [isLoading, setIsLoading] = useState(true); // Start loading
   const [allowedSupplierIds, setAllowedSupplierIds] = useState<string[]>([]);
 
   useEffect(() => {
     const checkTrialStatus = async () => {
       if (!user?.id) {
         setIsInTrial(false);
-        setHasExpired(false); // Reset expired state if no user
+        setHasExpired(true); // Remain restrictive if no user
         setDaysRemaining(0);
         setHoursRemaining(0);
-        setAllowedSupplierIds([]); // Clear allowed suppliers
+        setAllowedSupplierIds([]);
+        setIsLoading(false); // Done loading
         return;
       }
 
       try {
+        setIsLoading(true); // Start verification
+        
         // Auto-start trial for new users
         await autoStartTrialForUser(user.id);
         
@@ -50,7 +56,7 @@ export function useTrialStatus(): TrialStatus {
         if (trialInfo) {
           if (trialInfo.trial_status === 'active') {
             setIsInTrial(true);
-            setHasExpired(false);
+            setHasExpired(false); // Allow access only after verification
             
             // Calculate days and hours remaining
             if (trialInfo.trial_end_date) {
@@ -67,7 +73,6 @@ export function useTrialStatus(): TrialStatus {
               } else {
                 setDaysRemaining(0);
                 setHoursRemaining(0);
-                // setHasExpired(true); // This will be set based on trial_status from DB
               }
             }
             const suppliers = await getAllowedSuppliersForTrial(user.id);
@@ -80,7 +85,7 @@ export function useTrialStatus(): TrialStatus {
             setAllowedSupplierIds([]);
           } else { // e.g., 'not_started', 'converted'
             setIsInTrial(false);
-            setHasExpired(false);
+            setHasExpired(false); // Allow access for non-trial users
             setDaysRemaining(0);
             setHoursRemaining(0);
             setAllowedSupplierIds([]);
@@ -95,10 +100,12 @@ export function useTrialStatus(): TrialStatus {
       } catch (error) {
         console.error('Error checking trial status:', error);
         setIsInTrial(false);
-        setHasExpired(false); // Ensure reset on error
+        setHasExpired(true); // Remain restrictive on error
         setDaysRemaining(0);
         setHoursRemaining(0);
         setAllowedSupplierIds([]);
+      } finally {
+        setIsLoading(false); // Done with verification
       }
     };
     
@@ -126,7 +133,7 @@ export function useTrialStatus(): TrialStatus {
       console.error('Error checking supplier access:', error);
       return false;
     }
-  }, [user?.id, isInTrial, hasExpired]); // Added hasExpired to dependency array
+  }, [user?.id, isInTrial, hasExpired]);
   
   const isFeatureAllowed = useCallback(async (featureKey: string): Promise<boolean> => {
     try {
@@ -146,6 +153,7 @@ export function useTrialStatus(): TrialStatus {
     daysRemaining,
     hoursRemaining,
     hasExpired,
+    isLoading,
     allowedSupplierIds,
     isSupplierAllowed,
     isFeatureAllowed
