@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react';
 import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard';
+import { useTrialStatus } from '@/hooks/use-trial-status';
 import type { Supplier } from '@/types';
 
 interface SupplierListItemProps {
@@ -26,8 +27,52 @@ export function SupplierListItem({
   getCategoryStyle,
   formatAvgPrice,
 }: SupplierListItemProps) {
+  const { hasExpired } = useTrialStatus();
+
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
+  }
+
+  // Se o trial expirou, mostrar conteúdo bloqueado
+  if (hasExpired) {
+    return (
+      <Card key={supplier.id} className="overflow-hidden card-hover">
+        <div className="sm:flex">
+          <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
+            <img
+              src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'}
+              alt="Fornecedor"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <CardContent className="sm:w-2/3 md:w-3/4 p-4 relative">
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+              <div className="text-center p-4">
+                <h3 className="text-lg font-bold mb-2">Conteúdo Bloqueado</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Seu período gratuito expirou. Assine para ver todos os detalhes dos fornecedores.
+                </p>
+                <Button asChild>
+                  <Link to="/auth/payment">Assinar agora</Link>
+                </Button>
+              </div>
+            </div>
+            
+            {/* Conteúdo borrado por baixo */}
+            <div className="blur-sm opacity-50">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold">████████████</h3>
+                  <p className="text-sm text-muted-foreground mb-1">████████, ██</p>
+                  <p className="text-xs text-muted-foreground mb-2">Código: ████████</p>
+                </div>
+              </div>
+              <p className="text-sm mb-4">████████████████████████████████████████</p>
+            </div>
+          </CardContent>
+        </div>
+      </Card>
+    );
   }
 
   return (
