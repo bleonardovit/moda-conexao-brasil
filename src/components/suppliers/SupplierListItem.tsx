@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +32,7 @@ export function SupplierListItem({
     return <LockedSupplierCard key={supplier.id} />;
   }
 
-  // Se o trial expirou, mostrar conteúdo bloqueado
+  // Se o trial expirou, mostrar versão completamente bloqueada
   if (hasExpired) {
     return (
       <Card key={supplier.id} className="overflow-hidden card-hover">
@@ -56,18 +55,6 @@ export function SupplierListItem({
                   <Link to="/auth/payment">Assinar agora</Link>
                 </Button>
               </div>
-            </div>
-            
-            {/* Conteúdo borrado por baixo */}
-            <div className="blur-sm opacity-50">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-bold">████████████</h3>
-                  <p className="text-sm text-muted-foreground mb-1">████████, ██</p>
-                  <p className="text-xs text-muted-foreground mb-2">Código: ████████</p>
-                </div>
-              </div>
-              <p className="text-sm mb-4">████████████████████████████████████████</p>
             </div>
           </CardContent>
         </div>

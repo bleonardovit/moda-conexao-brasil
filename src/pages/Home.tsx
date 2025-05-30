@@ -41,7 +41,7 @@ const SupplierCard = ({
     return foundCategory ? foundCategory.name : categoryId;
   };
 
-  // Se o trial expirou, mostrar versão bloqueada
+  // Se o trial expirou, mostrar versão completamente bloqueada
   if (hasExpired) {
     return (
       <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full relative">
@@ -58,7 +58,7 @@ const SupplierCard = ({
           />
         </div>
         <CardContent className="p-4 relative">
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-10">
             <div className="text-center p-2">
               <h4 className="font-medium text-sm mb-1">Conteúdo Bloqueado</h4>
               <p className="text-xs text-muted-foreground mb-2">
@@ -67,21 +67,6 @@ const SupplierCard = ({
               <Button size="sm" asChild>
                 <Link to="/auth/payment">Assinar</Link>
               </Button>
-            </div>
-          </div>
-          
-          {/* Conteúdo borrado por baixo */}
-          <div className="blur-sm opacity-50">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-medium truncate">██████████</h3>
-            </div>
-            <div className="flex gap-2 mb-2 flex-wrap">
-              <Badge variant="secondary" className="bg-white/10">
-                ████████
-              </Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">████████, ██</span>
             </div>
           </div>
         </CardContent>
