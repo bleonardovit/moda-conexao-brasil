@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Supplier } from '@/types';
 import { mapRawSupplierToDisplaySupplier, isValidSupplierResponse } from './mapper';
 import { getSupplierCategories, associateSupplierWithCategories } from './categories';
+import { getAverageRatingsForSupplierIds } from '../reviewService';
 
 export const fetchSuppliers = async (): Promise<Supplier[]> => {
   console.log('supplierService: Fetching suppliers...');
@@ -18,6 +19,77 @@ export const fetchSuppliers = async (): Promise<Supplier[]> => {
 
   console.log('supplierService: Suppliers fetched successfully.');
   return data.map(supplier => mapRawSupplierToDisplaySupplier(supplier, false));
+};
+
+export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
+  console.log('supplierService: Fetching suppliers with average ratings...');
+
+  const { data, error } = await supabase
+    .from('suppliers')
+    .select('*, categories_data:suppliers_categories(category_id)')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching suppliers:', error.message);
+    return [];
+  }
+
+  if (!data || data.length === 0) {
+    console.log('supplierService: No suppliers found.');
+    return [];
+  }
+
+  // Get supplier IDs for rating calculation
+  const supplierIds = data.map(supplier => supplier.id);
+  
+  // Get average ratings for all suppliers
+  const averageRatings = await getAverageRatingsForSupplierIds(supplierIds);
+
+  // Map suppliers with their average ratings
+  const suppliersWithRatings = data.map(supplier => {
+    const averageRating = averageRatings.get(supplier.id);
+    const isLocked = userId ? false : false; // Determine locking logic based on userId if needed
+    return mapRawSupplierToDisplaySupplier(supplier, isLocked, averageRating);
+  });
+
+  console.log('supplierService: Suppliers with ratings fetched successfully.');
+  return suppliersWithRatings;
+};
+
+export const searchSuppliers = async (searchTerm: string, userId?: string): Promise<Supplier[]> => {
+  console.log('supplierService: Searching suppliers with term:', searchTerm);
+
+  const { data, error } = await supabase
+    .from('suppliers')
+    .select('*, categories_data:suppliers_categories(category_id)')
+    .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%`)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error searching suppliers:', error.message);
+    return [];
+  }
+
+  if (!data || data.length === 0) {
+    console.log('supplierService: No suppliers found for search term.');
+    return [];
+  }
+
+  // Get supplier IDs for rating calculation
+  const supplierIds = data.map(supplier => supplier.id);
+  
+  // Get average ratings for all suppliers
+  const averageRatings = await getAverageRatingsForSupplierIds(supplierIds);
+
+  // Map suppliers with their average ratings
+  const suppliersWithRatings = data.map(supplier => {
+    const averageRating = averageRatings.get(supplier.id);
+    const isLocked = userId ? false : false; // Determine locking logic based on userId if needed
+    return mapRawSupplierToDisplaySupplier(supplier, isLocked, averageRating);
+  });
+
+  console.log('supplierService: Search completed successfully.');
+  return suppliersWithRatings;
 };
 
 export const getSupplierById = async (id: string, isLocked: boolean = false, averageRating?: number): Promise<Supplier | null> => {
