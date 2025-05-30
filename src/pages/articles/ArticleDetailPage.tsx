@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getArticleById, getCategories, getLatestPublishedArticleIdForCategory } from '@/services/articleService';
@@ -15,7 +14,7 @@ export default function ArticleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hasExpired: trialHasExpired, isLoading: trialLoading } = useTrialStatus();
+  const { hasExpired: trialHasExpired } = useTrialStatus();
   const [article, setArticle] = useState<Article | null>(null);
   const [categories, setCategories] = useState<ArticleCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,8 +23,6 @@ export default function ArticleDetailPage() {
 
   useEffect(() => {
     async function loadDataAndCheckAccess() {
-      if (trialLoading) return; // Espera verificação do trial
-      
       setLoading(true);
       let currentArticle: Article | null = null;
       let currentIsAccessible = false;
@@ -85,19 +82,7 @@ export default function ArticleDetailPage() {
     } else {
         setLoading(false);
     }
-  }, [id, user, trialHasExpired, trialLoading]);
-
-  // Se ainda está carregando a verificação do trial, mostra loading
-  if (trialLoading) {
-    return (
-      <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-purple mr-2" />
-          <p className="text-muted-foreground">Verificando acesso...</p>
-        </div>
-      </AppLayout>
-    );
-  }
+  }, [id, user, trialHasExpired]); // Removido accessRule das dependências
 
   const formattedDate = article ? new Date(article.created_at).toLocaleDateString('pt-BR', {
     day: 'numeric',
