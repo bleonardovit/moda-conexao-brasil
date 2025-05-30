@@ -27,6 +27,7 @@ export interface Supplier {
   created_at: string;
   updated_at: string;
   isLockedForTrial?: boolean;
+  averageRating?: number; // Novo campo para a média de avaliações
 }
 
 // Payload for creating a supplier

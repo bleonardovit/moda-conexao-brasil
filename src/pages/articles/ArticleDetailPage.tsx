@@ -24,52 +24,55 @@ export default function ArticleDetailPage() {
   useEffect(() => {
     async function loadDataAndCheckAccess() {
       setLoading(true);
+      let currentArticle: Article | null = null;
+      let currentIsAccessible = false;
+      let currentAccessRule: AccessCheckResult | null = null;
+
       try {
         const categoriesData = await getCategories();
         setCategories(categoriesData);
         
-        let tempArticle: Article | null = null;
         if (id) {
           const foundArticle = await getArticleById(id);
           if (foundArticle && foundArticle.published) {
-            setArticle(foundArticle);
-            tempArticle = foundArticle;
+            currentArticle = foundArticle;
           }
         }
 
         if (trialHasExpired) {
-          setIsAccessible(false);
-          if (!accessRule || accessRule.access !== 'none') {
-            setAccessRule(prev => ({
-              ...prev,
-              access: 'none', 
-              message: "Seu período de teste expirou. Assine para ler o conteúdo completo." 
-            }));
-          }
-        } else if (tempArticle) {
+          currentIsAccessible = false;
+          currentAccessRule = {
+            access: 'none', 
+            message: "Seu período de teste expirou. Assine para ler o conteúdo completo." 
+          };
+        } else if (currentArticle) {
           const accessResult = await checkFeatureAccess(user?.id, 'article_access');
-          setAccessRule(accessResult);
+          currentAccessRule = accessResult;
 
           if (accessResult.access === 'full') {
-            setIsAccessible(true);
+            currentIsAccessible = true;
           } else if (accessResult.access === 'limited_count') {
-            const latestIdInCategory = await getLatestPublishedArticleIdForCategory(tempArticle.category);
-            if (tempArticle.id === latestIdInCategory) {
-              setIsAccessible(true);
+            const latestIdInCategory = await getLatestPublishedArticleIdForCategory(currentArticle.category);
+            if (currentArticle.id === latestIdInCategory) {
+              currentIsAccessible = true;
             } else {
-              setIsAccessible(false);
+              currentIsAccessible = false;
             }
           } else { // 'none' or other states
-            setIsAccessible(false);
+            currentIsAccessible = false;
           }
         } else {
-          setIsAccessible(false); 
+          currentIsAccessible = false; 
         }
 
       } catch (error) {
         console.error("Erro ao carregar artigo ou verificar acesso:", error);
-        setIsAccessible(false);
+        currentIsAccessible = false;
+        // Potentially set a generic error message for currentAccessRule here if needed
       } finally {
+        setArticle(currentArticle);
+        setIsAccessible(currentIsAccessible);
+        setAccessRule(currentAccessRule);
         setLoading(false);
       }
     }
@@ -79,7 +82,7 @@ export default function ArticleDetailPage() {
     } else {
         setLoading(false);
     }
-  }, [id, user, trialHasExpired, accessRule]);
+  }, [id, user, trialHasExpired]); // Removido accessRule das dependências
 
   const formattedDate = article ? new Date(article.created_at).toLocaleDateString('pt-BR', {
     day: 'numeric',
