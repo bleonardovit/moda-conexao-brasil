@@ -3,6 +3,7 @@ import type { Supplier, SearchFilters, SupplierCreationPayload } from '@/types';
 import { mapRawSupplierToDisplaySupplier, isValidSupplierResponse } from './mapper';
 import { getSupplierCategories, associateSupplierWithCategories } from './categories';
 import { getAverageRatingsForSupplierIds } from '../reviewService';
+import { getUserTrialInfo, getAllowedSuppliersForTrial } from '../trialService';
 
 export const fetchSuppliers = async (): Promise<Supplier[]> => {
   console.log('supplierService: Fetching suppliers...');
@@ -22,7 +23,7 @@ export const fetchSuppliers = async (): Promise<Supplier[]> => {
 };
 
 export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
-  console.log('supplierService: Fetching suppliers with average ratings...');
+  console.log('supplierService: Fetching suppliers with trial logic...');
 
   const { data, error } = await supabase
     .from('suppliers')
@@ -45,14 +46,39 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   // Get average ratings for all suppliers
   const averageRatings = await getAverageRatingsForSupplierIds(supplierIds);
 
-  // Map suppliers with their average ratings
+  // Check trial status if user is provided
+  let allowedSupplierIds: string[] = [];
+  let isInActiveTrial = false;
+  
+  if (userId) {
+    try {
+      const trialInfo = await getUserTrialInfo(userId);
+      
+      if (trialInfo && trialInfo.trial_status === 'active') {
+        isInActiveTrial = true;
+        allowedSupplierIds = await getAllowedSuppliersForTrial(userId);
+        console.log('supplierService: User in active trial, allowed suppliers:', allowedSupplierIds);
+      }
+    } catch (error) {
+      console.error('Error checking trial status:', error);
+    }
+  }
+
+  // Map suppliers with their average ratings and trial restrictions
   const suppliersWithRatings = data.map(supplier => {
     const averageRating = averageRatings.get(supplier.id);
-    const isLocked = userId ? false : false; // Determine locking logic based on userId if needed
+    
+    // Determine if supplier should be locked for trial users
+    let isLocked = false;
+    if (userId && isInActiveTrial) {
+      // For active trial users, lock suppliers not in the allowed list
+      isLocked = !allowedSupplierIds.includes(supplier.id);
+    }
+    
     return mapRawSupplierToDisplaySupplier(supplier, isLocked, averageRating);
   });
 
-  console.log('supplierService: Suppliers with ratings fetched successfully.');
+  console.log('supplierService: Suppliers with trial restrictions fetched successfully.');
   return suppliersWithRatings;
 };
 
@@ -138,14 +164,38 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
   // Get average ratings for all suppliers
   const averageRatings = await getAverageRatingsForSupplierIds(supplierIds);
 
-  // Map suppliers with their average ratings
+  // Check trial status if user is provided
+  let allowedSupplierIds: string[] = [];
+  let isInActiveTrial = false;
+  
+  if (userId) {
+    try {
+      const trialInfo = await getUserTrialInfo(userId);
+      
+      if (trialInfo && trialInfo.trial_status === 'active') {
+        isInActiveTrial = true;
+        allowedSupplierIds = await getAllowedSuppliersForTrial(userId);
+      }
+    } catch (error) {
+      console.error('Error checking trial status in search:', error);
+    }
+  }
+
+  // Map suppliers with their average ratings and trial restrictions
   const suppliersWithRatings = data.map(supplier => {
     const averageRating = averageRatings.get(supplier.id);
-    const isLocked = userId ? false : false; // Determine locking logic based on userId if needed
+    
+    // Determine if supplier should be locked for trial users
+    let isLocked = false;
+    if (userId && isInActiveTrial) {
+      // For active trial users, lock suppliers not in the allowed list
+      isLocked = !allowedSupplierIds.includes(supplier.id);
+    }
+    
     return mapRawSupplierToDisplaySupplier(supplier, isLocked, averageRating);
   });
 
-  console.log('supplierService: Search completed successfully.');
+  console.log('supplierService: Search completed successfully with trial restrictions.');
   return suppliersWithRatings;
 };
 

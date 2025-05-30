@@ -123,17 +123,12 @@ export function useTrialStatus(): TrialStatus {
     
     // If not in an active trial (e.g., subscribed, or trial not_started/converted)
     // access is not restricted by *trial* limitations.
-    // supplierService will handle general visibility/locking for non-trial states.
     if (!isInTrial) return true; 
 
     // If in active trial and not expired:
-    try {
-      return await isSupplierAllowedForTrial(user.id, supplierId);
-    } catch (error) {
-      console.error('Error checking supplier access:', error);
-      return false;
-    }
-  }, [user?.id, isInTrial, hasExpired]);
+    // Check if supplier is in the allowed list
+    return allowedSupplierIds.includes(supplierId);
+  }, [user?.id, isInTrial, hasExpired, allowedSupplierIds]);
   
   const isFeatureAllowed = useCallback(async (featureKey: string): Promise<boolean> => {
     try {
