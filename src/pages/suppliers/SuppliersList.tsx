@@ -1,19 +1,32 @@
 
 import { useState, useEffect } from 'react';
+// import { Link } from 'react-router-dom'; // No longer directly used here
+// import { Badge } from '@/components/ui/badge'; // Moved to SupplierListItem
+// import { Button } from '@/components/ui/button'; // Moved to child components
+// import { Card, CardContent } from '@/components/ui/card'; // Moved to SupplierListItem
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Moved to SupplierFilters
+// import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react'; // Moved to child components
 import { AppLayout } from '@/components/layout/AppLayout';
+// import { Input } from '@/components/ui/input'; // Moved to SupplierSearchAndActions
 import { useFavorites } from '@/hooks/use-favorites';
 import { TrialBanner } from '@/components/trial/TrialBanner';
+// import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard'; // Used within SupplierListItem
+// import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Moved to SupplierListItem
 import { useToast } from "@/hooks/use-toast";
 import type { Supplier, Category } from '@/types';
 import { getSuppliers } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
 import { useAuth } from '@/hooks/useAuth';
-import { useTrialStatus } from '@/hooks/use-trial-status';
 
 import { SupplierSearchAndActions } from '@/components/suppliers/SupplierSearchAndActions';
 import { SupplierFilters } from '@/components/suppliers/SupplierFilters';
 import { SupplierListItem } from '@/components/suppliers/SupplierListItem';
 import { NoSuppliersFound } from '@/components/suppliers/NoSuppliersFound';
+
+// Define states array - Not used anymore, dynamic options are built
+// const STATES = [...] 
+// Add cities filter - Not used anymore
+// const CITIES = [...]
 
 const PRICE_RANGES = [{
   label: 'Todos',
@@ -50,7 +63,7 @@ export default function SuppliersList() {
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const {
-    favorites,
+    favorites, // favorites is not directly used, but useFavorites hook manages it
     toggleFavorite,
     isFavorite
   } = useFavorites();
@@ -58,7 +71,6 @@ export default function SuppliersList() {
     toast
   } = useToast();
   const { user } = useAuth();
-  const { hasExpired: trialHasExpired, isSupplierAllowed } = useTrialStatus();
 
   const [isLoading, setIsLoading] = useState(true);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -67,7 +79,7 @@ export default function SuppliersList() {
     label: string;
     value: string;
   }[]>([{
-    label: 'Todas as Categorias',
+    label: 'Todas as Categorias', // Updated for consistency
     value: 'all'
   }]);
   const [stateOptions, setStateOptions] = useState<{
@@ -94,17 +106,7 @@ export default function SuppliersList() {
           getCategories()
         ]);
 
-        // Se o trial expirou, mostra apenas fornecedores bloqueados para demonstração
-        let visibleSuppliers = suppliersData.filter(supplier => !supplier.hidden);
-        
-        if (trialHasExpired) {
-          // Para usuários com trial expirado, limitamos drasticamente a visualização
-          visibleSuppliers = visibleSuppliers.slice(0, 2).map(supplier => ({
-            ...supplier,
-            isBlocked: true // Marca como bloqueado para renderização especial
-          }));
-        }
-
+        const visibleSuppliers = suppliersData.filter(supplier => !supplier.hidden);
         setSuppliers(visibleSuppliers);
 
         setCategories(categoriesData);
@@ -146,7 +148,7 @@ export default function SuppliersList() {
       }
     };
     fetchData();
-  }, [toast, user?.id, trialHasExpired]);
+  }, [toast, user?.id]);
 
   const filteredSuppliers = suppliers.filter(supplier => {
     if (!supplier.categories) {
@@ -178,19 +180,9 @@ export default function SuppliersList() {
   const handleToggleFavorite = (supplier: Supplier, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // Se o trial expirou, bloqueia a ação de favoritar
-    if (trialHasExpired) {
-      toast({
-        title: "Acesso restrito",
-        description: "Seu período de teste expirou. Assine para continuar usando os favoritos.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    // We need to check the state *before* toggling to determine the correct message
     const currentlyFavorite = isFavorite(supplier.id);
-    toggleFavorite(supplier.id);
+    toggleFavorite(supplier.id); // This will change the favorite state
     const action = currentlyFavorite ? 'removido dos' : 'adicionado aos';
     toast({
       title: currentlyFavorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
@@ -250,29 +242,6 @@ export default function SuppliersList() {
 
         <TrialBanner />
 
-        {/* Mensagem especial para usuários com trial expirado */}
-        {trialHasExpired && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-amber-800">
-                  Período de teste expirado
-                </h3>
-                <div className="mt-2 text-sm text-amber-700">
-                  <p>
-                    Seu acesso gratuito expirou. Assine para ver todos os fornecedores e acessar recursos completos.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {isFilterOpen && (
           <SupplierFilters
             categoryFilter={categoryFilter}
@@ -304,7 +273,6 @@ export default function SuppliersList() {
                 getCategoryName={getCategoryName}
                 getCategoryStyle={getCategoryStyle}
                 formatAvgPrice={formatAvgPrice}
-                isTrialExpired={trialHasExpired}
               />
             ))
           ) : (
