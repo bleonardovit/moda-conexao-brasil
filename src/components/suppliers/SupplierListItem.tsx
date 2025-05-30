@@ -44,17 +44,15 @@ export function SupplierListItem({
               className="w-full h-full object-cover"
             />
           </div>
-          <CardContent className="sm:w-2/3 md:w-3/4 p-4 relative">
-            <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
-              <div className="text-center p-4">
-                <h3 className="text-lg font-bold mb-2">Conteúdo Bloqueado</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Seu período gratuito expirou. Assine para ver todos os detalhes dos fornecedores.
-                </p>
-                <Button asChild>
-                  <Link to="/auth/payment">Assinar agora</Link>
-                </Button>
-              </div>
+          <CardContent className="sm:w-2/3 md:w-3/4 p-4 flex items-center justify-center">
+            <div className="text-center p-6">
+              <h3 className="text-lg font-bold mb-2">Conteúdo Bloqueado</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Seu período gratuito expirou. Assine para ver todos os detalhes dos fornecedores.
+              </p>
+              <Button asChild>
+                <Link to="/auth/payment">Assinar agora</Link>
+              </Button>
             </div>
           </CardContent>
         </div>

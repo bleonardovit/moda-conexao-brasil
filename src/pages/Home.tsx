@@ -44,7 +44,7 @@ const SupplierCard = ({
   // Se o trial expirou, mostrar versão completamente bloqueada
   if (hasExpired) {
     return (
-      <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full relative">
+      <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
         <div className="relative overflow-hidden w-full" style={{
           height: isMobile ? '130px' : '180px'
         }}>
@@ -57,17 +57,15 @@ const SupplierCard = ({
             }}
           />
         </div>
-        <CardContent className="p-4 relative">
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-10">
-            <div className="text-center p-2">
-              <h4 className="font-medium text-sm mb-1">Conteúdo Bloqueado</h4>
-              <p className="text-xs text-muted-foreground mb-2">
-                Trial expirado
-              </p>
-              <Button size="sm" asChild>
-                <Link to="/auth/payment">Assinar</Link>
-              </Button>
-            </div>
+        <CardContent className="p-4 flex items-center justify-center min-h-[120px]">
+          <div className="text-center">
+            <h4 className="font-medium text-sm mb-1">Conteúdo Bloqueado</h4>
+            <p className="text-xs text-muted-foreground mb-3">
+              Trial expirado
+            </p>
+            <Button size="sm" asChild>
+              <Link to="/auth/payment">Assinar</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
