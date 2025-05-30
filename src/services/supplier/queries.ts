@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Supplier, SearchFilters } from '@/types';
 import { mapRawSupplierToDisplaySupplier, isValidSupplierResponse } from './mapper';
@@ -57,14 +56,14 @@ export const searchSuppliers = async (filters: SearchFilters): Promise<Supplier[
 
   // Apply category filter
   if (filters.categoryId && filters.categoryId !== 'all') {
-    // We need to join with suppliers_categories table
-    query = query.in('id', 
-      supabase
-        .from('suppliers_categories')
-        .select('supplier_id')
-        .eq('category_id', filters.categoryId)
-        .then(({ data }) => data?.map(item => item.supplier_id) || [])
-    );
+    // First get the supplier IDs that match the category
+    const { data: categoryMatches } = await supabase
+      .from('suppliers_categories')
+      .select('supplier_id')
+      .eq('category_id', filters.categoryId);
+    
+    const supplierIds = categoryMatches?.map(item => item.supplier_id) || [];
+    query = query.in('id', supplierIds); // Fixed: use resolved array instead of promise
   }
 
   // Apply state filter
