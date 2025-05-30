@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -18,14 +19,17 @@ import { getCategories } from '@/services/categoryService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useImageEditor } from '@/hooks/use-image-editor';
 import { useAuth } from '@/hooks/useAuth';
+import { useTrialStatus } from '@/hooks/use-trial-status';
 
 // Component for supplier card - optimized for mobile
 const SupplierCard = ({
   supplier,
-  allCategories
+  allCategories,
+  isTrialExpired
 }: {
   supplier: Supplier;
   allCategories: Category[];
+  isTrialExpired?: boolean;
 }) => {
   const {
     toggleFavorite,
@@ -37,6 +41,39 @@ const SupplierCard = ({
     const foundCategory = allCategories.find(cat => cat.id === categoryId);
     return foundCategory ? foundCategory.name : categoryId;
   };
+
+  // Se o trial expirou, mostra card bloqueado
+  if (isTrialExpired) {
+    return <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full opacity-50">
+        <div className="relative overflow-hidden w-full" style={{
+        height: isMobile ? '130px' : '180px'
+      }}>
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <span className="text-gray-500">Conteúdo bloqueado</span>
+          </div>
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="text-center text-white">
+              <Star className="h-8 w-8 mx-auto mb-2" />
+              <p className="text-sm font-medium">Trial expirado</p>
+              <p className="text-xs">Assine para ver</p>
+            </div>
+          </div>
+        </div>
+        <CardContent className="p-4">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-medium truncate text-gray-500">Fornecedor protegido</h3>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Conteúdo restrito</span>
+            <Link to="/auth/select-plan" className="text-[#9b87f5] hover:text-[#D946EF] text-sm font-medium transition-colors flex items-center gap-1">
+              Assinar
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </CardContent>
+      </Card>;
+  }
+
   return <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
       <div className="relative overflow-hidden w-full" style={{
       height: isMobile ? '130px' : '180px'
@@ -82,11 +119,44 @@ const SupplierCard = ({
 
 // Component for article card
 const ArticleCard = ({
-  article
+  article,
+  isTrialExpired
 }: {
   article: Article;
+  isTrialExpired?: boolean;
 }) => {
   const isMobile = useIsMobile();
+
+  // Se o trial expirou, mostra card bloqueado
+  if (isTrialExpired) {
+    return <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full opacity-50">
+        <div className="relative overflow-hidden w-full" style={{
+        height: isMobile ? '130px' : '160px'
+      }}>
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <span className="text-gray-500">Conteúdo bloqueado</span>
+          </div>
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="text-center text-white">
+              <Book className="h-8 w-8 mx-auto mb-2" />
+              <p className="text-sm font-medium">Trial expirado</p>
+              <p className="text-xs">Assine para ler</p>
+            </div>
+          </div>
+        </div>
+        <CardContent className="p-4">
+          <h3 className="font-medium line-clamp-2 mb-2 text-gray-500">Artigo protegido</h3>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">Conteúdo restrito</span>
+            <Link to="/auth/select-plan" className="text-[#9b87f5] hover:text-[#D946EF] text-sm font-medium transition-colors flex items-center gap-1">
+              Assinar
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </CardContent>
+      </Card>;
+  }
+
   return <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
       <div className="relative overflow-hidden w-full" style={{
       height: isMobile ? '130px' : '160px'
@@ -135,6 +205,7 @@ const SkeletonCard = () => {
       </CardContent>
     </Card>;
 };
+
 export default function Home() {
   const isMobile = useIsMobile();
   const [allCategories, setAllCategories] = useState<Category[]>([]);
@@ -142,9 +213,8 @@ export default function Home() {
     getImages
   } = useImageEditor();
   const landingImages = getImages();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
+  const { hasExpired: trialHasExpired } = useTrialStatus();
 
   // Fetch recent suppliers
   const {
@@ -152,7 +222,6 @@ export default function Home() {
     isLoading: loadingSuppliers
   } = useQuery({
     queryKey: ['suppliers', user?.id, 'withAverageRating'],
-    // Added a new key part to reflect change
     queryFn: () => getSuppliers(user?.id),
     enabled: true
   });
@@ -182,14 +251,15 @@ export default function Home() {
   // Get recent suppliers (sorted by creation date)
   const recentSuppliers = allSuppliers ? [...allSuppliers].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 4) : [];
 
-  // Atualizar lógica para Fornecedores Populares
-  const popularSuppliers = allSuppliers ? [...allSuppliers].filter(supplier => !supplier.hidden) // Considerar apenas não ocultos
-  .sort((a, b) => (b.averageRating ?? 0) - (a.averageRating ?? 0)) // Classificar por média de avaliação
-  .slice(0, isMobile ? 3 : 5) // Mostrar 5 no desktop, 3 no mobile, por exemplo
+  // Popular suppliers logic
+  const popularSuppliers = allSuppliers ? [...allSuppliers].filter(supplier => !supplier.hidden)
+  .sort((a, b) => (b.averageRating ?? 0) - (a.averageRating ?? 0))
+  .slice(0, isMobile ? 3 : 5)
   : [];
 
   // Get recent articles
   const recentArticles = articles ? [...articles].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 3) : [];
+
   return <AppLayout>
       {/* Hero Section */}
       <section className="mb-8 pt-4 md:pt-8 text-center">
@@ -223,7 +293,7 @@ export default function Home() {
             {[1, 2, 3, 4].map(i => <SkeletonCard key={`recent-skeleton-${i}`} />)}
           </div> : recentSuppliers.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-x-auto">
             {recentSuppliers.map(supplier => <div key={supplier.id} className="animate-fade-in w-full max-w-full">
-                <SupplierCard supplier={supplier} allCategories={allCategories} />
+                <SupplierCard supplier={supplier} allCategories={allCategories} isTrialExpired={trialHasExpired} />
               </div>)}
           </div> : <div className="flex flex-col items-center justify-center p-8 text-center">
             <Users className="h-12 w-12 text-muted-foreground mb-4" />
@@ -249,15 +319,14 @@ export default function Home() {
           </div> : popularSuppliers.length > 0 ? <div className="w-full max-w-full overflow-x-auto">
             <Carousel opts={{
           align: "start",
-          loop: popularSuppliers.length > (isMobile ? 1 : popularSuppliers.length > 2 ? 2 : 1) // Loop if more items than visible
+          loop: popularSuppliers.length > (isMobile ? 1 : popularSuppliers.length > 2 ? 2 : 1)
         }} className="w-full max-w-full">
               <CarouselContent className="-ml-2 md:-ml-4">
                 {popularSuppliers.map(supplier => <CarouselItem key={supplier.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 w-full max-w-full">
-                    <SupplierCard supplier={supplier} allCategories={allCategories} />
+                    <SupplierCard supplier={supplier} allCategories={allCategories} isTrialExpired={trialHasExpired} />
                   </CarouselItem>)}
               </CarouselContent>
               {popularSuppliers.length > (isMobile ? 1 : 3) &&
-          // Mostrar botões apenas se houver itens suficientes para scroll
           <>
                   <CarouselPrevious className="left-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
                   <CarouselNext className="right-1 bg-black/30 border-white/10 text-white hover:bg-black/50 hover:text-white hidden md:flex" />
@@ -286,7 +355,7 @@ export default function Home() {
             {[1, 2, 3].map(i => <SkeletonCard key={`article-skeleton-${i}`} />)}
           </div> : recentArticles.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 w-full max-w-full overflow-x-auto">
             {recentArticles.map(article => <div key={article.id} className="animate-fade-in w-full max-w-full">
-                <ArticleCard article={article} />
+                <ArticleCard article={article} isTrialExpired={trialHasExpired} />
               </div>)}
           </div> : <div className="flex flex-col items-center justify-center p-8 text-center">
             <Book className="h-12 w-12 text-muted-foreground mb-4" />

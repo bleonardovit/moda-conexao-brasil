@@ -1,12 +1,10 @@
 
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Instagram, Link as LinkIcon, Star, Heart, Lock } from 'lucide-react';
 import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Supplier } from '@/types';
 
 interface SupplierListItemProps {
@@ -16,6 +14,7 @@ interface SupplierListItemProps {
   getCategoryName: (categoryId: string) => string;
   getCategoryStyle: (categoryName: string) => string;
   formatAvgPrice: (price: string) => string;
+  isTrialExpired?: boolean;
 }
 
 export function SupplierListItem({
@@ -25,114 +24,194 @@ export function SupplierListItem({
   getCategoryName,
   getCategoryStyle,
   formatAvgPrice,
+  isTrialExpired = false
 }: SupplierListItemProps) {
-  if (supplier.isLockedForTrial) {
-    return <LockedSupplierCard key={supplier.id} />;
+  
+  // Se o trial expirou, mostra o card bloqueado
+  if (isTrialExpired) {
+    return (
+      <Card className="glass-morphism border-white/10 p-4 opacity-50">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative w-full md:w-48 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+            <Lock className="h-8 w-8 text-gray-400" />
+            <div className="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center">
+              <div className="text-center text-white">
+                <Lock className="h-6 w-6 mx-auto mb-1" />
+                <p className="text-xs">Bloqueado</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-between items-start mb-2">
+              <h3 className="text-lg font-semibold text-gray-500">Fornecedor protegido</h3>
+              <div className="flex gap-2 items-center">
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                  Trial expirado
+                </Badge>
+              </div>
+            </div>
+            <p className="text-gray-400 mb-3 line-clamp-2">
+              Conteúdo disponível apenas para assinantes
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <Badge variant="outline" className="text-gray-400">
+                Categoria protegida
+              </Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Acesso restrito</span>
+              <Link 
+                to="/auth/select-plan" 
+                className="text-[#9b87f5] hover:text-[#D946EF] font-medium transition-colors"
+              >
+                Assinar para ver →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
   }
 
   return (
-    <Card key={supplier.id} className="overflow-hidden card-hover">
-      <div className="sm:flex">
-        <div className="sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent">
-          <img
-            src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'}
-            alt={supplier.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <CardContent className="sm:w-2/3 md:w-3/4 p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="text-lg font-bold flex items-center">
-                {supplier.name}
-                {supplier.featured && (
+    <Link to={`/suppliers/${supplier.id}`}>
+      <Card className="glass-morphism border-white/10 hover:border-[#9b87f5]/30 transition-all duration-300 hover:shadow-lg hover:shadow-[#9b87f5]/10 group">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative w-full md:w-48 h-32 overflow-hidden rounded-lg">
+              <img
+                src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'}
+                alt={supplier.name}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158';
+                }}
+              />
+              {supplier.featured && (
+                <div className="absolute top-2 left-2">
+                  <Badge className="bg-[#F97316]/90 text-white border-0">
+                    <Star className="h-3 w-3 mr-1" />
+                    Destaque
+                  </Badge>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex-1">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold group-hover:text-[#9b87f5] transition-colors">{supplier.name}</h3>
+                <div className="flex gap-2 items-center">
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger>
-                        <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" />
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={(e) => onToggleFavorite(supplier, e)}
+                          className="text-gray-400 hover:text-[#D946EF] transition-colors p-1"
+                        >
+                          <Heart className={`h-5 w-5 ${isFavorite(supplier.id) ? "fill-[#D946EF] text-[#D946EF]" : ""}`} />
+                        </button>
                       </TooltipTrigger>
-                      <TooltipContent>Fornecedor em destaque</TooltipContent>
+                      <TooltipContent>
+                        <p>{isFavorite(supplier.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}</p>
+                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                )}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-1">
-                {supplier.city}, {supplier.state}
-              </p>
-              <p className="text-xs text-muted-foreground mb-2">Código: {supplier.code}</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={(e) => onToggleFavorite(supplier, e)}
-              title={isFavorite(supplier.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-            >
-              <Heart
-                className={`h-5 w-5 ${
-                  isFavorite(supplier.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
-                }`}
-              />
-              <span className="sr-only">
-                {isFavorite(supplier.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-              </span>
-            </Button>
-          </div>
-
-          <p className="text-sm mb-4 line-clamp-2">{supplier.description}</p>
-
-          <div className="flex flex-wrap gap-2 mb-3">
-            {supplier.categories && supplier.categories.length > 0 ? (
-              supplier.categories.map((categoryId) => {
-                const categoryName = getCategoryName(categoryId);
-                const categoryStyle = getCategoryStyle(categoryName);
-                return categoryName ? (
-                  <Badge key={categoryId} variant="outline" className={categoryStyle || ''}>
-                    {categoryName}
+                  
+                  {supplier.instagram && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={supplier.instagram}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-gray-400 hover:text-pink-500 transition-colors p-1"
+                          >
+                            <Instagram className="h-5 w-5" />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Ver Instagram</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  
+                  {supplier.website && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={supplier.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-gray-400 hover:text-blue-500 transition-colors p-1"
+                          >
+                            <LinkIcon className="h-5 w-5" />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Visitar site</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </div>
+              
+              <p className="text-muted-foreground mb-3 line-clamp-2">{supplier.description}</p>
+              
+              <div className="flex flex-wrap gap-2 mb-3">
+                {supplier.categories && supplier.categories.slice(0, 3).map((categoryId) => {
+                  const categoryName = getCategoryName(categoryId);
+                  return (
+                    <Badge
+                      key={categoryId}
+                      variant="secondary"
+                      className={getCategoryStyle(categoryName) || ""}
+                    >
+                      {categoryName}
+                    </Badge>
+                  );
+                })}
+                {supplier.categories && supplier.categories.length > 3 && (
+                  <Badge variant="outline">
+                    +{supplier.categories.length - 3} mais
                   </Badge>
-                ) : null;
-              })
-            ) : (
-              <span className="text-xs text-muted-foreground">Sem categorias</span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-            <div>
-              <span className="font-medium">Pedido mínimo:</span> {supplier.min_order || 'Não informado'}
+                )}
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm text-muted-foreground">
+                    {supplier.city}, {supplier.state}
+                  </span>
+                  {supplier.avg_price && (
+                    <span className="text-sm font-medium">
+                      Preço médio: {formatAvgPrice(supplier.avg_price)}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex gap-2 flex-wrap">
+                  {supplier.requires_cnpj && (
+                    <Badge variant="outline" className="text-xs">
+                      Exige CNPJ
+                    </Badge>
+                  )}
+                  {supplier.min_order && (
+                    <Badge variant="outline" className="text-xs">
+                      Pedido mín: {supplier.min_order}
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="font-medium">Preço médio:</span> {formatAvgPrice(supplier.avg_price || '')}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {supplier.instagram && (
-              <Button size="sm" variant="outline" asChild>
-                <a
-                  href={`https://instagram.com/${supplier.instagram.replace('@', '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Instagram className="mr-1 h-4 w-4" />
-                  Instagram
-                </a>
-              </Button>
-            )}
-            {supplier.website && (
-              <Button size="sm" variant="outline" asChild>
-                <a href={supplier.website} target="_blank" rel="noopener noreferrer">
-                  <LinkIcon className="mr-1 h-4 w-4" />
-                  Site
-                </a>
-              </Button>
-            )}
-            <Button size="sm" asChild>
-              <Link to={`/suppliers/${supplier.id}`}>Ver detalhes</Link>
-            </Button>
           </div>
         </CardContent>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   );
 }
