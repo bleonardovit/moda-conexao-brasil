@@ -103,7 +103,7 @@ export default function SupplierDetail() {
         setLoading(true);
         setError(null);
         try {
-          const fetchedSupplier = await getSupplierById(supplierId, user?.id);
+          const fetchedSupplier = await getSupplierById(supplierId, false);
           if (fetchedSupplier) {
             setSupplier(fetchedSupplier);
 
