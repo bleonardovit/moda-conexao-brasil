@@ -235,7 +235,7 @@ export default function Home() {
       </section>
 
       {/* Popular Suppliers Section */}
-      <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-1 gap-1 md:gap-1 w-full max-w-full overflow-x-auto">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1 md:gap-1 w-full max-w-full overflow-x-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl md:text-2xl font-bold text-gradient">Fornecedores Populares</h2>
           <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm font-medium">
