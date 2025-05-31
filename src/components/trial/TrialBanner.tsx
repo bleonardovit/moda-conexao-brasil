@@ -5,7 +5,12 @@ import { useTrialStatus } from "@/hooks/use-trial-status";
 import { Link } from "react-router-dom";
 
 export function TrialBanner() {
-  const { isInTrial, daysRemaining, hoursRemaining, hasExpired } = useTrialStatus();
+  const { isInTrial, daysRemaining, hoursRemaining, hasExpired, isVerified } = useTrialStatus();
+
+  // Não renderizar nada até que a verificação seja concluída
+  if (!isVerified) {
+    return null;
+  }
 
   if (hasExpired) {
     return (
@@ -84,4 +89,3 @@ export function TrialBanner() {
     </div>
   );
 }
-
