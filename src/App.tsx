@@ -148,30 +148,10 @@ const AppRoutes = () => {
   
   // Novo componente para bloquear acesso se o trial expirou
   const ExpiredTrialGate = ({ children }: { children: React.ReactNode }) => {
-    const { hasExpired, daysRemaining } = useTrialStatus(); // daysRemaining can help determine if status is resolved
-    const [isLoadingTrialStatus, setIsLoadingTrialStatus] = useState(true);
+    const { hasExpired, isVerified } = useTrialStatus();
 
-    useEffect(() => {
-      // A simple way to know if useTrialStatus has likely resolved its initial state.
-      // `hasExpired` will be boolean (true/false) once resolved from its initial undefined/null state.
-      // `daysRemaining` is also a good indicator.
-      // This timeout is a pragmatic way to wait for useTrialStatus to likely finish its first run.
-      const timer = setTimeout(() => {
-        if (typeof hasExpired === 'boolean') {
-           setIsLoadingTrialStatus(false);
-        }
-      }, 500); // Adjust timeout as needed, or ideally useTrialStatus would provide a loading flag.
-      
-      // If already resolved, clear loading immediately
-      if (typeof hasExpired === 'boolean') {
-        setIsLoadingTrialStatus(false);
-        clearTimeout(timer);
-      }
-      
-      return () => clearTimeout(timer);
-    }, [hasExpired]);
-
-    if (isLoadingTrialStatus && auth.isAuthenticated) { // Only show loader if authenticated and trial status is pending
+    // Mostrar loading até que a verificação seja concluída
+    if (!isVerified && auth.isAuthenticated) {
        return (
          <AppLayout>
             <div className="flex justify-center items-center h-screen">
@@ -182,7 +162,8 @@ const AppRoutes = () => {
        );
     }
 
-    if (hasExpired) {
+    // Só mostrar tela de trial expirado após verificação completa E se realmente expirou
+    if (isVerified && hasExpired) {
       return (
         <AppLayout>
           <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -196,6 +177,7 @@ const AppRoutes = () => {
         </AppLayout>
       );
     }
+
     return <>{children}</>;
   };
 
