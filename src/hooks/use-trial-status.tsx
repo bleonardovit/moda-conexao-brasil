@@ -16,6 +16,7 @@ export interface TrialStatus {
   hoursRemaining: number;
   hasExpired: boolean;
   isLoading: boolean;
+  isVerified: boolean; // New field to track verification completion
   allowedSupplierIds: string[];
   isSupplierAllowed: (supplierId: string) => Promise<boolean>;
   isFeatureAllowed: (featureKey: string) => Promise<boolean>;
@@ -28,6 +29,7 @@ export function useTrialStatus(): TrialStatus {
   const [hoursRemaining, setHoursRemaining] = useState(0);
   const [hasExpired, setHasExpired] = useState(true); // Start restrictive
   const [isLoading, setIsLoading] = useState(true); // Start loading
+  const [isVerified, setIsVerified] = useState(false); // New state for verification
   const [allowedSupplierIds, setAllowedSupplierIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -39,11 +41,13 @@ export function useTrialStatus(): TrialStatus {
         setHoursRemaining(0);
         setAllowedSupplierIds([]);
         setIsLoading(false); // Done loading
+        setIsVerified(true); // Verification complete
         return;
       }
 
       try {
         setIsLoading(true); // Start verification
+        setIsVerified(false); // Reset verification state
         
         // Auto-start trial for new users
         await autoStartTrialForUser(user.id);
@@ -106,6 +110,7 @@ export function useTrialStatus(): TrialStatus {
         setAllowedSupplierIds([]);
       } finally {
         setIsLoading(false); // Done with verification
+        setIsVerified(true); // Verification complete
       }
     };
     
@@ -149,6 +154,7 @@ export function useTrialStatus(): TrialStatus {
     hoursRemaining,
     hasExpired,
     isLoading,
+    isVerified,
     allowedSupplierIds,
     isSupplierAllowed,
     isFeatureAllowed

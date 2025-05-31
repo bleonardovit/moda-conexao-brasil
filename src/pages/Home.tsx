@@ -34,7 +34,7 @@ const SupplierCard = ({
   } = useFavorites();
   const [isHovering, setIsHovering] = useState(false);
   const isMobile = useIsMobile();
-  const { hasExpired, isLoading } = useTrialStatus();
+  const { hasExpired, isLoading, isVerified } = useTrialStatus();
   
   const getCategoryNameFromId = (categoryId: string): string => {
     const foundCategory = allCategories.find(cat => cat.id === categoryId);
@@ -42,7 +42,7 @@ const SupplierCard = ({
   };
 
   // Se ainda está carregando o status do trial, mostrar apenas a foto com loading
-  if (isLoading) {
+  if (isLoading || !isVerified) {
     return (
       <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
         <div className="relative overflow-hidden w-full" style={{
@@ -74,8 +74,8 @@ const SupplierCard = ({
     );
   }
 
-  // Se o trial expirou, mostrar versão completamente bloqueada
-  if (hasExpired) {
+  // Se o trial expirou E a verificação foi concluída, mostrar versão completamente bloqueada
+  if (hasExpired && isVerified) {
     return (
       <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
         <div className="relative overflow-hidden w-full" style={{

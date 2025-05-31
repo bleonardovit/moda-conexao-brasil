@@ -27,14 +27,14 @@ export function SupplierListItem({
   getCategoryStyle,
   formatAvgPrice,
 }: SupplierListItemProps) {
-  const { hasExpired, isLoading } = useTrialStatus();
+  const { hasExpired, isLoading, isVerified } = useTrialStatus();
 
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
   }
 
   // Se ainda está carregando o status do trial, mostrar apenas a foto com loading
-  if (isLoading) {
+  if (isLoading || !isVerified) {
     return (
       <Card key={supplier.id} className="overflow-hidden card-hover">
         <div className="sm:flex">
@@ -69,8 +69,8 @@ export function SupplierListItem({
     );
   }
 
-  // Se o trial expirou, mostrar versão completamente bloqueada
-  if (hasExpired) {
+  // Se o trial expirou E a verificação foi concluída, mostrar versão completamente bloqueada
+  if (hasExpired && isVerified) {
     return (
       <Card key={supplier.id} className="overflow-hidden card-hover">
         <div className="sm:flex">
