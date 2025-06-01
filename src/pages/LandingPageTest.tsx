@@ -15,7 +15,6 @@ const LandingPageTest: React.FC = () => {
       <header className="absolute top-0 left-0 p-4 w-full bg-transparent z-20"> {/* Aumentado z-index caso haja sobreposição */}
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl sm:text-2xl font-bold text-white">Os Fornecedores</h1>
-          {/* Pode adicionar um ThemeToggle aqui se desejar, como em outras páginas */}
         </div>
       </header>
       
@@ -28,7 +27,7 @@ const LandingPageTest: React.FC = () => {
           Diga adeus ao medo de golpes e à falta de variedade. Cadastre-se e descubra fornecedores validados e recomendados!
         </p>
         <Button
-          onClick={() => alert('CTA Clicado!')}
+          onClick={() => navigate('/auth/register')}
           className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-8 sm:py-4 sm:px-10 rounded-lg text-base sm:text-lg transform transition-transform duration-200 hover:scale-105 shadow-lg hover:shadow-pink-500/50"
         >
           Quero Acessar Agora!
@@ -142,7 +141,7 @@ const LandingPageTest: React.FC = () => {
         </p>
         <p className="text-4xl sm:text-5xl font-bold text-pink-400 mb-8">R$ 87,00<span className="text-2xl text-gray-300">/Anual</span></p>
         <Button
-          onClick={() => alert('CTA Oferta Clicado!')}
+          onClick={() => navigate('/auth/select-plan')}
           className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-8 sm:py-4 sm:px-10 rounded-lg text-lg sm:text-xl transform transition-transform duration-200 hover:scale-105 shadow-lg hover:shadow-pink-500/50"
         >
           Quero Acessar Agora!
@@ -200,7 +199,7 @@ const LandingPageTest: React.FC = () => {
 
         <div className="text-center mt-12">
           <Button
-            onClick={() => alert('CTA "Quero ter acesso" Clicado!')}
+            onClick={() => navigate('/auth/register')}
             className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-8 sm:py-4 sm:px-10 rounded-lg text-lg sm:text-xl transform transition-transform duration-200 hover:scale-105 shadow-lg hover:shadow-pink-500/50"
           >
             Quero ter acesso
@@ -250,7 +249,7 @@ const LandingPageTest: React.FC = () => {
         </p>
         <div className="text-center">
             <Button
-              onClick={() => alert('CTA Assine Agora Bônus Clicado!')} 
+              onClick={() => navigate('/auth/select-plan')} 
               className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 px-6 sm:py-9 sm:px-8 rounded-lg text-lg sm:text-xl w-full max-w-md sm:max-w-lg mx-auto break-words leading-tight transform transition-transform duration-200 hover:scale-105 shadow-lg hover:shadow-pink-500/50"
             >
               Assine agora e aproveite <br /> este bônus exclusivo!
