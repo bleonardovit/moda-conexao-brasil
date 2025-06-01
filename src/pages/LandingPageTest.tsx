@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
@@ -178,15 +177,21 @@ const LandingPageTest: React.FC = () => {
         
         <div className="flex overflow-x-auto space-x-6 pb-8 snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8 md:space-x-0 md:max-w-7xl md:mx-auto px-4 md:px-0 custom-scrollbar">
           {[
-            { title: "Moda Plus Size", videoSrc: "/videos/0516.mp4", desc: "Descubra fornecedores incríveis de moda plus size com peças modernas e confortáveis." },
-            { title: "Moda Fitness", videoSrc: "/videos/0516.mp4", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
-            { title: "Moda Balada", videoSrc: "/videos/0516.mp4", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" },
-            { title: "Moda Evangélica", videoSrc: "/videos/0516.mp4", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
+            { title: "Moda Plus Size", youtubeId: "dQw4w9WgXcQ", desc: "Descubra fornecedores incríveis de moda plus size com peças modernas e confortáveis." },
+            { title: "Moda Fitness", youtubeId: "dQw4w9WgXcQ", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
+            { title: "Moda Balada", youtubeId: "dQw4w9WgXcQ", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" },
+            { title: "Moda Evangélica", youtubeId: "dQw4w9WgXcQ", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
           ].map((videoItem, index) => (
             <div key={index} className={`flex-shrink-0 w-3/4 sm:w-2/3 md:w-full snap-center ${cardStyle}`}>
               <h3 className="text-xl font-semibold mb-3 text-pink-400">{videoItem.title}</h3>
               <div className="aspect-[9/16] w-full rounded-md overflow-hidden mb-3">
-                <video src={videoItem.videoSrc} controls className="w-full h-full object-cover"></video>
+                <iframe
+                  src={`https://www.youtube.com/embed/${videoItem.youtubeId}`}
+                  title={videoItem.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
               </div>
               <p className="text-sm text-gray-300 leading-relaxed">{videoItem.desc}</p>
             </div>
