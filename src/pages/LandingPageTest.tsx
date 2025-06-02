@@ -301,8 +301,6 @@ const LandingPageTest: React.FC = () => {
             <h5 className="font-bold text-lg mb-4 text-white">Redes Sociais</h5>
             <div className="flex justify-center space-x-6 text-3xl">
               <a href="#" aria-label="Instagram" className="hover:text-pink-400 transition-colors transform hover:scale-110"><span role="img" aria-label="Instagram">📸</span></a>
-              <a href="#" aria-label="Facebook" className="hover:text-pink-400 transition-colors transform hover:scale-110"><span role="img" aria-label="Facebook">📘</span></a>
-              <a href="#" aria-label="LinkedIn" className="hover:text-pink-400 transition-colors transform hover:scale-110"><span role="img" aria-label="LinkedIn">🔗</span></a>
             </div>
           </div>
           <div>
