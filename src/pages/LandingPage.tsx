@@ -513,9 +513,9 @@ const LandingPage = () => {
             <div>
               <h3 className="font-semibold text-lg mb-4 text-gray-900">Legal</h3>
               <ul className="space-y-2">
-                <li><a href="/legal/terms" className="text-gray-600 hover:text-gray-900">Termos de Uso</a></li>
-                <li><a href="/legal/privacy" className="text-gray-600 hover:text-gray-900">Política de Privacidade</a></li>
-                <li><a href="/legal/cookies" className="text-gray-600 hover:text-gray-900">Política de Cookies</a></li>
+                <li><button onClick={() => navigate('/legal/terms')} className="text-gray-600 hover:text-gray-900">Termos de Uso</button></li>
+                <li><button onClick={() => navigate('/legal/privacy')} className="text-gray-600 hover:text-gray-900">Política de Privacidade</button></li>
+                <li><button onClick={() => navigate('/legal/cookies')} className="text-gray-600 hover:text-gray-900">Política de Cookies</button></li>
               </ul>
             </div>
             

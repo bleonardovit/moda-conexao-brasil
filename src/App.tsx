@@ -226,6 +226,11 @@ const AppRoutes = () => {
       {/* Nova rota para a Landing Page de Teste */}
       <Route path="/landing-test" element={<LandingPageTest />} />
       
+      {/* Páginas legais - públicas */}
+      <Route path="/legal/terms" element={<TermsOfService />} />
+      <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+      <Route path="/legal/cookies" element={<CookiePolicy />} />
+      
       {/* Home page ao logar */}
       <Route 
         path="/home" 
