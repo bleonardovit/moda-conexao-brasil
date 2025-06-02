@@ -12,6 +12,11 @@ import LandingPage from "./pages/LandingPage";
 import LandingPageTest from "./pages/LandingPageTest";
 import { TrackingScripts } from "./components/tracking/TrackingScripts";
 
+// Páginas legais
+import TermsOfService from "./pages/legal/TermsOfService";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import CookiePolicy from "./pages/legal/CookiePolicy";
+
 // Páginas de autenticação
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
