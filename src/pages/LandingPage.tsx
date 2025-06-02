@@ -410,37 +410,72 @@ const LandingPage = () => {
             <div className="max-w-3xl mx-auto">
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="item-1" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">Como posso me cadastrar?</AccordionTrigger>
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">1. Os fornecedores são realmente confiáveis?</AccordionTrigger>
                   <AccordionContent className="text-gray-600">
-                    Clique em "Cadastre-se" no topo da página e preencha o formulário com suas informações.
+                    Sim! Todos os fornecedores disponíveis na plataforma são previamente verificados por nossa equipe. Trabalhamos apenas com parceiros que possuem histórico sólido no mercado de moda, garantindo segurança e qualidade para o seu negócio.
                   </AccordionContent>
                 </AccordionItem>
                 
                 <AccordionItem value="item-2" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">Posso mudar de plano depois?</AccordionTrigger>
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">2. De onde são os fornecedores da plataforma?</AccordionTrigger>
                   <AccordionContent className="text-gray-600">
-                    Sim, você pode alterar seu plano a qualquer momento através do portal de gerenciamento de assinatura.
+                    Atualmente, contamos com fornecedores das principais regiões do Brasil, incluindo São Paulo, Goiânia, Fortaleza e Pernambuco. Essa diversidade regional permite uma ampla variedade de estilos e produtos para atender às suas necessidades.
                   </AccordionContent>
                 </AccordionItem>
                 
                 <AccordionItem value="item-3" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">Os fornecedores são realmente verificados?</AccordionTrigger>
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">3. Após o pagamento, em quanto tempo terei acesso à plataforma?</AccordionTrigger>
                   <AccordionContent className="text-gray-600">
-                    Sim, todos os fornecedores passam por um processo de verificação antes de serem listados.
+                    A liberação do acesso é imediata após a confirmação do pagamento. Você receberá um e-mail com as instruções para começar a explorar todos os recursos disponíveis.
                   </AccordionContent>
                 </AccordionItem>
                 
                 <AccordionItem value="item-4" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">Como posso entrar em contato com o suporte?</AccordionTrigger>
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">4. Vou receber um PDF com as informações?</AccordionTrigger>
                   <AccordionContent className="text-gray-600">
-                    Você pode entrar em contato através do e-mail suporte@conexaobrasil.com ou pelo chat disponível na plataforma.
+                    Não! Nossa plataforma é dinâmica e interativa, com atualizações frequentes e uma comunidade ativa de vendedoras que compartilham avaliações e comentários sobre os fornecedores. Isso proporciona uma experiência muito mais rica e atualizada do que um PDF estático.
                   </AccordionContent>
                 </AccordionItem>
                 
                 <AccordionItem value="item-5" className="border-gray-200">
-                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">O que acontece após o cadastro?</AccordionTrigger>
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">5. Por quanto tempo terei acesso à plataforma?</AccordionTrigger>
                   <AccordionContent className="text-gray-600">
-                    Após o cadastro e a confirmação do pagamento da assinatura, você terá acesso imediato à plataforma conforme o plano escolhido.
+                    Oferecemos dois tipos de planos:{'\n'}Plano Anual: Acesso por 12 meses, com renovação anual.{'\n'}Plano Mensal: Acesso contínuo enquanto a assinatura estiver ativa.
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="item-6" className="border-gray-200">
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">6. Preciso ter CNPJ para comprar dos fornecedores?</AccordionTrigger>
+                  <AccordionContent className="text-gray-600">
+                    Não! A maioria dos fornecedores aceita compras com CPF. Alguns podem solicitar CNPJ, mas essa não é uma exigência geral na plataforma.
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="item-7" className="border-gray-200">
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">7. Quais tipos de fornecedores encontrarei na plataforma?</AccordionTrigger>
+                  <AccordionContent className="text-gray-600">
+                    Você terá acesso a uma variedade de fornecedores especializados em diversos segmentos, como:{'\n'}Moda Plus Size{'\n'}Moda Fitness{'\n'}Moda Balada{'\n'}Moda Evangélica{'\n'}E muitos outros.
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="item-8" className="border-gray-200">
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">8. A plataforma oferece suporte ao usuário?</AccordionTrigger>
+                  <AccordionContent className="text-gray-600">
+                    Sim! Disponibilizamos suporte dedicado para auxiliá-lo em suas negociações e no uso da plataforma, garantindo que você aproveite ao máximo todos os recursos disponíveis.
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="item-9" className="border-gray-200">
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">9. Os conteúdos da área de dicas são atualizados regularmente?</AccordionTrigger>
+                  <AccordionContent className="text-gray-600">
+                    Sim! Nossa equipe atualiza constantemente a área de conteúdos, trazendo as informações mais recentes e relevantes sobre tráfego pago, empreendedorismo, finanças e gestão para impulsionar o seu negócio de moda.
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="item-10" className="border-gray-200">
+                  <AccordionTrigger className="text-gray-900 hover:text-gray-700">10. Como posso cancelar minha assinatura?</AccordionTrigger>
+                  <AccordionContent className="text-gray-600">
+                    Você pode cancelar sua assinatura a qualquer momento através das configurações da sua conta, de forma simples e sem burocracia.
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
