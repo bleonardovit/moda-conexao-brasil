@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
@@ -285,38 +286,15 @@ const LandingPageTest: React.FC = () => {
         </div>
       </section>
       
-      {/* Seção "Landing Page de Teste" - Mantida como está, pois é secundária */}
-      <main className={`text-center ${sectionPadding} w-full max-w-4xl mx-auto`}>
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-6 text-white">Landing Page de Teste</h2>
-        <p className="text-lg sm:text-xl mb-8 px-4 sm:px-2 text-gray-300">
-          Esta é uma página de destino secundária para fins de teste e desenvolvimento.
-        </p>
-        <div className="space-x-4">
-          <Button 
-            onClick={() => navigate('/')}
-            variant="outline"
-            className="border-pink-500 text-pink-500 hover:bg-pink-500 hover:text-white transform transition-transform duration-200 hover:scale-105"
-          >
-            Voltar para Landing Page Principal
-          </Button>
-          <Button 
-            onClick={() => navigate('/home')}
-            className="bg-purple-600 hover:bg-purple-700 text-white transform transition-transform duration-200 hover:scale-105"
-          >
-            Ir para Home (se logado)
-          </Button>
-        </div>
-      </main>
-      
       {/* Rodapé Novo */}
       <footer className={`w-full bg-black/60 backdrop-blur-lg text-gray-300 p-8 sm:p-10 text-center mt-16 border-t border-gray-700/50`}>
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-8">
           <div>
             <h5 className="font-bold text-lg mb-4 text-white">Links Úteis</h5>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-pink-400 transition-colors">Política de Privacidade</a></li>
-              <li><a href="#" className="hover:text-pink-400 transition-colors">Termos de Uso</a></li>
-              <li><a href="#" className="hover:text-pink-400 transition-colors">Contato</a></li>
+              <li><button onClick={() => navigate('/legal/terms')} className="text-gray-300 hover:text-pink-400 transition-colors">Termos de Uso</button></li>
+              <li><button onClick={() => navigate('/legal/privacy')} className="text-gray-300 hover:text-pink-400 transition-colors">Política de Privacidade</button></li>
+              <li><button onClick={() => navigate('/legal/cookies')} className="text-gray-300 hover:text-pink-400 transition-colors">Política de Cookies</button></li>
             </ul>
           </div>
           <div>
