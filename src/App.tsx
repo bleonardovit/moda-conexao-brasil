@@ -45,6 +45,7 @@ import Reports from "./pages/admin/Reports";
 import ArticlesManagement from "./pages/admin/ArticlesManagement";
 import TrackingSettings from "./pages/admin/TrackingSettings";
 import SecurityMonitoring from "./pages/admin/SecurityMonitoring";
+import ReviewsModeration from "./pages/admin/ReviewsModeration";
 
 // Configuração do React Query
 import { defaultQueryOptions } from "./lib/react-query-config";
@@ -394,6 +395,14 @@ const AppRoutes = () => {
         element={
           <AdminRoute>
             <SuppliersBulkUpload />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/admin/reviews-moderation" 
+        element={
+          <AdminRoute>
+            <ReviewsModeration />
           </AdminRoute>
         } 
       />

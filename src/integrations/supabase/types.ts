@@ -355,10 +355,32 @@ export type Database = {
         }
         Relationships: []
       }
+      review_bans: {
+        Row: {
+          blocked_at: string
+          blocked_by: string | null
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          blocked_at?: string
+          blocked_by?: string | null
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          blocked_at?: string
+          blocked_by?: string | null
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           comment: string | null
           created_at: string
+          hidden: boolean
           id: string
           rating: number
           supplier_id: string
@@ -368,6 +390,7 @@ export type Database = {
         Insert: {
           comment?: string | null
           created_at?: string
+          hidden?: boolean
           id?: string
           rating: number
           supplier_id: string
@@ -377,6 +400,7 @@ export type Database = {
         Update: {
           comment?: string | null
           created_at?: string
+          hidden?: boolean
           id?: string
           rating?: number
           supplier_id?: string

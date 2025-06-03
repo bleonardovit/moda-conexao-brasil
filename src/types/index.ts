@@ -2,10 +2,9 @@
 export * from './article';
 export * from './category';
 export * from './featureAccess';
+export * from './review';
 export * from './security';
-export * from './supplier'; // This exports Review
+export * from './supplier';
 export * from './trial';
 export * from './user';
 export * from './payment';
-// Removed: export * from './review'; as Review is now exported from ./supplier
-

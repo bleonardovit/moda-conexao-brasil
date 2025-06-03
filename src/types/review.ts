@@ -8,4 +8,12 @@ export interface Review {
   rating: number;
   comment: string;
   created_at: string;
+  hidden?: boolean;
+}
+
+export interface ReviewBan {
+  user_id: string;
+  blocked_at: string;
+  blocked_by?: string;
+  reason?: string;
 }

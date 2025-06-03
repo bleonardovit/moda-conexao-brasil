@@ -1,10 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import type { Review } from '@/types'; // Assumindo que Review está em @/types
-// import { getUser } from './userService'; // REMOVIDO - userService não encontrado no momento
+import type { Review, ReviewBan } from '@/types/review';
 
 // Tipagem para os dados necessários para criar uma review
-// O user_id será obtido da sessão, user_name pode ser obtido do perfil
 export interface CreateReviewData {
   supplier_id: string;
   rating: number;
@@ -12,7 +10,7 @@ export interface CreateReviewData {
 }
 
 /**
- * Busca todas as reviews para um fornecedor específico.
+ * Busca todas as reviews para um fornecedor específico (filtra reviews ocultas para usuários normais).
  */
 export const getReviewsBySupplierId = async (supplierId: string): Promise<Review[]> => {
   if (!supplierId) {
@@ -22,9 +20,10 @@ export const getReviewsBySupplierId = async (supplierId: string): Promise<Review
   try {
     const { data, error } = await supabase
       .from('reviews')
-      .select('*') // Seleciona todas as colunas da tabela reviews
+      .select('*')
       .eq('supplier_id', supplierId)
-      .order('created_at', { ascending: false }); // Mais recentes primeiro
+      .eq('hidden', false) // Sempre filtrar reviews ocultas para usuários normais
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error(`Error fetching reviews for supplier ${supplierId}:`, error);
@@ -38,6 +37,105 @@ export const getReviewsBySupplierId = async (supplierId: string): Promise<Review
 };
 
 /**
+ * Busca todas as reviews para moderação (apenas admins).
+ */
+export const getAllReviewsForModeration = async (): Promise<(Review & { supplier_name?: string })[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(`
+        *,
+        suppliers(name)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all reviews for moderation:', error);
+      throw error;
+    }
+
+    return (data || []).map(review => ({
+      ...review,
+      supplier_name: review.suppliers?.name
+    }));
+  } catch (err) {
+    console.error('Exception in getAllReviewsForModeration:', err);
+    throw err;
+  }
+};
+
+/**
+ * Oculta uma review (marca como hidden = true).
+ */
+export const hideReview = async (reviewId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('reviews')
+      .update({ hidden: true })
+      .eq('id', reviewId);
+
+    if (error) {
+      console.error('Error hiding review:', error);
+      throw error;
+    }
+  } catch (err) {
+    console.error('Exception in hideReview:', err);
+    throw err;
+  }
+};
+
+/**
+ * Verifica se um usuário está banido de fazer reviews.
+ */
+export const isUserBannedFromReviews = async (userId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('review_bans')
+      .select('user_id')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+      console.error('Error checking user ban status:', error);
+      throw error;
+    }
+
+    return !!data;
+  } catch (err) {
+    console.error('Exception in isUserBannedFromReviews:', err);
+    return false;
+  }
+};
+
+/**
+ * Bane um usuário de fazer reviews.
+ */
+export const banUserFromReviews = async (userId: string, reason?: string): Promise<void> => {
+  try {
+    const { data: currentUser } = await supabase.auth.getUser();
+    
+    const { error } = await supabase
+      .from('review_bans')
+      .insert({
+        user_id: userId,
+        blocked_by: currentUser.user?.id,
+        reason: reason
+      });
+
+    if (error) {
+      console.error('Error banning user from reviews:', error);
+      if (error.code === '23505') {
+        throw new Error('Usuário já está banido de fazer avaliações.');
+      }
+      throw error;
+    }
+  } catch (err) {
+    console.error('Exception in banUserFromReviews:', err);
+    throw err;
+  }
+};
+
+/**
  * Cria uma nova review no banco de dados.
  */
 export const createReview = async (reviewData: CreateReviewData, userId: string): Promise<Review> => {
@@ -45,27 +143,18 @@ export const createReview = async (reviewData: CreateReviewData, userId: string)
     throw new Error('User ID is required to create a review.');
   }
 
-  let userName = 'Usuário Anônimo'; // Fallback inicial
+  // Verifica se o usuário está banido
+  const isBanned = await isUserBannedFromReviews(userId);
+  if (isBanned) {
+    throw new Error('Você está temporariamente impedido de fazer avaliações.');
+  }
+
+  let userName = 'Usuário Anônimo';
   try {
-    // Tenta obter o nome do usuário a partir do email se o perfil não for encontrado/usado
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.email) {
-      userName = user.email.split('@')[0]; // Usa a parte local do email como nome de usuário
+      userName = user.email.split('@')[0];
     }
-    // Se você tiver uma tabela de perfis (ex: 'profiles') com um campo como 'full_name' ou 'username'
-    // e uma forma de buscar esse perfil pelo userId, você poderia fazer:
-    // const { data: userProfile, error: profileError } = await supabase
-    //   .from('profiles') 
-    //   .select('full_name') // ou 'username'
-    //   .eq('id', userId)
-    //   .single();
-    // if (profileError) console.warn('Could not fetch user profile name for review:', profileError);
-    // if (userProfile && userProfile.full_name) {
-    //   userName = userProfile.full_name;
-    // } else if (userProfile && userProfile.username) { // Exemplo se tiver username
-    //   userName = userProfile.username;
-    // }
-
   } catch (authError) {
     console.warn("Could not fetch user email for review user_name fallback:", authError);
   }
@@ -113,7 +202,8 @@ export const getAverageRatingsForSupplierIds = async (supplierIds: string[]): Pr
   const { data: reviews, error } = await supabase
     .from('reviews')
     .select('supplier_id, rating')
-    .in('supplier_id', supplierIds);
+    .in('supplier_id', supplierIds)
+    .eq('hidden', false); // Apenas reviews não ocultas
 
   if (error) {
     console.error('Error fetching reviews for average rating calculation:', error);
