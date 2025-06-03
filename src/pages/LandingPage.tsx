@@ -247,7 +247,7 @@ const LandingPage = () => {
             <div className="flex overflow-x-auto space-x-6 pb-8 snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8 md:space-x-0 md:max-w-7xl md:mx-auto custom-scrollbar">
               {[
                 { title: "Moda Plus Size", youtubeId: "dQw4w9WgXcQ", desc: "Descubra fornecedores incríveis de moda plus size com peças modernas e confortáveis." },
-                { title: "Moda Fitness", youtubeId: "dQw4w9WgXcQ", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
+                { title: "Moda Fitness", youtubeId: "TDE58PpnJVU", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
                 { title: "Moda Balada", youtubeId: "dQw4w9WgXcQ", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" },
                 { title: "Moda Evangélica", youtubeId: "dQw4w9WgXcQ", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
               ].map((videoItem, index) => (
@@ -304,11 +304,11 @@ const LandingPage = () => {
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Visualizar 5 fornecedores por mês</span>
+                    <span className="text-gray-700">Visualizar 3 fornecedores por dia</span>
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Filtros básicos</span>
+                    <span className="text-gray-700">3 dias para testar</span>
                   </li>
                 </ul>
                 
@@ -536,7 +536,7 @@ const LandingPage = () => {
           </div>
           
           <div className="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-600">
-            <p>© {new Date().getFullYear()} Conexão Brasil. Todos os direitos reservados.</p>
+            <p>© {new Date().getFullYear()} Os Fornecedores. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
