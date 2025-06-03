@@ -1,3 +1,4 @@
+
 // Types for suppliers
 
 export type PaymentMethod = 'pix' | 'card' | 'bankslip';
@@ -81,15 +82,4 @@ export interface SearchFilters {
   requiresCnpj?: boolean | null; // null means 'both'
   shippingMethods?: ShippingMethod[];
   hasWebsite?: boolean | null; // null means 'both'
-}
-
-// Type for supplier reviews (moved from review.ts to avoid duplication)
-export interface Review {
-  id: string;
-  user_id: string;
-  user_name: string;
-  supplier_id: string;
-  rating: number;
-  comment?: string;
-  created_at: string;
 }
