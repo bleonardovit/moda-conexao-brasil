@@ -177,10 +177,10 @@ const LandingPageTest: React.FC = () => {
         
         <div className="flex overflow-x-auto space-x-6 pb-8 snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8 md:space-x-0 md:max-w-7xl md:mx-auto px-4 md:px-0 custom-scrollbar">
           {[
-            { title: "Moda Plus Size", youtubeId: "dQw4w9WgXcQ", desc: "Descubra fornecedores incríveis de moda plus size com peças modernas e confortáveis." },
-            { title: "Moda Fitness", youtubeId: "dQw4w9WgXcQ", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
-            { title: "Moda Balada", youtubeId: "dQw4w9WgXcQ", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" },
-            { title: "Moda Evangélica", youtubeId: "dQw4w9WgXcQ", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
+            { title: "Moda Plus Size", youtubeId: "TDE58PpnJVU", desc: "Descubra fornecedores incríveis de moda plus size com peças modernas e confortáveis." },
+            { title: "Moda Fitness", youtubeId: "TDE58PpnJVU", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
+            { title: "Moda Balada", youtubeId: "TDE58PpnJVU", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" },
+            { title: "Moda Evangélica", youtubeId: "TDE58PpnJVU", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
           ].map((videoItem, index) => (
             <div key={index} className={`flex-shrink-0 w-3/4 sm:w-2/3 md:w-full snap-center ${cardStyle}`}>
               <h3 className="text-xl font-semibold mb-3 text-pink-400">{videoItem.title}</h3>
