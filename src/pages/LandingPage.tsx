@@ -304,7 +304,7 @@ const LandingPage = () => {
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Visualizar 3 fornecedores por dia</span>
+                    <span className="text-gray-700">Visualize 3 fornecedores por dia</span>
                   </li>
                   <li className="flex items-start">
                     <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
