@@ -180,8 +180,7 @@ const LandingPageTest: React.FC = () => {
             { title: "Moda Plus Size", youtubeId: "W3lF47bX3to", desc: "Descubra fornecedores incríveis de moda plus size com peças modernas e confortáveis." },
             { title: "Moda Fitness", youtubeId: "YDG0MoazL-I", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
             { title: "Moda Evangélica", youtubeId: "lrrO6sGcwJg", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
-            { title: "Todos Estilos", youtubeId: "srYjExvc8S8", desc: "Diversos outros estilo de moda, você encontra aqui!" },
-            
+            { title: "Todos Estilos de Moda", youtubeId: "srYjExvc8S8", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" },         
           ].map((videoItem, index) => (
             <div key={index} className={`flex-shrink-0 w-3/4 sm:w-2/3 md:w-full snap-center ${cardStyle}`}>
               <h3 className="text-xl font-semibold mb-3 text-pink-400">{videoItem.title}</h3>
