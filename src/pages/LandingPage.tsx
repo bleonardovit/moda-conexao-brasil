@@ -247,10 +247,10 @@ const LandingPage = () => {
             <div className="flex overflow-x-auto space-x-6 pb-8 snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8 md:space-x-0 md:max-w-7xl md:mx-auto custom-scrollbar">
               {[
                 { title: "Moda Plus Size", youtubeId: "W3lF47bX3to", desc: "Descubra fornecedores incríveis de moda plus size com peças modernas e confortáveis." },
-                { title: "Moda Fitness", youtubeId: "TDE58PpnJVU", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
-                { title: "Moda Balada", youtubeId: "TDE58PpnJVU", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" },
-                { title: "Moda Evangélica", youtubeId: "TDE58PpnJVU", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
-              ].map((videoItem, index) => (
+                { title: "Moda Fitness", youtubeId: "YDG0MoazL-I", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
+                { title: "Moda Evangélica", youtubeId: "lrrO6sGcwJg", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
+                { title: "Todos Estilos de Moda", youtubeId: "srYjExvc8S8", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" }, 
+               ].map((videoItem, index) => (
                 <div key={index} className="flex-shrink-0 w-3/4 sm:w-2/3 md:w-full snap-center bg-white/90 backdrop-blur-md p-6 rounded-xl border border-gray-200 shadow-lg transition-all duration-300 ease-in-out hover:shadow-2xl hover:border-[#9b87f5]/70 hover:scale-[1.02]">
                   <h3 className="text-xl font-semibold mb-3 text-[#9b87f5]">{videoItem.title}</h3>
                   <div className="aspect-[9/16] w-full rounded-md overflow-hidden mb-3">
