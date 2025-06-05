@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
@@ -31,11 +32,10 @@ export function HeaderSearch() {
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          // Fetch suppliers
+          // Fetch suppliers (getSuppliers já filtra fornecedores ocultos)
           if (suppliers.length === 0) {
             const suppliersData = await getSuppliers(user?.id);
-            // Filter only visible suppliers
-            setSuppliers(suppliersData ? suppliersData.filter(supplier => !supplier.hidden) : []);
+            setSuppliers(suppliersData || []);
           }
           
           // Fetch articles

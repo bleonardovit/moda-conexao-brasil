@@ -1,17 +1,8 @@
 
 import { useState, useEffect } from 'react';
-// import { Link } from 'react-router-dom'; // No longer directly used here
-// import { Badge } from '@/components/ui/badge'; // Moved to SupplierListItem
-// import { Button } from '@/components/ui/button'; // Moved to child components
-// import { Card, CardContent } from '@/components/ui/card'; // Moved to SupplierListItem
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Moved to SupplierFilters
-// import { Search, Filter, Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react'; // Moved to child components
 import { AppLayout } from '@/components/layout/AppLayout';
-// import { Input } from '@/components/ui/input'; // Moved to SupplierSearchAndActions
 import { useFavorites } from '@/hooks/use-favorites';
 import { TrialBanner } from '@/components/trial/TrialBanner';
-// import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard'; // Used within SupplierListItem
-// import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Moved to SupplierListItem
 import { useToast } from "@/hooks/use-toast";
 import type { Supplier, Category } from '@/types';
 import { getSuppliers } from '@/services/supplierService';
@@ -22,11 +13,6 @@ import { SupplierSearchAndActions } from '@/components/suppliers/SupplierSearchA
 import { SupplierFilters } from '@/components/suppliers/SupplierFilters';
 import { SupplierListItem } from '@/components/suppliers/SupplierListItem';
 import { NoSuppliersFound } from '@/components/suppliers/NoSuppliersFound';
-
-// Define states array - Not used anymore, dynamic options are built
-// const STATES = [...] 
-// Add cities filter - Not used anymore
-// const CITIES = [...]
 
 const PRICE_RANGES = [{
   label: 'Todos',
@@ -63,7 +49,7 @@ export default function SuppliersList() {
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const {
-    favorites, // favorites is not directly used, but useFavorites hook manages it
+    favorites,
     toggleFavorite,
     isFavorite
   } = useFavorites();
@@ -79,7 +65,7 @@ export default function SuppliersList() {
     label: string;
     value: string;
   }[]>([{
-    label: 'Todas as Categorias', // Updated for consistency
+    label: 'Todas as Categorias',
     value: 'all'
   }]);
   const [stateOptions, setStateOptions] = useState<{
@@ -102,12 +88,11 @@ export default function SuppliersList() {
       try {
         setIsLoading(true);
         const [suppliersData, categoriesData] = await Promise.all([
-          getSuppliers(user?.id),
+          getSuppliers(user?.id), // getSuppliers já filtra fornecedores ocultos
           getCategories()
         ]);
 
-        const visibleSuppliers = suppliersData.filter(supplier => !supplier.hidden);
-        setSuppliers(visibleSuppliers);
+        setSuppliers(suppliersData);
 
         setCategories(categoriesData);
         setCategoryOptions([{
@@ -119,7 +104,7 @@ export default function SuppliersList() {
           value: cat.id
         }))]);
 
-        const uniqueStates = Array.from(new Set(visibleSuppliers.map(s => s.state))).filter(Boolean);
+        const uniqueStates = Array.from(new Set(suppliersData.map(s => s.state))).filter(Boolean);
         setStateOptions([{
           label: 'Todos os Estados',
           value: 'all'
@@ -128,7 +113,7 @@ export default function SuppliersList() {
           value: st
         }))]);
 
-        const uniqueCities = Array.from(new Set(visibleSuppliers.map(s => s.city))).filter(Boolean);
+        const uniqueCities = Array.from(new Set(suppliersData.map(s => s.city))).filter(Boolean);
         setCityOptions([{
           label: 'Todas as Cidades',
           value: 'all'

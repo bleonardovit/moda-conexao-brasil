@@ -11,6 +11,7 @@ export const fetchSuppliers = async (): Promise<Supplier[]> => {
   const { data, error } = await supabase
     .from('suppliers')
     .select('*, categories_data:suppliers_categories(category_id)')
+    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam retornados
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -28,6 +29,7 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   const { data, error } = await supabase
     .from('suppliers')
     .select('*, categories_data:suppliers_categories(category_id)')
+    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam retornados
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -87,7 +89,8 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
 
   let query = supabase
     .from('suppliers')
-    .select('*, categories_data:suppliers_categories(category_id)');
+    .select('*, categories_data:suppliers_categories(category_id)')
+    .eq('hidden', false); // Garantir que fornecedores ocultos não sejam retornados
 
   // Apply search term filter
   if (filters.searchTerm) {
@@ -205,6 +208,7 @@ export const getDistinctCities = async (): Promise<string[]> => {
   const { data, error } = await supabase
     .from('suppliers')
     .select('city')
+    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam considerados
     .not('city', 'is', null)
     .neq('city', '');
 
@@ -224,6 +228,7 @@ export const getDistinctStates = async (): Promise<string[]> => {
   const { data, error } = await supabase
     .from('suppliers')
     .select('state')
+    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam considerados
     .not('state', 'is', null)
     .neq('state', '');
 
@@ -244,6 +249,7 @@ export const getSupplierById = async (id: string, isLocked: boolean = false, ave
     .from('suppliers')
     .select('*, categories_data:suppliers_categories(category_id)')
     .eq('id', id)
+    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam retornados
     .single();
 
   if (error) {
