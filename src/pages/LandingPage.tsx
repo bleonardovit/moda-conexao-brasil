@@ -247,7 +247,7 @@ const LandingPage = () => {
             <div className="flex overflow-x-auto space-x-6 pb-8 snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8 md:space-x-0 md:max-w-7xl md:mx-auto custom-scrollbar">
               {[
                 { title: "Moda Plus Size", youtubeId: "W3lF47bX3to", desc: "Descubra fornecedores incríveis de moda plus size com peças modernas e confortáveis." },
-                { title: "Moda Fitness", youtubeId: "YDG0MoazL-I", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
+                { title: "Moda Fitness", youtubeId: "TDE58PpnJVU", desc: "As melhores marcas e tendências em moda fitness para seus clientes se exercitarem com estilo." },
                 { title: "Moda Balada", youtubeId: "TDE58PpnJVU", desc: "Peças ousadas e cheias de brilho para quem quer arrasar na noite. Encontre aqui!" },
                 { title: "Moda Evangélica", youtubeId: "TDE58PpnJVU", desc: "Elegância e sofisticação em moda evangélica, com opções para todas as ocasiões." },
               ].map((videoItem, index) => (
