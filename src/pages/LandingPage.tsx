@@ -203,7 +203,8 @@ const LandingPage = () => {
           </div>
         </section>
         
-        {/* App Demo Section */}
+        {/* App Demo Section - HIDDEN */}
+        {/* 
         <section id="demo" className="py-16 md:py-24 bg-white">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
@@ -246,6 +247,7 @@ const LandingPage = () => {
             </div>
           </div>
         </section>
+        */}
         
         {/* Videos Section */}
         <section id="videos" className="py-16 md:py-24 bg-gradient-to-br from-[#9b87f5]/10 to-[#D946EF]/10">
