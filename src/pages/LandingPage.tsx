@@ -215,18 +215,31 @@ const LandingPage = () => {
             
             <div className="grid md:grid-cols-3 gap-6">
               {[
-                { image: "images/home.jpeg", title: "Busca de Fornecedores" },
-                { image: "images/filtros.png", title: "Filtros Avançados" },
-                { image: "images/perfil.jpeg", title: "Perfil Detalhado" }
+                { 
+                  image: "/lovable-uploads/2cb1adf7-d40e-450c-a26f-acc971e14caa.png", 
+                  title: "Página Inicial - Fornecedores Recentes e Populares",
+                  description: "Veja fornecedores recentes e populares logo na tela inicial com acesso rápido aos detalhes."
+                },
+                { 
+                  image: "/lovable-uploads/ac0b59f5-0390-4cfc-80d1-29329573eb13.png", 
+                  title: "Pesquisa Avançada com Filtros",
+                  description: "Use filtros detalhados para encontrar fornecedores por categoria, localização, forma de pagamento e muito mais."
+                },
+                { 
+                  image: "/lovable-uploads/b186270b-9401-42ed-8f7c-d24f90e5a26d.png", 
+                  title: "Perfil Detalhado do Fornecedor",
+                  description: "Acesse informações completas, contatos diretos e condições comerciais de cada fornecedor."
+                }
               ].map((screen, index) => (
                 <div key={index} className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow border border-gray-200">
                   <img 
                     src={screen.image} 
                     alt={screen.title} 
-                    className="w-full h-48 object-cover"
+                    className="w-full h-64 object-cover"
                   />
-                  <div className="p-4 bg-white">
-                    <h3 className="font-medium text-center text-gray-900">{screen.title}</h3>
+                  <div className="p-6 bg-white">
+                    <h3 className="font-semibold text-lg mb-2 text-gray-900">{screen.title}</h3>
+                    <p className="text-gray-600 text-sm">{screen.description}</p>
                   </div>
                 </div>
               ))}
