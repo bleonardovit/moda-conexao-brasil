@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -149,6 +148,59 @@ const manageActiveSession = async (userId: string, ipAddress: string) => {
   }
 };
 
+// SECURITY: Helper function to validate user profile exists and is active
+const validateUserProfile = async (userId: string): Promise<{ isValid: boolean; profile?: any; reason?: string }> => {
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No profile found - orphaned auth user
+        console.warn(`SECURITY ALERT: Orphaned auth user detected: ${userId}`);
+        return { isValid: false, reason: 'ORPHANED_USER' };
+      }
+      console.error('Error validating user profile:', error);
+      return { isValid: false, reason: 'PROFILE_ERROR' };
+    }
+    
+    if (!profile) {
+      console.warn(`SECURITY ALERT: No profile found for user: ${userId}`);
+      return { isValid: false, reason: 'NO_PROFILE' };
+    }
+    
+    // Check if user is deactivated/banned
+    if (profile.subscription_status === 'inactive' && profile.role !== 'admin') {
+      console.warn(`SECURITY ALERT: Deactivated user attempted login: ${userId}`);
+      return { isValid: false, reason: 'DEACTIVATED_USER' };
+    }
+    
+    return { isValid: true, profile };
+  } catch (error) {
+    console.error('Error in validateUserProfile:', error);
+    return { isValid: false, reason: 'VALIDATION_ERROR' };
+  }
+};
+
+// SECURITY: Helper function to clean up orphaned auth users
+const handleOrphanedUser = async (userId: string, email: string) => {
+  try {
+    console.warn(`SECURITY: Cleaning up orphaned auth user: ${email} (${userId})`);
+    
+    // Sign out the orphaned user immediately
+    await supabase.auth.signOut();
+    
+    // Optionally, you could delete the auth user entirely, but this requires service role
+    // For now, we just ensure they can't proceed with the login
+    
+  } catch (error) {
+    console.error('Error handling orphaned user:', error);
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -202,7 +254,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           console.error('Error updating last active timestamp:', error);
         }
-      }, 60000); // Debounce to once per minute maximum
+      }, 60000);
       
       const updateActivityInterval = setInterval(updateActivity, 60000);
       return () => clearInterval(updateActivityInterval);
@@ -234,47 +286,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       lastProcessedSessionId.current = session.access_token;
       
-      const profile = await fetchUserProfile(session.user.id);
+      // SECURITY: Validate user profile before allowing access
+      const validation = await validateUserProfile(session.user.id);
       
-      if (profile) {
-        if (event === 'SIGNED_IN') {
-          setTimeout(async () => {
-            await updateLastLogin(session.user.id);
-            const ipAddress = await getClientIP();
-            await manageActiveSession(session.user.id, ipAddress);
-          }, 0);
+      if (!validation.isValid) {
+        console.error(`SECURITY: Invalid user profile detected for ${session.user.email} - Reason: ${validation.reason}`);
+        
+        // Handle different validation failure reasons
+        if (validation.reason === 'ORPHANED_USER') {
+          await handleOrphanedUser(session.user.id, session.user.email);
         }
         
-        const userRole = profile.role || 'user';
-        sessionStorage.setItem('user_role', userRole);
-        
-        const newUser: User = {
-          id: session.user.id,
-          email: session.user.email || '',
-          full_name: profile.full_name || session.user.user_metadata?.full_name || '',
-          phone: profile.phone || session.user.phone || '',
-          city: profile.city || session.user.user_metadata?.city || '',
-          state: profile.state || session.user.user_metadata?.state || '',
-          role: userRole as 'user' | 'admin',
-          subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive',
-          subscription_type: profile.subscription_type as ('monthly' | 'yearly' | undefined), // Correção aqui
-          subscription_start_date: profile.subscription_start_date || undefined,
-        };
-        
-        setUser(prevUser => {
-          if (!isEqual(prevUser, newUser)) {
-            console.log('Usuário autenticado:', session.user.email);
-            return newUser;
-          }
-          return prevUser;
-        });
-      } else {
-        console.log('Perfil não encontrado para o usuário autenticado');
+        // Force sign out for any invalid user
+        await supabase.auth.signOut();
         setUser(null);
         sessionStorage.removeItem('user_role');
+        return;
       }
+      
+      const profile = validation.profile;
+      
+      if (event === 'SIGNED_IN') {
+        setTimeout(async () => {
+          await updateLastLogin(session.user.id);
+          const ipAddress = await getClientIP();
+          await manageActiveSession(session.user.id, ipAddress);
+        }, 0);
+      }
+      
+      const userRole = profile.role || 'user';
+      sessionStorage.setItem('user_role', userRole);
+      
+      const newUser: User = {
+        id: session.user.id,
+        email: session.user.email || '',
+        full_name: profile.full_name || session.user.user_metadata?.full_name || '',
+        phone: profile.phone || session.user.phone || '',
+        city: profile.city || session.user.user_metadata?.city || '',
+        state: profile.state || session.user.user_metadata?.state || '',
+        role: userRole as 'user' | 'admin',
+        subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive',
+        subscription_type: profile.subscription_type as ('monthly' | 'yearly' | undefined),
+        subscription_start_date: profile.subscription_start_date || undefined,
+      };
+      
+      setUser(prevUser => {
+        if (!isEqual(prevUser, newUser)) {
+          console.log('Usuário autenticado:', session.user.email);
+          return newUser;
+        }
+        return prevUser;
+      });
     } catch (error) {
       console.error('Erro ao processar alteração de autenticação:', error);
+      // On any error, ensure user is signed out for security
+      await supabase.auth.signOut();
+      setUser(null);
+      sessionStorage.removeItem('user_role');
     } finally {
       processingAuthChange.current = false;
     }
@@ -368,6 +436,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
+        // SECURITY: Validate profile exists before considering login successful
+        const validation = await validateUserProfile(data.user.id);
+        
+        if (!validation.isValid) {
+          console.error(`SECURITY: Login blocked for ${email} - Reason: ${validation.reason}`);
+          
+          // Record failed attempt due to security validation
+          await recordLoginAttempt(email, data.user.id, ipAddress, false);
+          
+          // Handle orphaned user
+          if (validation.reason === 'ORPHANED_USER') {
+            await handleOrphanedUser(data.user.id, email);
+            toast({
+              variant: "destructive",
+              title: "Conta não encontrada",
+              description: "Esta conta não existe mais no sistema. Entre em contato com o suporte se necessário.",
+            });
+          } else if (validation.reason === 'DEACTIVATED_USER') {
+            toast({
+              variant: "destructive",
+              title: "Conta desativada",
+              description: "Sua conta foi desativada. Entre em contato com o suporte para reativação.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Erro de acesso",
+              description: "Não foi possível validar sua conta. Tente novamente ou entre em contato com o suporte.",
+            });
+          }
+          
+          // Force sign out
+          await supabase.auth.signOut();
+          return false;
+        }
+        
+        // Record successful login only after profile validation
         await recordLoginAttempt(email, data.user.id, ipAddress, true);
       }
 
@@ -397,8 +502,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string, 
     password: string, 
     phone?: string,
-    city?: string, // Adicionado city
-    state?: string  // Adicionado state
+    city?: string,
+    state?: string
   ): Promise<boolean> => {
     setIsLoading(true);
     try {
