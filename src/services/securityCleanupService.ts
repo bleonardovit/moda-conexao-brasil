@@ -27,7 +27,7 @@ export class SecurityCleanupService {
    * Identifica usuários órfãos que precisam ser removidos
    * Retorna uma lista de usuários do auth que não têm perfil correspondente
    */
-  static async identifyOrphanedUsers(): Promise<OrphanedUser[]> => {
+  static async identifyOrphanedUsers(): Promise<OrphanedUser[]> {
     try {
       // Verifica se o usuário tem permissão de admin usando função otimizada
       const isAdmin = await isCurrentUserAdminCached();
@@ -108,7 +108,7 @@ export class SecurityCleanupService {
    * Processa um usuário órfão específico
    * Registra o evento e remove o usuário do auth
    */
-  private static async processOrphanedUser(user: OrphanedUser): Promise<void> => {
+  private static async processOrphanedUser(user: OrphanedUser): Promise<void> {
     try {
       console.log(`SECURITY: Processing orphaned user: ${user.email} (${user.id})`);
       
@@ -133,7 +133,7 @@ export class SecurityCleanupService {
   /**
    * Registra eventos de segurança importantes
    */
-  private static async logSecurityEvent(eventType: string, metadata: any): Promise<void> => {
+  private static async logSecurityEvent(eventType: string, metadata: any): Promise<void> {
     try {
       // Usar função otimizada para obter o usuário atual
       const currentUserId = await getCurrentUserId();
