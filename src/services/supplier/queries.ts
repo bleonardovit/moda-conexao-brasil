@@ -4,15 +4,25 @@ import { mapRawSupplierToDisplaySupplier, isValidSupplierResponse } from './mapp
 import { getSupplierCategories, associateSupplierWithCategories } from './categories';
 import { getAverageRatingsForSupplierIds } from '../reviewService';
 import { getUserTrialInfo, getAllowedSuppliersForTrial } from '../trialService';
+import { isCurrentUserAdminCached } from '../optimizedDbFunctions';
 
 export const fetchSuppliers = async (): Promise<Supplier[]> => {
   console.log('supplierService: Fetching suppliers...');
 
-  const { data, error } = await supabase
+  // Check if current user is admin to determine if we should include hidden suppliers
+  const isAdmin = await isCurrentUserAdminCached();
+
+  let query = supabase
     .from('suppliers')
     .select('*, categories_data:suppliers_categories(category_id)')
-    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam retornados
     .order('created_at', { ascending: false });
+
+  // Only filter out hidden suppliers for non-admin users
+  if (!isAdmin) {
+    query = query.eq('hidden', false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching suppliers:', error.message);
@@ -26,11 +36,20 @@ export const fetchSuppliers = async (): Promise<Supplier[]> => {
 export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   console.log('supplierService: Fetching suppliers with trial logic...');
 
-  const { data, error } = await supabase
+  // Check if current user is admin to determine if we should include hidden suppliers
+  const isAdmin = await isCurrentUserAdminCached();
+
+  let query = supabase
     .from('suppliers')
     .select('*, categories_data:suppliers_categories(category_id)')
-    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam retornados
     .order('created_at', { ascending: false });
+
+  // Only filter out hidden suppliers for non-admin users
+  if (!isAdmin) {
+    query = query.eq('hidden', false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching suppliers:', error.message);
@@ -48,11 +67,11 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   // Get average ratings for all suppliers
   const averageRatings = await getAverageRatingsForSupplierIds(supplierIds);
 
-  // Check trial status if user is provided
+  // Check trial status if user is provided (and not admin)
   let allowedSupplierIds: string[] = [];
   let isInActiveTrial = false;
   
-  if (userId) {
+  if (userId && !isAdmin) {
     try {
       const trialInfo = await getUserTrialInfo(userId);
       
@@ -70,9 +89,9 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   const suppliersWithRatings = data.map(supplier => {
     const averageRating = averageRatings.get(supplier.id);
     
-    // Determine if supplier should be locked for trial users
+    // Determine if supplier should be locked for trial users (admins never see locked suppliers)
     let isLocked = false;
-    if (userId && isInActiveTrial) {
+    if (userId && !isAdmin && isInActiveTrial) {
       // For active trial users, lock suppliers not in the allowed list
       isLocked = !allowedSupplierIds.includes(supplier.id);
     }
@@ -87,10 +106,17 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
 export const searchSuppliers = async (filters: SearchFilters, userId?: string): Promise<Supplier[]> => {
   console.log('supplierService: Searching suppliers with filters:', filters);
 
+  // Check if current user is admin to determine if we should include hidden suppliers
+  const isAdmin = await isCurrentUserAdminCached();
+
   let query = supabase
     .from('suppliers')
-    .select('*, categories_data:suppliers_categories(category_id)')
-    .eq('hidden', false); // Garantir que fornecedores ocultos não sejam retornados
+    .select('*, categories_data:suppliers_categories(category_id)');
+
+  // Only filter out hidden suppliers for non-admin users
+  if (!isAdmin) {
+    query = query.eq('hidden', false);
+  }
 
   // Apply search term filter
   if (filters.searchTerm) {
@@ -167,11 +193,11 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
   // Get average ratings for all suppliers
   const averageRatings = await getAverageRatingsForSupplierIds(supplierIds);
 
-  // Check trial status if user is provided
+  // Check trial status if user is provided (and not admin)
   let allowedSupplierIds: string[] = [];
   let isInActiveTrial = false;
   
-  if (userId) {
+  if (userId && !isAdmin) {
     try {
       const trialInfo = await getUserTrialInfo(userId);
       
@@ -188,9 +214,9 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
   const suppliersWithRatings = data.map(supplier => {
     const averageRating = averageRatings.get(supplier.id);
     
-    // Determine if supplier should be locked for trial users
+    // Determine if supplier should be locked for trial users (admins never see locked suppliers)
     let isLocked = false;
-    if (userId && isInActiveTrial) {
+    if (userId && !isAdmin && isInActiveTrial) {
       // For active trial users, lock suppliers not in the allowed list
       isLocked = !allowedSupplierIds.includes(supplier.id);
     }
@@ -205,12 +231,21 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
 export const getDistinctCities = async (): Promise<string[]> => {
   console.log('supplierService: Fetching distinct cities...');
 
-  const { data, error } = await supabase
+  // Check if current user is admin to determine if we should include hidden suppliers
+  const isAdmin = await isCurrentUserAdminCached();
+
+  let query = supabase
     .from('suppliers')
     .select('city')
-    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam considerados
     .not('city', 'is', null)
     .neq('city', '');
+
+  // Only filter out hidden suppliers for non-admin users
+  if (!isAdmin) {
+    query = query.eq('hidden', false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching distinct cities:', error.message);
@@ -225,12 +260,21 @@ export const getDistinctCities = async (): Promise<string[]> => {
 export const getDistinctStates = async (): Promise<string[]> => {
   console.log('supplierService: Fetching distinct states...');
 
-  const { data, error } = await supabase
+  // Check if current user is admin to determine if we should include hidden suppliers
+  const isAdmin = await isCurrentUserAdminCached();
+
+  let query = supabase
     .from('suppliers')
     .select('state')
-    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam considerados
     .not('state', 'is', null)
     .neq('state', '');
+
+  // Only filter out hidden suppliers for non-admin users
+  if (!isAdmin) {
+    query = query.eq('hidden', false);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching distinct states:', error.message);
@@ -245,12 +289,20 @@ export const getDistinctStates = async (): Promise<string[]> => {
 export const getSupplierById = async (id: string, isLocked: boolean = false, averageRating?: number): Promise<Supplier | null> => {
   console.log(`supplierService: Fetching supplier by ID: ${id}`);
 
-  const { data, error } = await supabase
+  // Check if current user is admin to determine if we should include hidden suppliers
+  const isAdmin = await isCurrentUserAdminCached();
+
+  let query = supabase
     .from('suppliers')
     .select('*, categories_data:suppliers_categories(category_id)')
-    .eq('id', id)
-    .eq('hidden', false) // Garantir que fornecedores ocultos não sejam retornados
-    .single();
+    .eq('id', id);
+
+  // Only filter out hidden suppliers for non-admin users
+  if (!isAdmin) {
+    query = query.eq('hidden', false);
+  }
+
+  const { data, error } = await query.single();
 
   if (error) {
     console.error(`Error fetching supplier ${id}:`, error.message);
