@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Instagram, 
@@ -10,7 +10,9 @@ import {
   Star,
   Heart,
   MapPin,
-  Clock
+  Clock,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +68,7 @@ export default function SupplierDetail() {
   const { toast } = useToast();
   const [selectedRating, setSelectedRating] = useState(0);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const thumbnailsRef = useRef<HTMLDivElement>(null);
   
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -81,6 +84,9 @@ export default function SupplierDetail() {
   const [allSuppliersForNav, setAllSuppliersForNav] = useState<NavSupplier[]>([]);
   const [isNavListLoading, setIsNavListLoading] = useState<boolean>(true);
 
+  // State for thumbnail scroll
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewFormSchema),
@@ -89,7 +95,58 @@ export default function SupplierDetail() {
       comment: "",
     },
   });
+
+  // Function to check thumbnail scroll state
+  const checkThumbnailScroll = () => {
+    if (thumbnailsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = thumbnailsRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  // Function to scroll thumbnails
+  const scrollThumbnails = (direction: 'left' | 'right') => {
+    if (thumbnailsRef.current) {
+      const scrollAmount = 80; // Width of one thumbnail + gap
+      const currentScroll = thumbnailsRef.current.scrollLeft;
+      const newScroll = direction === 'left' 
+        ? currentScroll - scrollAmount 
+        : currentScroll + scrollAmount;
+      
+      thumbnailsRef.current.scrollTo({
+        left: newScroll,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Function to ensure active thumbnail is visible
+  const scrollToActiveThumbnail = (index: number) => {
+    if (thumbnailsRef.current) {
+      const thumbnailWidth = 64 + 8; // 16 (w-16) + 8 (gap-2)
+      const containerWidth = thumbnailsRef.current.clientWidth;
+      const scrollLeft = thumbnailsRef.current.scrollLeft;
+      const thumbnailLeft = index * thumbnailWidth;
+      const thumbnailRight = thumbnailLeft + 64;
+
+      if (thumbnailLeft < scrollLeft) {
+        // Thumbnail is to the left of visible area
+        thumbnailsRef.current.scrollTo({
+          left: thumbnailLeft,
+          behavior: 'smooth'
+        });
+      } else if (thumbnailRight > scrollLeft + containerWidth) {
+        // Thumbnail is to the right of visible area
+        thumbnailsRef.current.scrollTo({
+          left: thumbnailRight - containerWidth,
+          behavior: 'smooth'
+        });
+      }
+    }
+  };
   
+  // ... keep existing code (useEffect hooks)
   useEffect(() => {
     // Reset states when supplierId changes
     setSupplier(null);
@@ -139,7 +196,7 @@ export default function SupplierDetail() {
       setError('ID do fornecedor não fornecido.');
       setLoading(false);
     }
-  }, [supplierId, user?.id, isInTrial, isSupplierAllowed, toast]); // Removed navigate from deps, as it should be stable
+  }, [supplierId, user?.id, isInTrial, isSupplierAllowed, toast]);
   
   useEffect(() => {
     const fetchAllCategories = async () => {
@@ -158,21 +215,26 @@ export default function SupplierDetail() {
     const fetchNavSuppliers = async () => {
       setIsNavListLoading(true);
       try {
-        // getSuppliers sorts by created_at desc. We only need IDs for navigation.
-        // Pass user?.id if trial logic should affect the list of navigable suppliers.
-        // For now, assume we navigate through all non-hidden suppliers.
         const allSuppliersData = await getSuppliers(user?.id); 
-        setAllSuppliersForNav(allSuppliersData.map(s => ({ id: s.id }))); // Store only IDs
+        setAllSuppliersForNav(allSuppliersData.map(s => ({ id: s.id })));
       } catch (err) {
         console.error("Erro ao buscar lista de fornecedores para navegação:", err);
         toast({ title: "Erro ao carregar lista para navegação", variant: "destructive", duration: 3000 });
-        setAllSuppliersForNav([]); // Clear on error
+        setAllSuppliersForNav([]);
       } finally {
         setIsNavListLoading(false);
       }
     };
     fetchNavSuppliers();
-  }, [user?.id, toast]); // Re-fetch if user changes (due to trial status potentially)
+  }, [user?.id, toast]);
+
+  // Effect to check thumbnail scroll on mount and resize
+  useEffect(() => {
+    checkThumbnailScroll();
+    const handleResize = () => checkThumbnailScroll();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [supplier?.images]);
 
   const { currentIndex, previousSupplierId, nextSupplierId } = useMemo(() => {
     if (!supplierId || allSuppliersForNav.length === 0) {
@@ -308,7 +370,25 @@ export default function SupplierDetail() {
     }
   };
 
-  if (loading || (isNavListLoading && allSuppliersForNav.length === 0) ) { // Show loading if supplier details or nav list is initially loading
+  // Enhanced image navigation functions
+  const handlePrevImage = () => {
+    const newIndex = activeImageIndex > 0 ? activeImageIndex - 1 : (supplier?.images?.length || 1) - 1;
+    setActiveImageIndex(newIndex);
+    scrollToActiveThumbnail(newIndex);
+  };
+
+  const handleNextImage = () => {
+    const newIndex = activeImageIndex < (supplier?.images?.length || 1) - 1 ? activeImageIndex + 1 : 0;
+    setActiveImageIndex(newIndex);
+    scrollToActiveThumbnail(newIndex);
+  };
+
+  const handleThumbnailClick = (index: number) => {
+    setActiveImageIndex(index);
+    scrollToActiveThumbnail(index);
+  };
+
+  if (loading || (isNavListLoading && allSuppliersForNav.length === 0) ) {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -470,7 +550,7 @@ export default function SupplierDetail() {
                   <Button 
                     variant="ghost" 
                     size="icon"
-                    onClick={() => setActiveImageIndex(prev => (prev > 0 ? prev - 1 : supplier.images.length - 1))}
+                    onClick={handlePrevImage}
                     className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/40 hover:bg-background/60 text-foreground rounded-full h-8 w-8"
                     aria-label="Imagem anterior"
                   >
@@ -479,35 +559,77 @@ export default function SupplierDetail() {
                   <Button 
                     variant="ghost" 
                     size="icon"
-                    onClick={() => setActiveImageIndex(prev => (prev < supplier.images.length - 1 ? prev + 1 : 0))}
+                    onClick={handleNextImage}
                     className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/40 hover:bg-background/60 text-foreground rounded-full h-8 w-8"
                     aria-label="Próxima imagem"
                   >
                     <ArrowRight className="h-4 w-4" />
                   </Button>
+                  
+                  {/* Image counter */}
+                  <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded-md text-sm">
+                    {activeImageIndex + 1}/{supplier.images.length}
+                  </div>
                 </>
               )}
             </div>
             
             {supplier.images && supplier.images.length > 1 && (
-              <div className="mt-2 flex gap-2 overflow-x-auto pb-2">
-                {supplier.images.map((image, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={`flex-shrink-0 h-16 w-16 overflow-hidden rounded-md border-2 ${
-                      index === activeImageIndex ? 'border-primary ring-2 ring-primary' : 'border-transparent'
-                    } hover:opacity-80 transition-opacity`}
-                    onClick={() => setActiveImageIndex(index)}
-                    aria-label={`Ver imagem ${index + 1}`}
+              <div className="mt-2 relative">
+                {/* Thumbnail scroll indicators */}
+                {canScrollLeft && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 bg-background/80 hover:bg-background/90 rounded-full shadow-sm"
+                    onClick={() => scrollThumbnails('left')}
+                    aria-label="Ver imagens anteriores"
                   >
-                    <img
-                      src={image}
-                      alt={`${supplier.name} - Thumbnail ${index + 1}`}
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                ))}
+                    <ChevronLeft className="h-3 w-3" />
+                  </Button>
+                )}
+                
+                {canScrollRight && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 bg-background/80 hover:bg-background/90 rounded-full shadow-sm"
+                    onClick={() => scrollThumbnails('right')}
+                    aria-label="Ver próximas imagens"
+                  >
+                    <ChevronRight className="h-3 w-3" />
+                  </Button>
+                )}
+                
+                <div 
+                  ref={thumbnailsRef}
+                  className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent"
+                  onScroll={checkThumbnailScroll}
+                  style={{ 
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'hsl(var(--muted-foreground)) transparent'
+                  }}
+                >
+                  {supplier.images.map((image, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className={`flex-shrink-0 h-16 w-16 overflow-hidden rounded-md border-2 transition-all duration-200 ${
+                        index === activeImageIndex 
+                          ? 'border-primary ring-2 ring-primary shadow-md' 
+                          : 'border-transparent hover:border-muted-foreground/30'
+                      } hover:opacity-80`}
+                      onClick={() => handleThumbnailClick(index)}
+                      aria-label={`Ver imagem ${index + 1}`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${supplier.name} - Thumbnail ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             
@@ -595,7 +717,6 @@ export default function SupplierDetail() {
                       'Plus Size': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
                       'Acessórios': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
                       'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
-                      // Add more as needed
                     };
                     
                     return (
@@ -845,52 +966,6 @@ export default function SupplierDetail() {
               </div>
             </TabsContent>
           </Tabs>
-          
-          {/* Similar suppliers section - kept commented as per user's code */}
-          {/*
-          <div className="mt-8">
-            <h2 className="text-xl font-bold mb-4">Fornecedores similares</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              // MOCK_SUPPLIERS.filter(s => 
-              //   s.id !== supplier.id && 
-              //   s.categories.some(c => supplier.categories.includes(c))
-              // ).slice(0, 2).map(similar => (
-              //   <Card key={similar.id} className="overflow-hidden card-hover">
-              //     <div className="flex h-32">
-              //       <div className="w-1/3 bg-muted">
-              //         <img 
-              //           src={similar.images[0]} 
-              //           alt={similar.name}
-              //           className="w-full h-full object-cover"
-              //         />
-              //       </div>
-              //       <div className="w-2/3 p-3">
-              //         <h3 className="font-medium text-sm">{similar.name}</h3>
-              //         <p className="text-xs text-muted-foreground mb-1">
-              //           {similar.city}, {similar.state}
-              //         </p>
-              //         <div className="flex flex-wrap gap-1 mb-2">
-              //           {similar.categories.map(category => (
-              //             <Badge key={category} variant="outline" className="text-xs">
-              //               {category}
-              //             </Badge>
-              //           ))}
-              //         </div>
-              //         <Button 
-              //           size="sm" 
-              //           variant="link" 
-              //           className="p-0 h-auto text-primary"
-              //           onClick={() => navigate(`/suppliers/${similar.id}`)}
-              //         >
-              //           Ver detalhes
-              //         </Button>
-              //       </div>
-              //     </div>
-              //   </Card>
-              // ))
-            </div>
-          </div>
-          */}
         </div>
       </div>
     </AppLayout>
