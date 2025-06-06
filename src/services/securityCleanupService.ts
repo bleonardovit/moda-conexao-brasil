@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUserId, isCurrentUserAdminCached } from './optimizedDbFunctions';
 
 export interface OrphanedUser {
   id: string;
@@ -18,6 +19,7 @@ export interface SecurityCleanupReport {
 /**
  * SECURITY SERVICE: Identifica e trata usuários órfãos no sistema
  * Usuários órfãos são aqueles que existem na tabela auth.users mas não têm perfil correspondente
+ * OTIMIZADO: Usa as funções do banco para melhor performance
  */
 export class SecurityCleanupService {
   
@@ -25,8 +27,14 @@ export class SecurityCleanupService {
    * Identifica usuários órfãos que precisam ser removidos
    * Retorna uma lista de usuários do auth que não têm perfil correspondente
    */
-  static async identifyOrphanedUsers(): Promise<OrphanedUser[]> {
+  static async identifyOrphanedUsers(): Promise<OrphanedUser[]> => {
     try {
+      // Verifica se o usuário tem permissão de admin usando função otimizada
+      const isAdmin = await isCurrentUserAdminCached();
+      if (!isAdmin) {
+        throw new Error('Access denied: Admin privileges required');
+      }
+      
       // Note: Esta consulta requer privilégios especiais para acessar auth.users
       // Em produção, isso deve ser implementado como uma Edge Function com service role
       console.warn('SECURITY: identifyOrphanedUsers requires service role access to auth.users');
@@ -55,6 +63,12 @@ export class SecurityCleanupService {
 
     try {
       console.log('SECURITY: Starting security cleanup process...');
+      
+      // Verificar permissões usando função otimizada
+      const isAdmin = await isCurrentUserAdminCached();
+      if (!isAdmin) {
+        throw new Error('Access denied: Admin privileges required');
+      }
       
       // Identificar usuários órfãos
       const orphanedUsers = await this.identifyOrphanedUsers();
@@ -94,7 +108,7 @@ export class SecurityCleanupService {
    * Processa um usuário órfão específico
    * Registra o evento e remove o usuário do auth
    */
-  private static async processOrphanedUser(user: OrphanedUser): Promise<void> {
+  private static async processOrphanedUser(user: OrphanedUser): Promise<void> => {
     try {
       console.log(`SECURITY: Processing orphaned user: ${user.email} (${user.id})`);
       
@@ -119,19 +133,24 @@ export class SecurityCleanupService {
   /**
    * Registra eventos de segurança importantes
    */
-  private static async logSecurityEvent(eventType: string, metadata: any): Promise<void> {
+  private static async logSecurityEvent(eventType: string, metadata: any): Promise<void> => {
     try {
+      // Usar função otimizada para obter o usuário atual
+      const currentUserId = await getCurrentUserId();
+      
       // Por enquanto, apenas log no console
       // Em produção, isso deve ser salvo em uma tabela de auditoria
       console.log('SECURITY_EVENT:', {
         type: eventType,
         timestamp: new Date().toISOString(),
+        performedBy: currentUserId,
         metadata
       });
       
       // TODO: Implementar tabela de auditoria de segurança
       // await supabase.from('security_audit_log').insert({
       //   event_type: eventType,
+      //   performed_by: currentUserId,
       //   metadata: metadata,
       //   created_at: new Date().toISOString()
       // });

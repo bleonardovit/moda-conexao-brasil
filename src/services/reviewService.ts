@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Review, ReviewBan } from '@/types/review';
+import { userCanReviewSupplier, getCurrentUserId } from './optimizedDbFunctions';
 
 // Tipagem para os dados necessários para criar uma review
 export interface CreateReviewData {
@@ -112,13 +113,13 @@ export const isUserBannedFromReviews = async (userId: string): Promise<boolean> 
  */
 export const banUserFromReviews = async (userId: string, reason?: string): Promise<void> => {
   try {
-    const { data: currentUser } = await supabase.auth.getUser();
+    const currentUserId = await getCurrentUserId();
     
     const { error } = await supabase
       .from('review_bans')
       .insert({
         user_id: userId,
-        blocked_by: currentUser.user?.id,
+        blocked_by: currentUserId,
         reason: reason
       });
 
@@ -143,9 +144,9 @@ export const createReview = async (reviewData: CreateReviewData, userId: string)
     throw new Error('User ID is required to create a review.');
   }
 
-  // Verifica se o usuário está banido
-  const isBanned = await isUserBannedFromReviews(userId);
-  if (isBanned) {
+  // Usa a função otimizada do banco para verificar se pode fazer review
+  const canReview = await userCanReviewSupplier(reviewData.supplier_id);
+  if (!canReview) {
     throw new Error('Você está temporariamente impedido de fazer avaliações.');
   }
 

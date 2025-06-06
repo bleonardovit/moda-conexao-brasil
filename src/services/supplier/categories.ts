@@ -30,7 +30,7 @@ export const associateSupplierWithCategories = async (supplierId: string, catego
     category_id: categoryId
   }));
   
-  // Insert into the join table
+  // Insert into the join table - as políticas RLS otimizadas agora cuidam das permissões
   const { error } = await supabase
     .from('suppliers_categories')
     .insert(categoryAssociations);

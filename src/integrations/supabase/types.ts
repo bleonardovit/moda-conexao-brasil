@@ -655,6 +655,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_current_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_failed_attempts_count: {
         Args: { check_ip: string; hours?: number }
         Returns: number
@@ -667,6 +671,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      is_current_user_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_ip_blocked: {
         Args: { check_ip: string }
         Returns: boolean
@@ -674,6 +682,10 @@ export type Database = {
       update_session_last_active: {
         Args: { user_uuid: string }
         Returns: undefined
+      }
+      user_can_review_supplier: {
+        Args: { supplier_uuid: string }
+        Returns: boolean
       }
     }
     Enums: {
