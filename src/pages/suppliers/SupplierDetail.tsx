@@ -57,7 +57,6 @@ type ReviewFormValues = z.infer<typeof reviewFormSchema>;
 // Simple type for supplier navigation list items
 type NavSupplier = Pick<Supplier, 'id'>;
 
-
 export default function SupplierDetail() {
   const { id: supplierId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -84,9 +83,9 @@ export default function SupplierDetail() {
   const [allSuppliersForNav, setAllSuppliersForNav] = useState<NavSupplier[]>([]);
   const [isNavListLoading, setIsNavListLoading] = useState<boolean>(true);
 
-  // State for thumbnail scroll
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  // State for thumbnail window (show only 4 thumbnails at a time)
+  const [thumbnailWindowStart, setThumbnailWindowStart] = useState(0);
+  const THUMBNAILS_PER_VIEW = 4;
 
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewFormSchema),
@@ -96,57 +95,56 @@ export default function SupplierDetail() {
     },
   });
 
-  // Function to check thumbnail scroll state
-  const checkThumbnailScroll = () => {
-    if (thumbnailsRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = thumbnailsRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+  // Calculate visible thumbnails window
+  const visibleThumbnails = useMemo(() => {
+    if (!supplier?.images || supplier.images.length === 0) return [];
+    
+    const totalImages = supplier.images.length;
+    if (totalImages <= THUMBNAILS_PER_VIEW) {
+      return supplier.images.map((image, index) => ({ image, index }));
+    }
+    
+    return supplier.images
+      .slice(thumbnailWindowStart, thumbnailWindowStart + THUMBNAILS_PER_VIEW)
+      .map((image, relativeIndex) => ({ 
+        image, 
+        index: thumbnailWindowStart + relativeIndex 
+      }));
+  }, [supplier?.images, thumbnailWindowStart]);
+
+  // Function to update thumbnail window based on active image
+  const updateThumbnailWindow = (newActiveIndex: number) => {
+    if (!supplier?.images || supplier.images.length <= THUMBNAILS_PER_VIEW) return;
+    
+    const totalImages = supplier.images.length;
+    
+    // If active image is outside current window, adjust window
+    if (newActiveIndex < thumbnailWindowStart) {
+      setThumbnailWindowStart(newActiveIndex);
+    } else if (newActiveIndex >= thumbnailWindowStart + THUMBNAILS_PER_VIEW) {
+      setThumbnailWindowStart(Math.max(0, Math.min(newActiveIndex - THUMBNAILS_PER_VIEW + 1, totalImages - THUMBNAILS_PER_VIEW)));
     }
   };
 
-  // Function to scroll thumbnails
-  const scrollThumbnails = (direction: 'left' | 'right') => {
-    if (thumbnailsRef.current) {
-      const scrollAmount = 80; // Width of one thumbnail + gap
-      const currentScroll = thumbnailsRef.current.scrollLeft;
-      const newScroll = direction === 'left' 
-        ? currentScroll - scrollAmount 
-        : currentScroll + scrollAmount;
-      
-      thumbnailsRef.current.scrollTo({
-        left: newScroll,
-        behavior: 'smooth'
-      });
+  // Function to scroll thumbnails window
+  const scrollThumbnailWindow = (direction: 'left' | 'right') => {
+    if (!supplier?.images || supplier.images.length <= THUMBNAILS_PER_VIEW) return;
+    
+    const totalImages = supplier.images.length;
+    const maxStart = totalImages - THUMBNAILS_PER_VIEW;
+    
+    if (direction === 'left') {
+      setThumbnailWindowStart(Math.max(0, thumbnailWindowStart - 1));
+    } else {
+      setThumbnailWindowStart(Math.min(maxStart, thumbnailWindowStart + 1));
     }
   };
 
-  // Function to ensure active thumbnail is visible
-  const scrollToActiveThumbnail = (index: number) => {
-    if (thumbnailsRef.current) {
-      const thumbnailWidth = 64 + 8; // 16 (w-16) + 8 (gap-2)
-      const containerWidth = thumbnailsRef.current.clientWidth;
-      const scrollLeft = thumbnailsRef.current.scrollLeft;
-      const thumbnailLeft = index * thumbnailWidth;
-      const thumbnailRight = thumbnailLeft + 64;
+  // Check if we can scroll thumbnail window
+  const canScrollThumbnailsLeft = thumbnailWindowStart > 0;
+  const canScrollThumbnailsRight = supplier?.images && supplier.images.length > THUMBNAILS_PER_VIEW && 
+    thumbnailWindowStart < supplier.images.length - THUMBNAILS_PER_VIEW;
 
-      if (thumbnailLeft < scrollLeft) {
-        // Thumbnail is to the left of visible area
-        thumbnailsRef.current.scrollTo({
-          left: thumbnailLeft,
-          behavior: 'smooth'
-        });
-      } else if (thumbnailRight > scrollLeft + containerWidth) {
-        // Thumbnail is to the right of visible area
-        thumbnailsRef.current.scrollTo({
-          left: thumbnailRight - containerWidth,
-          behavior: 'smooth'
-        });
-      }
-    }
-  };
-  
-  // ... keep existing code (useEffect hooks)
   useEffect(() => {
     // Reset states when supplierId changes
     setSupplier(null);
@@ -154,6 +152,7 @@ export default function SupplierDetail() {
     setError(null);
     setReviews([]);
     setActiveImageIndex(0); // Reset image index
+    setThumbnailWindowStart(0); // Reset thumbnail window
 
     if (supplierId) {
       const fetchSupplierDetailsAndReviews = async () => {
@@ -227,14 +226,6 @@ export default function SupplierDetail() {
     };
     fetchNavSuppliers();
   }, [user?.id, toast]);
-
-  // Effect to check thumbnail scroll on mount and resize
-  useEffect(() => {
-    checkThumbnailScroll();
-    const handleResize = () => checkThumbnailScroll();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [supplier?.images]);
 
   const { currentIndex, previousSupplierId, nextSupplierId } = useMemo(() => {
     if (!supplierId || allSuppliersForNav.length === 0) {
@@ -374,18 +365,18 @@ export default function SupplierDetail() {
   const handlePrevImage = () => {
     const newIndex = activeImageIndex > 0 ? activeImageIndex - 1 : (supplier?.images?.length || 1) - 1;
     setActiveImageIndex(newIndex);
-    scrollToActiveThumbnail(newIndex);
+    updateThumbnailWindow(newIndex);
   };
 
   const handleNextImage = () => {
     const newIndex = activeImageIndex < (supplier?.images?.length || 1) - 1 ? activeImageIndex + 1 : 0;
     setActiveImageIndex(newIndex);
-    scrollToActiveThumbnail(newIndex);
+    updateThumbnailWindow(newIndex);
   };
 
   const handleThumbnailClick = (index: number) => {
     setActiveImageIndex(index);
-    scrollToActiveThumbnail(index);
+    updateThumbnailWindow(index);
   };
 
   if (loading || (isNavListLoading && allSuppliersForNav.length === 0) ) {
@@ -577,58 +568,59 @@ export default function SupplierDetail() {
             {supplier.images && supplier.images.length > 1 && (
               <div className="mt-2 relative">
                 {/* Thumbnail scroll indicators */}
-                {canScrollLeft && (
+                {canScrollThumbnailsLeft && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 bg-background/80 hover:bg-background/90 rounded-full shadow-sm"
-                    onClick={() => scrollThumbnails('left')}
+                    onClick={() => scrollThumbnailWindow('left')}
                     aria-label="Ver imagens anteriores"
                   >
                     <ChevronLeft className="h-3 w-3" />
                   </Button>
                 )}
                 
-                {canScrollRight && (
+                {canScrollThumbnailsRight && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-6 w-6 bg-background/80 hover:bg-background/90 rounded-full shadow-sm"
-                    onClick={() => scrollThumbnails('right')}
+                    onClick={() => scrollThumbnailWindow('right')}
                     aria-label="Ver próximas imagens"
                   >
                     <ChevronRight className="h-3 w-3" />
                   </Button>
                 )}
                 
-                <div 
-                  ref={thumbnailsRef}
-                  className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent"
-                  onScroll={checkThumbnailScroll}
-                  style={{ 
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: 'hsl(var(--muted-foreground)) transparent'
-                  }}
-                >
-                  {supplier.images.map((image, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      className={`flex-shrink-0 h-16 w-16 overflow-hidden rounded-md border-2 transition-all duration-200 ${
-                        index === activeImageIndex 
-                          ? 'border-primary ring-2 ring-primary shadow-md' 
-                          : 'border-transparent hover:border-muted-foreground/30'
-                      } hover:opacity-80`}
-                      onClick={() => handleThumbnailClick(index)}
-                      aria-label={`Ver imagem ${index + 1}`}
-                    >
-                      <img
-                        src={image}
-                        alt={`${supplier.name} - Thumbnail ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                    </button>
-                  ))}
+                {/* Fixed container that shows exactly 4 thumbnails */}
+                <div className="overflow-hidden">
+                  <div 
+                    className="flex gap-2 transition-all duration-300"
+                    style={{ 
+                      width: `${THUMBNAILS_PER_VIEW * 72}px`, // 64px width + 8px gap = 72px per thumbnail
+                      margin: '0 auto'
+                    }}
+                  >
+                    {visibleThumbnails.map(({ image, index }) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`flex-shrink-0 h-16 w-16 overflow-hidden rounded-md border-2 transition-all duration-200 ${
+                          index === activeImageIndex 
+                            ? 'border-primary ring-2 ring-primary shadow-md' 
+                            : 'border-transparent hover:border-muted-foreground/30'
+                        } hover:opacity-80`}
+                        onClick={() => handleThumbnailClick(index)}
+                        aria-label={`Ver imagem ${index + 1}`}
+                      >
+                        <img
+                          src={image}
+                          alt={`${supplier.name} - Thumbnail ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
