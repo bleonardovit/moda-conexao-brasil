@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -122,15 +123,15 @@ export function SupplierListItem({
             
             {hasMultipleImages && (
               <>
-                <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/60 text-white border-none hover:bg-black/80 h-6 w-6" />
-                <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/60 text-white border-none hover:bg-black/80 h-6 w-6" />
+                <CarouselPrevious className="absolute left-0.5 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-5 w-5" />
+                <CarouselNext className="absolute right-0.5 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-5 w-5" />
                 
                 {/* Indicadores de pontos */}
-                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
+                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
                   {images.map((_, index) => (
                     <div
                       key={index}
-                      className="w-1.5 h-1.5 rounded-full bg-white/70"
+                      className="w-1 h-1 rounded-full bg-white/60"
                     />
                   ))}
                 </div>
