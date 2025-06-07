@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Instagram, Link as LinkIcon, Star, Heart } from 'lucide-react';
 import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard';
 import { useTrialStatus } from '@/hooks/use-trial-status';
@@ -41,14 +42,14 @@ export function SupplierListItem({
     return (
       <Card key={supplier.id} className="overflow-hidden card-hover">
         <div className={isMobile ? "flex flex-col" : "sm:flex"}>
-          <div className={isMobile ? "w-full h-[400px]" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent"}>
+          <div className={isMobile ? "w-full" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent"} style={isMobile ? { width: '346px', height: '400px' } : {}}>
             <img
               src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'}
               alt="Carregando..."
               className="w-full h-full object-cover"
             />
           </div>
-          <CardContent className={isMobile ? "w-full p-3" : "sm:w-2/3 md:w-3/4 p-4 flex items-center justify-center"}>
+          <CardContent className={isMobile ? "w-full p-4" : "sm:w-2/3 md:w-3/4 p-4 flex items-center justify-center"}>
             <div className="space-y-3 w-full">
               <Skeleton className="h-6 w-3/4" />
               <Skeleton className="h-4 w-1/2" />
@@ -77,14 +78,14 @@ export function SupplierListItem({
     return (
       <Card key={supplier.id} className="overflow-hidden card-hover">
         <div className={isMobile ? "flex flex-col" : "sm:flex"}>
-          <div className={isMobile ? "w-full h-[400px]" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent"}>
+          <div className={isMobile ? "w-full" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent"} style={isMobile ? { width: '346px', height: '400px' } : {}}>
             <img
               src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'}
               alt="Fornecedor"
               className="w-full h-full object-cover"
             />
           </div>
-          <CardContent className={isMobile ? "w-full p-3 flex items-center justify-center" : "sm:w-2/3 md:w-3/4 p-4 flex items-center justify-center"}>
+          <CardContent className={isMobile ? "w-full p-4 flex items-center justify-center" : "sm:w-2/3 md:w-3/4 p-4 flex items-center justify-center"}>
             <div className="text-center p-6">
               <h3 className="text-lg font-bold mb-2">Conteúdo Bloqueado</h3>
               <p className="text-sm text-muted-foreground mb-4">
@@ -100,17 +101,46 @@ export function SupplierListItem({
     );
   }
 
+  const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
+  const hasMultipleImages = images.length > 1;
+
   return (
     <Card key={supplier.id} className="overflow-hidden card-hover">
       <div className={isMobile ? "flex flex-col" : "sm:flex"}>
-        <div className={isMobile ? "w-full h-[400px]" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent"}>
-          <img
-            src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'}
-            alt={supplier.name}
-            className="w-full h-full object-cover"
-          />
+        <div className={isMobile ? "w-full relative" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent relative"} style={isMobile ? { width: '346px', height: '400px' } : {}}>
+          <Carousel className="w-full h-full">
+            <CarouselContent>
+              {images.map((image, index) => (
+                <CarouselItem key={index}>
+                  <img
+                    src={image}
+                    alt={`${supplier.name} - Imagem ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            
+            {hasMultipleImages && (
+              <>
+                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-8 w-8" />
+                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-8 w-8" />
+                
+                {/* Indicadores de pontos */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  {images.map((_, index) => (
+                    <div
+                      key={index}
+                      className="w-2 h-2 rounded-full bg-white/50"
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </Carousel>
         </div>
-        <CardContent className={isMobile ? "w-full p-3" : "sm:w-2/3 md:w-3/4 p-4"}>
+        
+        <CardContent className={isMobile ? "w-full p-4" : "sm:w-2/3 md:w-3/4 p-4"}>
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h3 className="text-lg font-bold flex items-center">
