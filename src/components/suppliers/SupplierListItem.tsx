@@ -79,7 +79,7 @@ export function SupplierListItem({
     return (
       <Card key={supplier.id} className="overflow-hidden card-hover">
         <div className={isMobile ? "flex flex-col" : "sm:flex"}>
-          <div className={isMobile ? "w-full" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent"} style={isMobile ? { width: '346px', height: '400px' } : {}}>
+          <div className={isMobile ? "w-full" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent"} style={isMobile ? { width: '336px', height: '400px' } : {}}>
             <img
               src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : '/placeholder.svg'}
               alt="Fornecedor"
@@ -108,8 +108,8 @@ export function SupplierListItem({
   return (
     <Card key={supplier.id} className="overflow-hidden card-hover">
       <div className={isMobile ? "flex flex-col" : "sm:flex"}>
-        <div className={isMobile ? "w-full relative" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent relative"} style={isMobile ? { width: '346px', height: '400px', overflow: 'hidden' } : {}}>
-          <Carousel className={isMobile ? "h-full" : "w-full h-full"} style={isMobile ? { width: '346px', height: '400px' } : {}}>
+        <div className={isMobile ? "w-full relative" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent relative"} style={isMobile ? { width: '336px', height: '400px', overflow: 'hidden' } : {}}>
+          <Carousel className={isMobile ? "h-full" : "w-full h-full"} style={isMobile ? { width: '336px', height: '400px' } : {}}>
             <CarouselContent>
               {images.map((image, index) => (
                 <CarouselItem key={index}>
