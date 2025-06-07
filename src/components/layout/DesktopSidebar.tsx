@@ -1,27 +1,41 @@
 
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book } from 'lucide-react';
+import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, Shield } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export function DesktopSidebar() {
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
-    // Check user role from session storage
-    const userRole = sessionStorage.getItem('user_role');
-    setIsAdmin(userRole === 'admin');
-
-    // Setup listener for storage changes (in case role is updated elsewhere)
-    const handleStorageChange = () => {
-      const currentUserRole = sessionStorage.getItem('user_role');
-      setIsAdmin(currentUserRole === 'admin');
+    // SECURITY: Use standardized admin role checking function
+    const checkAdminRole = async () => {
+      try {
+        const { data, error } = await supabase.rpc('is_current_user_admin');
+        if (error) {
+          console.error('Error checking admin role:', error);
+          setIsAdmin(false);
+          return;
+        }
+        setIsAdmin(data === true);
+      } catch (error) {
+        console.error('Error in admin role check:', error);
+        setIsAdmin(false);
+      }
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    // Check on component mount
+    checkAdminRole();
+
+    // Setup listener for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAdminRole();
+    });
+
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -80,6 +94,11 @@ export function DesktopSidebar() {
       icon: Book,
       label: 'Gerenciar Artigos',
       path: '/admin/articles'
+    },
+    {
+      icon: Shield,
+      label: 'Segurança',
+      path: '/admin/security'
     }
   ];
 

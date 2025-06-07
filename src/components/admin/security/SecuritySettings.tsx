@@ -14,14 +14,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export const SecuritySettings: React.FC = () => {
   const [settings, setSettings] = useState<SecuritySetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+
+  // SECURITY: Get current user ID using standardized function
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_current_user_id');
+        if (error) {
+          console.error('Error getting current user ID:', error);
+          return;
+        }
+        setCurrentUserId(data);
+      } catch (error) {
+        console.error('Error in getCurrentUser:', error);
+      }
+    };
+
+    getCurrentUser();
+  }, []);
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -41,11 +59,18 @@ export const SecuritySettings: React.FC = () => {
   };
 
   const handleUpdateSetting = async (id: number, value: string) => {
-    if (!user) return;
+    if (!currentUserId) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Usuário não autenticado.",
+      });
+      return;
+    }
     
     setSaving(prev => ({ ...prev, [id]: true }));
     try {
-      const success = await updateSecuritySetting(id, value, user.id);
+      const success = await updateSecuritySetting(id, value, currentUserId);
       
       if (success) {
         toast({

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { debounce, isEqual } from '@/lib/utils';
+import { getClientIPSecure, logSuspiciousIPActivity, isIPAllowlisted } from '@/services/ipSecurityService';
 
 interface AuthContextType {
   user: User | null;
@@ -33,6 +34,11 @@ const getClientIP = async (): Promise<string> => {
 // Helper function to check if IP is blocked
 const checkIPBlocked = async (ip: string): Promise<boolean> => {
   try {
+    // SECURITY: Check if IP is allowlisted first
+    if (isIPAllowlisted(ip)) {
+      return false;
+    }
+    
     const { data, error } = await supabase.rpc('is_ip_blocked', { check_ip: ip });
     if (error) {
       console.error('Error checking if IP is blocked:', error);
@@ -309,8 +315,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN') {
         setTimeout(async () => {
           await updateLastLogin(session.user.id);
-          const ipAddress = await getClientIP();
-          await manageActiveSession(session.user.id, ipAddress);
+          // SECURITY: Use enhanced IP detection
+          const ipResult = await getClientIPSecure();
+          
+          // Log if IP detection was unreliable
+          if (!ipResult.reliable) {
+            await logSuspiciousIPActivity(ipResult.ip, 'UNRELIABLE_IP_DETECTION', {
+              source: ipResult.source,
+              userId: session.user.id,
+              email: session.user.email
+            });
+          }
+          
+          await manageActiveSession(session.user.id, ipResult.ip);
         }, 0);
       }
       
@@ -409,16 +426,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setIsLoading(true);
     try {
-      const ipAddress = await getClientIP();
+      // SECURITY: Use enhanced IP detection with validation
+      const ipResult = await getClientIPSecure();
       
-      const isBlocked = await checkIPBlocked(ipAddress);
+      // Log suspicious IP detection failures
+      if (!ipResult.reliable) {
+        await logSuspiciousIPActivity(ipResult.ip, 'LOGIN_WITH_UNRELIABLE_IP', {
+          email,
+          source: ipResult.source
+        });
+      }
+      
+      const isBlocked = await checkIPBlocked(ipResult.ip);
       if (isBlocked) {
         toast({
           variant: "destructive",
           title: "Acesso bloqueado",
           description: "Seu endereço IP foi bloqueado temporariamente por motivos de segurança.",
         });
-        await recordLoginAttempt(email, null, ipAddress, false);
+        await recordLoginAttempt(email, null, ipResult.ip, false);
         return false;
       }
       
@@ -429,8 +455,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Erro no login:', error.message);
-        await recordLoginAttempt(email, null, ipAddress, false);
-        await checkAndBlockIP(ipAddress);
+        await recordLoginAttempt(email, null, ipResult.ip, false);
+        await checkAndBlockIP(ipResult.ip);
         
         throw error;
       }
@@ -443,7 +469,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error(`SECURITY: Login blocked for ${email} - Reason: ${validation.reason}`);
           
           // Record failed attempt due to security validation
-          await recordLoginAttempt(email, data.user.id, ipAddress, false);
+          await recordLoginAttempt(email, data.user.id, ipResult.ip, false);
           
           // Handle orphaned user
           if (validation.reason === 'ORPHANED_USER') {
@@ -473,7 +499,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         // Record successful login only after profile validation
-        await recordLoginAttempt(email, data.user.id, ipAddress, true);
+        await recordLoginAttempt(email, data.user.id, ipResult.ip, true);
       }
 
       toast({
@@ -525,8 +551,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (data.user) {
-        const ipAddress = await getClientIP();
-        await recordLoginAttempt(email, data.user.id, ipAddress, true);
+        // SECURITY: Use enhanced IP detection for registration
+        const ipResult = await getClientIPSecure();
+        
+        if (!ipResult.reliable) {
+          await logSuspiciousIPActivity(ipResult.ip, 'REGISTRATION_WITH_UNRELIABLE_IP', {
+            email,
+            source: ipResult.source,
+            userId: data.user.id
+          });
+        }
+        
+        await recordLoginAttempt(email, data.user.id, ipResult.ip, true);
       }
 
       toast({

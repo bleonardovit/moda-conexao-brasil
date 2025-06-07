@@ -1,0 +1,143 @@
+
+// SECURITY: Enhanced IP Security Service
+// Provides secure IP detection with fallback methods and validation
+
+export interface IPDetectionResult {
+  ip: string;
+  source: 'ipify' | 'ipapi' | 'ipinfo' | 'fallback';
+  reliable: boolean;
+}
+
+/**
+ * SECURITY: Get client IP address with multiple fallback methods
+ * Uses multiple services to ensure reliability and prevent bypass
+ */
+export const getClientIPSecure = async (): Promise<IPDetectionResult> => {
+  // Primary method: ipify.org (most reliable)
+  try {
+    const response = await fetch('https://api.ipify.org?format=json', {
+      timeout: 5000,
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.ip && isValidIP(data.ip)) {
+        return {
+          ip: data.ip,
+          source: 'ipify',
+          reliable: true
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('Primary IP service failed:', error);
+  }
+
+  // Fallback 1: ipapi.co
+  try {
+    const response = await fetch('https://ipapi.co/ip/', {
+      timeout: 5000,
+      headers: {
+        'Accept': 'text/plain'
+      }
+    });
+    
+    if (response.ok) {
+      const ip = await response.text();
+      if (isValidIP(ip.trim())) {
+        return {
+          ip: ip.trim(),
+          source: 'ipapi',
+          reliable: true
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('Fallback IP service 1 failed:', error);
+  }
+
+  // Fallback 2: ipinfo.io
+  try {
+    const response = await fetch('https://ipinfo.io/ip', {
+      timeout: 5000,
+      headers: {
+        'Accept': 'text/plain'
+      }
+    });
+    
+    if (response.ok) {
+      const ip = await response.text();
+      if (isValidIP(ip.trim())) {
+        return {
+          ip: ip.trim(),
+          source: 'ipinfo',
+          reliable: true
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('Fallback IP service 2 failed:', error);
+  }
+
+  // Last resort: return a placeholder that will be logged as suspicious
+  console.error('SECURITY ALERT: All IP detection methods failed');
+  return {
+    ip: 'unknown',
+    source: 'fallback',
+    reliable: false
+  };
+};
+
+/**
+ * SECURITY: Validate IP address format
+ */
+const isValidIP = (ip: string): boolean => {
+  // IPv4 validation
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  
+  // IPv6 validation (basic)
+  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+  
+  return ipv4Regex.test(ip) || ipv6Regex.test(ip);
+};
+
+/**
+ * SECURITY: Check if IP should be exempt from blocking (admin allowlist)
+ */
+export const isIPAllowlisted = (ip: string): boolean => {
+  // Define trusted IP ranges for admin access
+  const allowlistedIPs = [
+    // Add your admin IP ranges here
+    // Example: '192.168.1.0/24', '10.0.0.0/8'
+  ];
+  
+  // For now, return false to maintain existing security
+  // This can be configured later by admins
+  return false;
+};
+
+/**
+ * SECURITY: Log suspicious IP activity
+ */
+export const logSuspiciousIPActivity = async (
+  ip: string, 
+  activity: string, 
+  details: any = {}
+): Promise<void> => {
+  try {
+    console.warn('SECURITY ALERT: Suspicious IP activity', {
+      ip,
+      activity,
+      details,
+      timestamp: new Date().toISOString()
+    });
+    
+    // TODO: Implement proper security audit logging to database
+    // This should be stored in a security_audit_log table
+  } catch (error) {
+    console.error('Error logging suspicious IP activity:', error);
+  }
+};
