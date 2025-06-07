@@ -9,18 +9,37 @@ export interface IPDetectionResult {
 }
 
 /**
+ * SECURITY: Helper function to create fetch with timeout
+ */
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs: number = 5000): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
+/**
  * SECURITY: Get client IP address with multiple fallback methods
  * Uses multiple services to ensure reliability and prevent bypass
  */
 export const getClientIPSecure = async (): Promise<IPDetectionResult> => {
   // Primary method: ipify.org (most reliable)
   try {
-    const response = await fetch('https://api.ipify.org?format=json', {
-      timeout: 5000,
+    const response = await fetchWithTimeout('https://api.ipify.org?format=json', {
       headers: {
         'Accept': 'application/json'
       }
-    });
+    }, 5000);
     
     if (response.ok) {
       const data = await response.json();
@@ -38,12 +57,11 @@ export const getClientIPSecure = async (): Promise<IPDetectionResult> => {
 
   // Fallback 1: ipapi.co
   try {
-    const response = await fetch('https://ipapi.co/ip/', {
-      timeout: 5000,
+    const response = await fetchWithTimeout('https://ipapi.co/ip/', {
       headers: {
         'Accept': 'text/plain'
       }
-    });
+    }, 5000);
     
     if (response.ok) {
       const ip = await response.text();
@@ -61,12 +79,11 @@ export const getClientIPSecure = async (): Promise<IPDetectionResult> => {
 
   // Fallback 2: ipinfo.io
   try {
-    const response = await fetch('https://ipinfo.io/ip', {
-      timeout: 5000,
+    const response = await fetchWithTimeout('https://ipinfo.io/ip', {
       headers: {
         'Accept': 'text/plain'
       }
-    });
+    }, 5000);
     
     if (response.ok) {
       const ip = await response.text();
