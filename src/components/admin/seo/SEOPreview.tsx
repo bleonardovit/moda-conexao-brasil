@@ -7,7 +7,20 @@ interface SEOPreviewProps {
   settings: SEOSettings;
 }
 
+const getHostnameFromUrl = (url: string): string => {
+  try {
+    if (!url || url.trim() === '') {
+      return 'seusite.com';
+    }
+    return new URL(url).hostname;
+  } catch (error) {
+    return 'seusite.com';
+  }
+};
+
 export const SEOPreview: React.FC<SEOPreviewProps> = ({ settings }) => {
+  const hostname = getHostnameFromUrl(settings.site_url);
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -29,7 +42,7 @@ export const SEOPreview: React.FC<SEOPreviewProps> = ({ settings }) => {
             )}
             <div className="p-3">
               <div className="text-xs text-gray-500 uppercase mb-1">
-                {new URL(settings.site_url).hostname}
+                {hostname}
               </div>
               <div className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
                 {settings.site_title}
@@ -62,7 +75,7 @@ export const SEOPreview: React.FC<SEOPreviewProps> = ({ settings }) => {
                 {settings.site_description}
               </div>
               <div className="text-xs text-gray-500">
-                {new URL(settings.site_url).hostname}
+                {hostname}
               </div>
             </div>
           </div>
@@ -89,7 +102,7 @@ export const SEOPreview: React.FC<SEOPreviewProps> = ({ settings }) => {
                 {settings.site_description}
               </div>
               <div className="text-xs text-blue-600">
-                {settings.site_url}
+                {settings.site_url || 'https://seusite.com'}
               </div>
             </div>
           </div>
