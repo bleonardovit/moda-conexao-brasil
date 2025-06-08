@@ -11,14 +11,15 @@ interface AppLayoutProps {
   children: ReactNode;
   title?: string;
   description?: string;
+  image?: string;
 }
 
-export function AppLayout({ children, title, description }: AppLayoutProps) {
+export function AppLayout({ children, title, description, image }: AppLayoutProps) {
   const isMobile = useIsMobile();
 
   return (
     <SidebarProvider>
-      <GlobalSEO title={title} description={description} />
+      <GlobalSEO title={title} description={description} image={image} />
       
       <div className="flex min-h-screen w-full bg-background text-foreground">
         {!isMobile && <DesktopSidebar />}
