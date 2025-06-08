@@ -29,7 +29,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           
           <footer className="py-4 border-t border-border text-center text-sm text-muted-foreground hidden md:block">
             <div className="container">
-              © {new Date().getFullYear()} Conexão Brasil
+              © {new Date().getFullYear()} Os Fornecedores
             </div>
           </footer>
           

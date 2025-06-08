@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Store, BarChart, List, Settings, ChevronRight, Book, Bell, Code, Shield, MessageSquare, Search } from 'lucide-react';
@@ -45,7 +46,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <aside className="hidden md:flex w-64 flex-col border-r border-border bg-background/50">
         <div className="p-4 border-b border-border">
           <Link to="/admin" className="font-bold text-lg text-primary">
-            Admin Conexão Brasil
+            Admin Os Fornecedores
           </Link>
         </div>
         <div className="flex-1 p-4">

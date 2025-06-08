@@ -52,9 +52,9 @@ const LandingPage = () => {
             {/* Logo */}
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] flex items-center justify-center">
-                <span className="text-white font-bold text-sm">CB</span>
+                <span className="text-white font-bold text-sm">OF</span>
               </div>
-              <span className="ml-2 font-bold text-xl hidden sm:inline text-gray-900">Conexão Brasil</span>
+              <span className="ml-2 font-bold text-xl hidden sm:inline text-gray-900">Os Fornecedores</span>
             </div>
             
             {/* Desktop Navigation */}
@@ -113,7 +113,7 @@ const LandingPage = () => {
                 <div className="rounded-lg overflow-hidden shadow-xl">
                   <img 
                     src="/images/mosaico.png"
-                    alt="Aplicativo Conexão Brasil" 
+                    alt="Aplicativo Os Fornecedores" 
                     className="w-full h-auto object-cover"
                   />
                 </div>
@@ -509,9 +509,9 @@ const LandingPage = () => {
               <div>
                 <div className="flex items-center mb-4">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">CB</span>
+                    <span className="text-white font-bold text-sm">OF</span>
                   </div>
-                  <span className="ml-2 font-bold text-xl text-gray-900">Conexão Brasil</span>
+                  <span className="ml-2 font-bold text-xl text-gray-900">Os Fornecedores</span>
                 </div>
                 <p className="text-gray-600 text-sm">
                   Conectando empreendedores aos melhores fornecedores de moda do Brasil.

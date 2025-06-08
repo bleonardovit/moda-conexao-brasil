@@ -86,9 +86,9 @@ export function MobileNav() {
       <div className="flex items-center space-x-2 p-4">
         <Link to="/" className="flex items-center space-x-2 font-bold">
           <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#9b87f5] to-[#D946EF] flex items-center justify-center">
-            <span className="text-white font-bold text-sm">CB</span>
+            <span className="text-white font-bold text-sm">OF</span>
           </div>
-          <span className="text-xl">Conexão Brasil</span>
+          <span className="text-xl">Os Fornecedores</span>
         </Link>
       </div>
       <Separator />
