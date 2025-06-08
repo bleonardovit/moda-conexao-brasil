@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { getArticles, getCategories, getLatestPublishedArticleIdForCategory, getLatestPublishedArticleIdsPerCategory } from '@/services/articleService';
 import { ArticleCard } from '@/components/articles/ArticleCard';
@@ -116,8 +117,15 @@ export default function ArticlesPage() {
     ? "Seu período de teste expirou. Assine para ler o conteúdo completo."
     : accessRule?.message || "Assine para ler o conteúdo completo.";
 
+  const pageTitle = selectedCategory 
+    ? `Artigos - ${categories.find(c => c.id === selectedCategory)?.label || 'Categoria'}`
+    : 'Dicas & Conteúdo Exclusivo';
+
   return (
-    <AppLayout>
+    <AppLayout 
+      title={pageTitle}
+      description="Conteúdo selecionado para impulsionar seu negócio e desenvolver suas habilidades como empreendedor(a)."
+    >
       <div className="space-y-6 animate-fade-in">
         {/* Hero section */}
         <div className="py-8 px-4 text-center glass-morphism rounded-lg border-white/10 mb-8">

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getArticleById, getCategories, getLatestPublishedArticleIdForCategory } from '@/services/articleService';
@@ -102,7 +103,7 @@ export default function ArticleDetailPage() {
 
   if (!article) { // Se o artigo não foi carregado (ou não é publicado)
     return (
-      <AppLayout>
+      <AppLayout title="Artigo não encontrado">
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold mb-4">Artigo não encontrado</h2>
           <p className="mb-6 text-muted-foreground">
@@ -123,7 +124,11 @@ export default function ArticleDetailPage() {
       : accessRule?.message || "Este conteúdo é exclusivo para assinantes.";
 
     return (
-      <AppLayout>
+      <AppLayout 
+        title={article.title}
+        description={article.summary}
+        image={article.image_url}
+      >
         <div className="max-w-3xl mx-auto pb-12 animate-fade-in">
           <Button 
             variant="ghost" 
@@ -166,7 +171,11 @@ export default function ArticleDetailPage() {
 
   // Artigo acessível
   return (
-    <AppLayout>
+    <AppLayout 
+      title={article.title}
+      description={article.summary}
+      image={article.image_url}
+    >
       <div className="max-w-3xl mx-auto pb-12 animate-fade-in">
         <Button 
           variant="ghost" 

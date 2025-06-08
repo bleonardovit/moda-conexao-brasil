@@ -5,16 +5,21 @@ import { MobileHeader } from './MobileHeader';
 import { MobileFooterNav } from './MobileFooterNav';
 import { DesktopSidebar } from './DesktopSidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { GlobalSEO } from '@/components/seo/GlobalSEO';
 
 interface AppLayoutProps {
   children: ReactNode;
+  title?: string;
+  description?: string;
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({ children, title, description }: AppLayoutProps) {
   const isMobile = useIsMobile();
 
   return (
     <SidebarProvider>
+      <GlobalSEO title={title} description={description} />
+      
       <div className="flex min-h-screen w-full bg-background text-foreground">
         {!isMobile && <DesktopSidebar />}
         <div className="flex-1 flex flex-col">
