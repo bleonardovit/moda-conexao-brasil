@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Store, BarChart, List, Settings, ChevronRight, Book, Bell, Code, Shield, MessageSquare } from 'lucide-react';
+import { User, Store, BarChart, List, Settings, ChevronRight, Book, Bell, Code, Shield, MessageSquare, Search } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -17,6 +17,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: 'Artigos', path: '/admin/articles', icon: <Book className="h-5 w-5" /> },
     { name: 'Relatórios', path: '/admin/reports', icon: <BarChart className="h-5 w-5" /> },
     { name: 'Segurança', path: '/admin/security-monitoring', icon: <Shield className="h-5 w-5" /> },
+    { name: 'SEO', path: '/admin/seo', icon: <Search className="h-5 w-5" /> },
     { name: 'Configurações de Rastreamento', path: '/admin/tracking-settings', icon: <Code className="h-5 w-5" /> },
   ];
   

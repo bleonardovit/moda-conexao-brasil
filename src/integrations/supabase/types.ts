@@ -444,6 +444,62 @@ export type Database = {
         }
         Relationships: []
       }
+      seo_settings: {
+        Row: {
+          author: string | null
+          created_at: string
+          facebook_app_id: string | null
+          id: string
+          keywords: string[] | null
+          site_description: string
+          site_image_url: string | null
+          site_name: string
+          site_title: string
+          site_url: string
+          twitter_handle: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string
+          facebook_app_id?: string | null
+          id?: string
+          keywords?: string[] | null
+          site_description?: string
+          site_image_url?: string | null
+          site_name?: string
+          site_title?: string
+          site_url?: string
+          twitter_handle?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          author?: string | null
+          created_at?: string
+          facebook_app_id?: string | null
+          id?: string
+          keywords?: string[] | null
+          site_description?: string
+          site_image_url?: string | null
+          site_name?: string
+          site_title?: string
+          site_url?: string
+          twitter_handle?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_import_history: {
         Row: {
           error_count: number

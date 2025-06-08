@@ -8,3 +8,4 @@ export * from './trial';
 export * from './user';
 export * from './payment';
 export * from './review';
+export * from './seo';

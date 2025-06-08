@@ -46,6 +46,7 @@ import ArticlesManagement from "./pages/admin/ArticlesManagement";
 import TrackingSettings from "./pages/admin/TrackingSettings";
 import SecurityMonitoring from "./pages/admin/SecurityMonitoring";
 import ReviewsModeration from "./pages/admin/ReviewsModeration";
+import SEOManagement from "./pages/admin/SEOManagement";
 
 // Configuração do React Query
 import { defaultQueryOptions } from "./lib/react-query-config";
@@ -427,6 +428,15 @@ const AppRoutes = () => {
         element={
           <AdminRoute>
             <ArticlesManagement />
+          </AdminRoute>
+        } 
+      />
+      {/* Nova rota para SEO */}
+      <Route 
+        path="/admin/seo" 
+        element={
+          <AdminRoute>
+            <SEOManagement />
           </AdminRoute>
         } 
       />
