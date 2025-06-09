@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -178,10 +179,18 @@ const validateUserProfile = async (userId: string): Promise<{ isValid: boolean; 
       return { isValid: false, reason: 'NO_PROFILE' };
     }
     
-    // Check if user is deactivated/banned
-    if (profile.subscription_status === 'inactive' && profile.role !== 'admin') {
-      console.warn(`SECURITY ALERT: Deactivated user attempted login: ${userId}`);
-      return { isValid: false, reason: 'DEACTIVATED_USER' };
+    // UPDATED: Check user status considering trial
+    // User is considered valid if:
+    // 1. Is admin (always valid)
+    // 2. Has active subscription
+    // 3. Has active trial (even with inactive subscription)
+    const isAdmin = profile.role === 'admin';
+    const hasActiveSubscription = profile.subscription_status === 'active';
+    const hasActiveTrial = profile.trial_status === 'active';
+    
+    if (!isAdmin && !hasActiveSubscription && !hasActiveTrial) {
+      console.warn(`SECURITY ALERT: User without valid access attempted login: ${userId} - subscription: ${profile.subscription_status}, trial: ${profile.trial_status}`);
+      return { isValid: false, reason: 'INACTIVE_USER' };
     }
     
     return { isValid: true, profile };
@@ -345,6 +354,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         subscription_status: profile.subscription_status as 'active' | 'inactive' | 'pending' || 'inactive',
         subscription_type: profile.subscription_type as ('monthly' | 'yearly' | undefined),
         subscription_start_date: profile.subscription_start_date || undefined,
+        trial_status: profile.trial_status,
+        trial_start_date: profile.trial_start_date || null,
+        trial_end_date: profile.trial_end_date || null,
       };
       
       setUser(prevUser => {
@@ -471,7 +483,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Record failed attempt due to security validation
           await recordLoginAttempt(email, data.user.id, ipResult.ip, false);
           
-          // Handle orphaned user
+          // Handle different validation failure reasons
           if (validation.reason === 'ORPHANED_USER') {
             await handleOrphanedUser(data.user.id, email);
             toast({
@@ -479,11 +491,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               title: "Conta não encontrada",
               description: "Esta conta não existe mais no sistema. Entre em contato com o suporte se necessário.",
             });
-          } else if (validation.reason === 'DEACTIVATED_USER') {
+          } else if (validation.reason === 'INACTIVE_USER') {
             toast({
               variant: "destructive",
-              title: "Conta desativada",
-              description: "Sua conta foi desativada. Entre em contato com o suporte para reativação.",
+              title: "Conta sem acesso ativo",
+              description: "Sua conta não possui assinatura ativa ou trial válido. Entre em contato com o suporte.",
             });
           } else {
             toast({

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { startUserTrial } from '@/services/trialService';
 import { brazilianStates } from "@/data/brazilian-states";
+
 const FormSchema = z.object({
   name: z.string().min(2, {
     message: "Nome deve ter pelo menos 2 caracteres."
@@ -41,6 +42,7 @@ const FormSchema = z.object({
   message: "As senhas não coincidem.",
   path: ["confirmPassword"]
 });
+
 const Register = () => {
   const {
     toast
@@ -88,6 +90,7 @@ const Register = () => {
       shouldValidate: true
     });
   };
+
   const onFormSubmit = async (values: z.infer<typeof FormSchema>) => {
     setIsSubmitting(true);
     setApiError(null);
@@ -109,7 +112,7 @@ const Register = () => {
       });
       if (signUpError) throw signUpError;
       if (data?.user) {
-        await startUserTrial(data.user.id);
+        // Trial será iniciado automaticamente pelo trigger do banco
         toast({
           title: "Conta criada com sucesso!",
           description: "Você receberá um email para confirmar seu cadastro."
@@ -120,7 +123,9 @@ const Register = () => {
       }
     } catch (err: any) {
       console.error('Error signing up:', err);
-      const errorMessage = err.message?.includes("User already registered") ? "Este email já está cadastrado. Tente fazer login." : err.message || "Ocorreu um erro ao criar a conta.";
+      const errorMessage = err.message?.includes("User already registered") 
+        ? "Este email já está cadastrado. Tente fazer login." 
+        : err.message || "Ocorreu um erro ao criar a conta.";
       setApiError(errorMessage);
       toast({
         title: "Erro ao criar a conta",
@@ -131,6 +136,7 @@ const Register = () => {
       setIsSubmitting(false);
     }
   };
+
   return <div style={{
     backgroundColor: '#6d28d9' /* purple-700 */
   }} className="flex min-h-screen items-center justify-center px-4 py-12 bg-[#a164f1]">
@@ -247,4 +253,5 @@ const Register = () => {
       </Card>
     </div>;
 };
+
 export default Register;
