@@ -56,11 +56,36 @@ export default function Payment() {
   const [isLoadingPayment, setIsLoadingPayment] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly'); 
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
 
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+
+  // Função para verificar status do pagamento como fallback
+  const verifyPaymentStatus = useCallback(async () => {
+    if (!user?.email) return;
+    
+    setIsVerifyingPayment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      
+      if (error) {
+        console.error('Erro ao verificar assinatura:', error);
+        return;
+      }
+      
+      if (data?.subscribed) {
+        // Forçar refresh do contexto de auth
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Erro na verificação de pagamento:', error);
+    } finally {
+      setIsVerifyingPayment(false);
+    }
+  }, [user?.email]);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -79,38 +104,12 @@ export default function Payment() {
         description: "Sua assinatura está ativa. Bem-vindo à Conexão Brasil!"
       });
 
-      if (user && user.id) {
-        const updateProfileWithSubscription = async () => {
-          try {
-            const { error: updateError } = await supabase
-              .from('profiles')
-              .update({
-                subscription_status: 'active',
-                subscription_type: selectedPlan, 
-                subscription_start_date: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                trial_status: 'converted', // Adicionado para atualizar o status do trial
-              })
-              .eq('id', user.id);
+      // Verificar status do pagamento como fallback caso o webhook não tenha funcionado
+      setTimeout(() => {
+        verifyPaymentStatus();
+      }, 2000);
 
-            if (updateError) throw updateError;
-          } catch (e) {
-            console.error("Erro ao atualizar perfil após pagamento:", e);
-            toast({
-              variant: "destructive",
-              title: "Erro ao finalizar configuração",
-              description: "Seu pagamento foi processado, mas houve um problema ao atualizar seu status. Contate o suporte.",
-            });
-          }
-        };
-        
-        updateProfileWithSubscription().finally(() => {
-          setTimeout(() => navigate('/suppliers'), 3000);
-        });
-      } else {
-        console.warn("User context not available after successful payment for profile update.");
-        setTimeout(() => navigate('/suppliers'), 3000);
-      }
+      setTimeout(() => navigate('/suppliers'), 5000);
     } else if (cancelled === 'true') {
       toast({
         variant: "destructive",
@@ -118,7 +117,7 @@ export default function Payment() {
         description: "Você cancelou o processo de pagamento. Sua assinatura não foi ativada."
       });
     }
-  }, [location.search, navigate, toast, user, selectedPlan]);
+  }, [location.search, navigate, toast, verifyPaymentStatus]);
 
   const handlePayment = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,6 +172,11 @@ export default function Payment() {
               <p className="text-slate-300">
                 Seu pagamento foi processado e sua conta está ativa.
               </p>
+              {isVerifyingPayment && (
+                <p className="text-sm text-slate-400 mt-2">
+                  Verificando status da assinatura...
+                </p>
+              )}
             </div>
             <Button className="w-full bg-gradient-to-r from-brand.purple to-brand.pink hover:opacity-90 transition-opacity text-white" onClick={() => navigate('/home')}>
               Acessar a plataforma
