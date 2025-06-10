@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +18,6 @@ const LandingPageTest: React.FC = () => {
         </div>
       </header>
       
-      {/* Hero Section */}
       <section className={`text-center ${sectionPadding} w-full max-w-5xl mx-auto`}>
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 text-white">
           Encontre Fornecedores Confiáveis para o Seu Negócio de Moda!
@@ -42,7 +40,6 @@ const LandingPageTest: React.FC = () => {
         </div>
       </section>
       
-      {/* Seção Problema e Dor do Cliente */}
       <section className={`text-center ${sectionPadding} px-4 w-full max-w-5xl mx-auto`}>
         <h2 className={`${titleStyle} text-white`}>
           Empreender na Moda é Desafiador?
@@ -66,7 +63,6 @@ const LandingPageTest: React.FC = () => {
         </div>
       </section>
       
-      {/* Seção Apresentação da Solução (Sobre o App) */}
       <section className={`${sectionPadding} px-4 w-full max-w-5xl mx-auto bg-purple-900/50 backdrop-blur-lg rounded-2xl my-10`}>
         <h2 className={`${titleStyle} text-pink-400`}>
           O App que Conecta Você aos Melhores Fornecedores!
@@ -89,7 +85,6 @@ const LandingPageTest: React.FC = () => {
         </div>
       </section>
       
-      {/* Seção Depoimentos de Sucesso */}
       <section className={`text-center ${sectionPadding} px-4 w-full max-w-5xl mx-auto`}>
         <h2 className={`${titleStyle} text-white`}>
           Veja o Que Nossos Usuários Dizem!
@@ -110,7 +105,6 @@ const LandingPageTest: React.FC = () => {
         </div>
       </section>
 
-      {/* Seção Demonstração Rápida (Como Funciona) */}
       <section className={`${sectionPadding} px-4 w-full max-w-5xl mx-auto bg-purple-900/50 backdrop-blur-lg rounded-2xl my-10`}>
         <h2 className={`${titleStyle} text-pink-400`}>
           Simples e Rápido!
@@ -138,7 +132,7 @@ const LandingPageTest: React.FC = () => {
           Garanta Seu Acesso com <span className="text-pink-400">Desconto Exclusivo!</span>
         </h2>
         <p className="text-lg sm:text-xl mb-6 text-gray-300">
-          Por tempo limitado, de <span className="line-through text-gray-400">R$ 116,40</span> cadastre-se agora por somente
+          Por tempo limitado, de <span className="line-through text-gray-400">R$ 176,40</span> cadastre-se agora por somente
         </p>
         <p className="text-4xl sm:text-5xl font-bold text-pink-400 mb-8">R$ 87,00<span className="text-2xl text-gray-300">/Anual</span></p>
         <Button
@@ -149,7 +143,6 @@ const LandingPageTest: React.FC = () => {
         </Button>
       </section>
 
-      {/* Seção Garantia de Segurança */}
       <section className={`text-center ${sectionPadding} px-4 w-full max-w-5xl mx-auto`}>
         <div className="max-w-3xl mx-auto">
           <h2 className={`${titleStyle} text-white`}>Nossa Garantia</h2>
@@ -169,7 +162,6 @@ const LandingPageTest: React.FC = () => {
         </div>
       </section>
       
-      {/* Seção O que você vai encontrar na plataforma? */}
       <section className={`${sectionPadding} px-0 md:px-4 w-full`}> {/* Full width for scroll container */}
         <h2 className={`${titleStyle} text-white px-4`}>
           O que você vai encontrar na plataforma?
@@ -208,7 +200,6 @@ const LandingPageTest: React.FC = () => {
         </div>
       </section>
       
-      {/* Seção Bônus Exclusivo */}
       <section className={`${sectionPadding} px-4 w-full max-w-5xl mx-auto bg-purple-900/50 backdrop-blur-lg rounded-2xl my-10`}>
         <h2 className={`${titleStyle} text-pink-400`}>
           <span role="img" aria-label="ícone de presente" className="mr-2">🎁</span> Bônus Exclusivo: Área de Dicas & Conteúdos
@@ -286,7 +277,6 @@ const LandingPageTest: React.FC = () => {
         </div>
       </section>
       
-      {/* Rodapé Novo */}
       <footer className={`w-full bg-black/60 backdrop-blur-lg text-gray-300 p-8 sm:p-10 text-center mt-16 border-t border-gray-700/50`}>
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-8">
           <div>

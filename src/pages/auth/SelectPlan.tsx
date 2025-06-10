@@ -25,7 +25,7 @@ const plans = [
   {
     id: 'monthly',
     name: 'Plano Mensal',
-    price: 'R$9,70',
+    price: 'R$14,70',
     frequency: '/mês',
     features: [
       'Acesso completo a fornecedores',
@@ -46,10 +46,10 @@ const plans = [
     id: 'yearly',
     name: 'Plano Anual',
     price: 'R$87,00',
-    frequency: '/ano (Economize 25%)',
+    frequency: '/ano (Economize 50%)',
     features: [
       'Todos os benefícios do Mensal',
-      'Desconto de 25% comparado ao mensal',
+      'Desconto de 50% comparado ao mensal',
       'Acesso antecipado a novidades',
     ],
     icon: <Gem className="h-6 w-6 text-pink-500 mb-4" />,

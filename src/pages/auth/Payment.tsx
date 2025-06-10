@@ -37,7 +37,7 @@ type PlanDetailsType = {
 const planDetails: PlanDetailsType = {
   monthly: {
     name: 'Plano Mensal',
-    price: 'R$ 9,70',
+    price: 'R$ 14,70',
     id: 'prod_SKDr4FhH8ZMx1z', 
     description: 'Acesso completo por um mês.',
     features: ['Acesso a todos os fornecedores', 'Suporte prioritário', 'Atualizações mensais']
@@ -46,9 +46,9 @@ const planDetails: PlanDetailsType = {
     name: 'Plano Anual',
     price: 'R$ 87,00',
     id: 'prod_SKDstDNOxG1OOV',
-    originalPrice: 'R$ 116,40',
+    originalPrice: 'R$ 176,40',
     description: 'Economize com o plano anual.',
-    features: ['Acesso a todos os fornecedores', 'Suporte prioritário', 'Atualizações mensais', 'Desconto de 20%']
+    features: ['Acesso a todos os fornecedores', 'Suporte prioritário', 'Atualizações mensais', 'Desconto de 50%']
   } 
 };
 
