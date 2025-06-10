@@ -342,7 +342,7 @@ const LandingPage = () => {
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                   <h3 className="text-xl font-bold text-center mb-4 text-gray-900">Plano Mensal</h3>
                   <div className="text-center mb-6">
-                    <span className="text-3xl font-bold text-gray-900">R$ 9,70</span>
+                    <span className="text-3xl font-bold text-gray-900">R$ 14,70</span>
                     <span className="text-gray-600">/mês</span>
                   </div>
                   
@@ -378,8 +378,8 @@ const LandingPage = () => {
                   <div className="text-center mb-6">
                     <span className="text-3xl font-bold text-gray-900">R$ 87,00</span>
                     <span className="text-gray-600 block text-sm">Pagamento único anual</span>
-                    <p className="text-sm text-green-600 font-medium">De <span className="line-through">R$ 116,40</span> por R$ 87,00 à vista</p>
-                    <p className="text-xs text-gray-600">(Economize R$ 29,40 - Oferta Limitada)</p>
+                    <p className="text-sm text-green-600 font-medium">De <span className="line-through">R$ 176,40</span> por R$ 87,00 à vista</p>
+                    <p className="text-xs text-gray-600">(Economize R$ 89,40 - Oferta Limitada)</p>
                   </div>
                   
                   <ul className="space-y-3 mb-6">
@@ -389,7 +389,7 @@ const LandingPage = () => {
                     </li>
                     <li className="flex items-start">
                       <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">Suporte prioritário</span>
+                      <span className="text-gray-700">Suporte Avançando</span>
                     </li>
                     <li className="flex items-start">
                       <Check className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
