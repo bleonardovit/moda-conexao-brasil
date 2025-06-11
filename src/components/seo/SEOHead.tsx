@@ -11,78 +11,6 @@ interface SEOHeadProps {
   type?: string;
 }
 
-// Helper function to safely convert any value to string, handling Symbols and null/undefined
-const safeStringify = (value: any): string => {
-  if (value === null || value === undefined) {
-    return '';
-  }
-  if (typeof value === 'symbol') {
-    console.warn('Symbol value detected and filtered out:', value.toString());
-    return '';
-  }
-  if (typeof value === 'object') {
-    try {
-      // Filter out any Symbol properties from objects
-      const cleanObj = {};
-      for (const key in value) {
-        if (typeof key !== 'symbol' && typeof value[key] !== 'symbol') {
-          cleanObj[key] = value[key];
-        }
-      }
-      return JSON.stringify(cleanObj);
-    } catch {
-      return '';
-    }
-  }
-  return String(value);
-};
-
-// Helper function to safely extract string values from objects
-const safeExtract = (obj: any, key: string, fallback: string = ''): string => {
-  try {
-    if (!obj || typeof obj !== 'object') {
-      return fallback;
-    }
-    
-    // Make sure the key itself isn't a Symbol
-    if (typeof key === 'symbol') {
-      return fallback;
-    }
-    
-    const value = obj[key];
-    const result = safeStringify(value);
-    return result || fallback;
-  } catch (error) {
-    console.warn('Error extracting value for key:', key, error);
-    return fallback;
-  }
-};
-
-// Helper function to completely sanitize an object from Symbol values
-const sanitizeObject = (obj: any): any => {
-  if (!obj || typeof obj !== 'object') {
-    return obj;
-  }
-  
-  const sanitized = {};
-  try {
-    Object.getOwnPropertyNames(obj).forEach(key => {
-      if (typeof key !== 'symbol' && typeof obj[key] !== 'symbol') {
-        if (typeof obj[key] === 'object' && obj[key] !== null) {
-          sanitized[key] = sanitizeObject(obj[key]);
-        } else {
-          sanitized[key] = obj[key];
-        }
-      }
-    });
-  } catch (error) {
-    console.warn('Error sanitizing object:', error);
-    return {};
-  }
-  
-  return sanitized;
-};
-
 export const SEOHead: React.FC<SEOHeadProps> = ({
   title,
   description,
@@ -92,53 +20,54 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 }) => {
   const { seoSettings } = useSEOSettings();
 
-  // Add debugging to see what we're getting
-  console.log('SEOHead - Raw seoSettings:', seoSettings);
-  
-  // Sanitize the entire seoSettings object first
-  const cleanSeoSettings = sanitizeObject(seoSettings);
-  console.log('SEOHead - Cleaned seoSettings:', cleanSeoSettings);
-
   // Fallback values for better SEO
   const defaultTitle = "Os Fornecedores - Encontre os Melhores Fornecedores de Moda do Brasil";
   const defaultDescription = "Acesse uma rede exclusiva de fornecedores verificados para impulsionar seu negócio de moda. Conecte-se aos melhores fornecedores do Brasil.";
   const defaultImage = "/images/mosaico.png";
   const currentUrl = typeof window !== 'undefined' ? window.location.href : 'https://fornecedores.lovable.app';
 
-  // Safely extract values ensuring they are strings
-  const safeTitle = title || safeExtract(cleanSeoSettings, 'site_title', defaultTitle);
-  const safeDescription = description || safeExtract(cleanSeoSettings, 'site_description', defaultDescription);
-  const safeImage = image || safeExtract(cleanSeoSettings, 'site_image_url', defaultImage);
-  const safeUrl = url || safeExtract(cleanSeoSettings, 'site_url', currentUrl);
-  const safeSiteName = safeExtract(cleanSeoSettings, 'site_name', "Os Fornecedores");
-  const safeType = safeStringify(type) || 'website';
+  // Simple, safe extraction that only works with primitive values
+  const getStringValue = (value: any, fallback: string = ''): string => {
+    if (value === null || value === undefined || typeof value === 'symbol') {
+      return fallback;
+    }
+    try {
+      return String(value);
+    } catch {
+      return fallback;
+    }
+  };
 
-  // Ensure image URL is absolute
-  const absoluteImageUrl = safeImage.startsWith('http') 
-    ? safeImage 
-    : `${new URL(currentUrl).origin}${safeImage}`;
+  // Extract safe values
+  const safeTitle = title || getStringValue(seoSettings?.site_title, defaultTitle);
+  const safeDescription = description || getStringValue(seoSettings?.site_description, defaultDescription);
+  const safeImage = image || getStringValue(seoSettings?.site_image_url, defaultImage);
+  const safeUrl = url || getStringValue(seoSettings?.site_url, currentUrl);
+  const safeSiteName = getStringValue(seoSettings?.site_name, "Os Fornecedores");
+  const safeAuthor = getStringValue(seoSettings?.author, "");
+  const safeFacebookAppId = getStringValue(seoSettings?.facebook_app_id, "");
+  const safeTwitterHandle = getStringValue(seoSettings?.twitter_handle, "");
+  const safeType = getStringValue(type, 'website');
 
-  // Safely handle keywords array
+  // Handle keywords safely - only extract if it's a real array
   let keywords = '';
   try {
-    const keywordsValue = cleanSeoSettings?.keywords;
+    const keywordsValue = seoSettings?.keywords;
     if (Array.isArray(keywordsValue)) {
       keywords = keywordsValue
-        .filter(k => k != null && typeof k !== 'symbol')
-        .map(k => safeStringify(k))
-        .filter(k => k.length > 0)
+        .filter(k => k != null && typeof k === 'string')
         .join(', ');
     }
   } catch {
     keywords = '';
   }
 
-  // Safely handle optional values
-  const safeAuthor = safeExtract(cleanSeoSettings, 'author');
-  const safeFacebookAppId = safeExtract(cleanSeoSettings, 'facebook_app_id');
-  const safeTwitterHandle = safeExtract(cleanSeoSettings, 'twitter_handle');
+  // Ensure image URL is absolute
+  const absoluteImageUrl = safeImage.startsWith('http') 
+    ? safeImage 
+    : `${new URL(currentUrl).origin}${safeImage}`;
 
-  // Create structured data with safe values
+  // Create structured data with only safe string values
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -164,21 +93,6 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
       "inLanguage": "pt-BR"
     });
   }
-
-  // Final safety check - log all values that will be passed to Helmet
-  console.log('SEOHead - Final values:', {
-    safeTitle,
-    safeDescription,
-    keywords,
-    safeAuthor,
-    safeType,
-    safeUrl,
-    safeSiteName,
-    absoluteImageUrl,
-    safeFacebookAppId,
-    safeTwitterHandle,
-    structuredDataString
-  });
 
   return (
     <Helmet>
