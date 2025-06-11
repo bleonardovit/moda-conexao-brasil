@@ -26,29 +26,44 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
   const defaultImage = "/images/mosaico.png";
   const currentUrl = typeof window !== 'undefined' ? window.location.href : 'https://fornecedores.lovable.app';
 
-  const seoTitle = title || seoSettings?.site_title || defaultTitle;
-  const seoDescription = description || seoSettings?.site_description || defaultDescription;
-  const seoImage = image || seoSettings?.site_image_url || defaultImage;
-  const seoUrl = url || seoSettings?.site_url || currentUrl;
-  const siteName = seoSettings?.site_name || "Os Fornecedores";
+  // Ensure all values are strings and handle potential undefined/null values
+  const seoTitle = String(title || seoSettings?.site_title || defaultTitle);
+  const seoDescription = String(description || seoSettings?.site_description || defaultDescription);
+  const seoImage = String(image || seoSettings?.site_image_url || defaultImage);
+  const seoUrl = String(url || seoSettings?.site_url || currentUrl);
+  const siteName = String(seoSettings?.site_name || "Os Fornecedores");
+  const seoType = String(type || 'website');
 
   // Ensure image URL is absolute
   const absoluteImageUrl = seoImage.startsWith('http') 
     ? seoImage 
     : `${new URL(currentUrl).origin}${seoImage}`;
 
+  // Safely handle keywords array
+  const keywords = seoSettings?.keywords && Array.isArray(seoSettings.keywords) 
+    ? seoSettings.keywords.map(k => String(k)).join(', ')
+    : '';
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": siteName,
+    "description": seoDescription,
+    "url": seoUrl,
+    "image": absoluteImageUrl,
+    "inLanguage": "pt-BR"
+  };
+
   return (
     <Helmet>
       {/* Basic meta tags */}
       <title>{seoTitle}</title>
       <meta name="description" content={seoDescription} />
-      {seoSettings?.keywords && (
-        <meta name="keywords" content={seoSettings.keywords.join(', ')} />
-      )}
-      {seoSettings?.author && <meta name="author" content={seoSettings.author} />}
+      {keywords && <meta name="keywords" content={keywords} />}
+      {seoSettings?.author && <meta name="author" content={String(seoSettings.author)} />}
       
       {/* Open Graph / Facebook */}
-      <meta property="og:type" content={type} />
+      <meta property="og:type" content={seoType} />
       <meta property="og:title" content={seoTitle} />
       <meta property="og:description" content={seoDescription} />
       <meta property="og:url" content={seoUrl} />
@@ -59,7 +74,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
       <meta property="og:image:type" content="image/png" />
       <meta property="og:locale" content="pt_BR" />
       {seoSettings?.facebook_app_id && (
-        <meta property="fb:app_id" content={seoSettings.facebook_app_id} />
+        <meta property="fb:app_id" content={String(seoSettings.facebook_app_id)} />
       )}
       
       {/* Twitter */}
@@ -70,8 +85,8 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
       <meta name="twitter:image:alt" content={seoTitle} />
       {seoSettings?.twitter_handle && (
         <>
-          <meta name="twitter:site" content={seoSettings.twitter_handle} />
-          <meta name="twitter:creator" content={seoSettings.twitter_handle} />
+          <meta name="twitter:site" content={String(seoSettings.twitter_handle)} />
+          <meta name="twitter:creator" content={String(seoSettings.twitter_handle)} />
         </>
       )}
       
@@ -86,15 +101,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
       
       {/* Structured data for better understanding */}
       <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          "name": siteName,
-          "description": seoDescription,
-          "url": seoUrl,
-          "image": absoluteImageUrl,
-          "inLanguage": "pt-BR"
-        })}
+        {JSON.stringify(structuredData)}
       </script>
     </Helmet>
   );
