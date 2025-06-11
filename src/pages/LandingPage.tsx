@@ -112,7 +112,7 @@ const LandingPage = () => {
                 
                 <div className="rounded-lg overflow-hidden shadow-xl">
                   <img 
-                    src="/images/mosaico.png"
+                    src="https://kmxiteeleuepfixlacnb.supabase.co/storage/v1/object/public/artigos/Landpage/mosaico.png"
                     alt="Aplicativo Os Fornecedores" 
                     className="w-full h-auto object-cover"
                   />
