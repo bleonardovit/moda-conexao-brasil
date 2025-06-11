@@ -6,6 +6,7 @@ import { MobileFooterNav } from './MobileFooterNav';
 import { DesktopSidebar } from './DesktopSidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GlobalSEO } from '@/components/seo/GlobalSEO';
+import { Link } from 'react-router-dom';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -35,7 +36,31 @@ export function AppLayout({ children, title, description, image }: AppLayoutProp
           
           <footer className="py-4 border-t border-border text-center text-sm text-muted-foreground hidden md:block">
             <div className="container">
-              © {new Date().getFullYear()} Os Fornecedores
+              <div className="flex flex-col md:flex-row justify-between items-center space-y-2 md:space-y-0">
+                <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                  <Link 
+                    to="/legal/terms" 
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Termos de Uso
+                  </Link>
+                  <Link 
+                    to="/legal/privacy" 
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Política de Privacidade
+                  </Link>
+                  <Link 
+                    to="/legal/cookies" 
+                    className="hover:text-foreground transition-colors"
+                  >
+                    Política de Cookies
+                  </Link>
+                </div>
+                <div>
+                  © {new Date().getFullYear()} Os Fornecedores. Todos os direitos reservados.
+                </div>
+              </div>
             </div>
           </footer>
           
