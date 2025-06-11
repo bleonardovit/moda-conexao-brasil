@@ -26,41 +26,47 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
   const defaultImage = "/images/mosaico.png";
   const currentUrl = typeof window !== 'undefined' ? window.location.href : 'https://fornecedores.lovable.app';
 
-  // Simple, safe extraction that only works with primitive values
-  const getStringValue = (value: any, fallback: string = ''): string => {
+  // Ultra-safe string conversion that completely eliminates any Symbol possibility
+  const safeString = (value: any, fallback: string = ''): string => {
+    // If value is null, undefined, or a Symbol, return fallback immediately
     if (value === null || value === undefined || typeof value === 'symbol') {
       return fallback;
     }
+    
+    // If it's already a string, return it
+    if (typeof value === 'string') {
+      return value;
+    }
+    
+    // For any other type, try to convert safely
     try {
+      // Handle arrays specially
+      if (Array.isArray(value)) {
+        return value
+          .filter(item => item !== null && item !== undefined && typeof item !== 'symbol')
+          .map(item => typeof item === 'string' ? item : String(item))
+          .join(', ');
+      }
+      
       return String(value);
     } catch {
       return fallback;
     }
   };
 
-  // Extract safe values
-  const safeTitle = title || getStringValue(seoSettings?.site_title, defaultTitle);
-  const safeDescription = description || getStringValue(seoSettings?.site_description, defaultDescription);
-  const safeImage = image || getStringValue(seoSettings?.site_image_url, defaultImage);
-  const safeUrl = url || getStringValue(seoSettings?.site_url, currentUrl);
-  const safeSiteName = getStringValue(seoSettings?.site_name, "Os Fornecedores");
-  const safeAuthor = getStringValue(seoSettings?.author, "");
-  const safeFacebookAppId = getStringValue(seoSettings?.facebook_app_id, "");
-  const safeTwitterHandle = getStringValue(seoSettings?.twitter_handle, "");
-  const safeType = getStringValue(type, 'website');
+  // Extract safe values with complete Symbol protection
+  const safeTitle = safeString(title || seoSettings?.site_title, defaultTitle);
+  const safeDescription = safeString(description || seoSettings?.site_description, defaultDescription);
+  const safeImage = safeString(image || seoSettings?.site_image_url, defaultImage);
+  const safeUrl = safeString(url || seoSettings?.site_url, currentUrl);
+  const safeSiteName = safeString(seoSettings?.site_name, "Os Fornecedores");
+  const safeAuthor = safeString(seoSettings?.author, "");
+  const safeFacebookAppId = safeString(seoSettings?.facebook_app_id, "");
+  const safeTwitterHandle = safeString(seoSettings?.twitter_handle, "");
+  const safeType = safeString(type, 'website');
 
-  // Handle keywords safely - only extract if it's a real array
-  let keywords = '';
-  try {
-    const keywordsValue = seoSettings?.keywords;
-    if (Array.isArray(keywordsValue)) {
-      keywords = keywordsValue
-        .filter(k => k != null && typeof k === 'string')
-        .join(', ');
-    }
-  } catch {
-    keywords = '';
-  }
+  // Handle keywords with extra safety
+  const keywords = safeString(seoSettings?.keywords, '');
 
   // Ensure image URL is absolute
   const absoluteImageUrl = safeImage.startsWith('http') 
