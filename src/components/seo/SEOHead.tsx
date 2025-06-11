@@ -11,6 +11,34 @@ interface SEOHeadProps {
   type?: string;
 }
 
+// Helper function to safely convert any value to string, handling Symbols and null/undefined
+const safeStringify = (value: any): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'symbol') {
+    return '';
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '';
+    }
+  }
+  return String(value);
+};
+
+// Helper function to safely extract string values from objects
+const safeExtract = (obj: any, key: string, fallback: string = ''): string => {
+  try {
+    const value = obj?.[key];
+    return safeStringify(value) || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export const SEOHead: React.FC<SEOHeadProps> = ({
   title,
   description,
@@ -26,13 +54,13 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
   const defaultImage = "/images/mosaico.png";
   const currentUrl = typeof window !== 'undefined' ? window.location.href : 'https://fornecedores.lovable.app';
 
-  // Safely extract values and ensure they are strings, avoiding any Symbol values
-  const safeTitle = title || (seoSettings?.site_title ? String(seoSettings.site_title) : null) || defaultTitle;
-  const safeDescription = description || (seoSettings?.site_description ? String(seoSettings.site_description) : null) || defaultDescription;
-  const safeImage = image || (seoSettings?.site_image_url ? String(seoSettings.site_image_url) : null) || defaultImage;
-  const safeUrl = url || (seoSettings?.site_url ? String(seoSettings.site_url) : null) || currentUrl;
-  const safeSiteName = seoSettings?.site_name ? String(seoSettings.site_name) : "Os Fornecedores";
-  const safeType = type ? String(type) : 'website';
+  // Safely extract values ensuring they are strings
+  const safeTitle = title || safeExtract(seoSettings, 'site_title', defaultTitle);
+  const safeDescription = description || safeExtract(seoSettings, 'site_description', defaultDescription);
+  const safeImage = image || safeExtract(seoSettings, 'site_image_url', defaultImage);
+  const safeUrl = url || safeExtract(seoSettings, 'site_url', currentUrl);
+  const safeSiteName = safeExtract(seoSettings, 'site_name', "Os Fornecedores");
+  const safeType = safeStringify(type) || 'website';
 
   // Ensure image URL is absolute
   const absoluteImageUrl = safeImage.startsWith('http') 
@@ -40,15 +68,26 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
     : `${new URL(currentUrl).origin}${safeImage}`;
 
   // Safely handle keywords array
-  const keywords = seoSettings?.keywords && Array.isArray(seoSettings.keywords) 
-    ? seoSettings.keywords.filter(k => k != null).map(k => String(k)).join(', ')
-    : '';
+  let keywords = '';
+  try {
+    const keywordsValue = seoSettings?.keywords;
+    if (Array.isArray(keywordsValue)) {
+      keywords = keywordsValue
+        .filter(k => k != null && typeof k !== 'symbol')
+        .map(k => safeStringify(k))
+        .filter(k => k.length > 0)
+        .join(', ');
+    }
+  } catch {
+    keywords = '';
+  }
 
   // Safely handle optional values
-  const safeAuthor = seoSettings?.author ? String(seoSettings.author) : null;
-  const safeFacebookAppId = seoSettings?.facebook_app_id ? String(seoSettings.facebook_app_id) : null;
-  const safeTwitterHandle = seoSettings?.twitter_handle ? String(seoSettings.twitter_handle) : null;
+  const safeAuthor = safeExtract(seoSettings, 'author');
+  const safeFacebookAppId = safeExtract(seoSettings, 'facebook_app_id');
+  const safeTwitterHandle = safeExtract(seoSettings, 'twitter_handle');
 
+  // Create structured data with safe values
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -58,6 +97,22 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
     "image": absoluteImageUrl,
     "inLanguage": "pt-BR"
   };
+
+  // Safely stringify structured data
+  let structuredDataString = '';
+  try {
+    structuredDataString = JSON.stringify(structuredData);
+  } catch {
+    structuredDataString = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Os Fornecedores",
+      "description": defaultDescription,
+      "url": currentUrl,
+      "image": absoluteImageUrl,
+      "inLanguage": "pt-BR"
+    });
+  }
 
   return (
     <Helmet>
@@ -106,7 +161,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
       
       {/* Structured data for better understanding */}
       <script type="application/ld+json">
-        {JSON.stringify(structuredData)}
+        {structuredDataString}
       </script>
     </Helmet>
   );
