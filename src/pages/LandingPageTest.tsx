@@ -36,7 +36,7 @@ const LandingPageTest: React.FC = () => {
           </Button>
           <div className="mt-16 px-4 sm:px-0">
             <img 
-              src="/images/mosaico.png"
+              src="https://kmxiteeleuepfixlacnb.supabase.co/storage/v1/object/public/artigos/Landpage/mosaico.png"
               alt="Modelos de roupas variadas demonstrando a plataforma"
               className="h-auto w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto rounded-xl shadow-2xl object-cover border-2 border-pink-500/30"
             />
