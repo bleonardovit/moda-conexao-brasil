@@ -263,7 +263,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="mb-8 pt-4 md:pt-8 text-center">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gradient mb-4 animate-fade-in-down">
-          Bem-vindo à Moda Conexão Brasil
+          Bem-vindo
         </h1>
         <p className="text-md sm:text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto animate-fade-in-up animation-delay-300">
           Sua plataforma completa para encontrar os melhores fornecedores, descobrir tendências e impulsionar seu negócio de moda.
