@@ -27,7 +27,7 @@ import FavoritesList from "./pages/favorites/FavoritesList";
 import ArticlesPage from "./pages/articles/ArticlesPage";
 import ArticleDetailPage from "./pages/articles/ArticleDetailPage";
 import SearchPage from "./pages/search/SearchPage";
-import LimitedSearch from "./pages/search/LimitedSearch";
+import { LimitedSearch } from "./pages/search/LimitedSearch";
 import NotificationsPage from "./pages/notifications/NotificationsPage";
 import NotificationDetailPage from "./pages/notifications/NotificationDetailPage";
 import NotFound from "./pages/NotFound";
