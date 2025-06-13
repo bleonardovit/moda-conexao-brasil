@@ -30,7 +30,21 @@ export function TrackingScripts() {
           return;
         }
         
-        setTrackingSettings(data);
+        // Filter out any potentially problematic scripts
+        const safeSettings = data?.filter(setting => {
+          // Block any scripts that contain goadopt.io or similar cross-origin issues
+          if (setting.script && (
+            setting.script.includes('goadopt.io') ||
+            setting.script.includes('disclaimerStatus') ||
+            setting.script.includes('cross-origin')
+          )) {
+            console.warn(`Blocked potentially unsafe script: ${setting.name}`);
+            return false;
+          }
+          return true;
+        }) || [];
+        
+        setTrackingSettings(safeSettings);
       } catch (err) {
         console.error('Failed to load tracking settings:', err);
       } finally {
@@ -50,9 +64,25 @@ export function TrackingScripts() {
   const hotjar = trackingSettings.find(setting => setting.key === 'hotjar');
   const customScript = trackingSettings.find(setting => setting.key === 'custom_script');
   
+  // Function to sanitize and validate scripts
+  const isSafeScript = (script: string) => {
+    const dangerousPatterns = [
+      'goadopt.io',
+      'disclaimerStatus',
+      'cross-origin',
+      'postMessage',
+      'window.parent',
+      'window.top'
+    ];
+    
+    return !dangerousPatterns.some(pattern => 
+      script.toLowerCase().includes(pattern.toLowerCase())
+    );
+  };
+  
   return (
     <Helmet>
-      {/* Facebook Pixel */}
+      {/* Facebook Pixel - Only if safe */}
       {facebookPixel && facebookPixel.value && (
         <script>
           {`
@@ -70,7 +100,7 @@ export function TrackingScripts() {
         </script>
       )}
       
-      {/* Google Tag Manager */}
+      {/* Google Tag Manager - Only if safe */}
       {googleTagManager && googleTagManager.value && (
         <script>
           {`
@@ -83,7 +113,7 @@ export function TrackingScripts() {
         </script>
       )}
       
-      {/* Hotjar */}
+      {/* Hotjar - Only if safe */}
       {hotjar && hotjar.value && (
         <script>
           {`
@@ -99,8 +129,8 @@ export function TrackingScripts() {
         </script>
       )}
       
-      {/* Custom Script - Added as dangerouslySetInnerHTML */}
-      {customScript && customScript.script && (
+      {/* Custom Script - Only if safe and validated */}
+      {customScript && customScript.script && isSafeScript(customScript.script) && (
         <div dangerouslySetInnerHTML={{ __html: customScript.script }} />
       )}
     </Helmet>
