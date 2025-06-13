@@ -4,7 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider as NextThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/hooks/use-theme";
 import { GlobalSEO } from "@/components/seo/GlobalSEO";
 import { TrackingScripts } from "@/components/tracking/TrackingScripts";
 
@@ -55,77 +56,79 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <TooltipProvider>
-        <GlobalSEO />
-        <TrackingScripts />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Main routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/landing" element={<LandingPage />} />
-            <Route path="/landing-test" element={<LandingPageTest />} />
-            
-            {/* Sitemap route */}
-            <Route path="/sitemap.xml" element={<SitemapGenerator />} />
-            
-            {/* Auth routes */}
-            <Route path="/auth/login" element={<Login />} />
-            <Route path="/auth/register" element={<Register />} />
-            <Route path="/auth/select-plan" element={<SelectPlan />} />
-            <Route path="/auth/payment" element={<Payment />} />
-            <Route path="/auth/reset-password" element={<ResetPassword />} />
-            <Route path="/auth/reset-confirmation" element={<ResetConfirmation />} />
-            
-            {/* Profile routes */}
-            <Route path="/profile" element={<Profile />} />
-            
-            {/* Suppliers routes */}
-            <Route path="/suppliers" element={<SuppliersList />} />
-            <Route path="/suppliers/:id" element={<SupplierDetail />} />
-            
-            {/* Favorites routes */}
-            <Route path="/favorites" element={<Favorites />} />
-            <Route path="/favorites/list" element={<FavoritesList />} />
-            
-            {/* Articles routes */}
-            <Route path="/articles" element={<ArticlesPage />} />
-            <Route path="/articles/:id" element={<ArticleDetailPage />} />
-            
-            {/* Search routes */}
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/search/limited" element={<LimitedSearch />} />
-            
-            {/* Notifications routes */}
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/notifications/:id" element={<NotificationDetailPage />} />
-            
-            {/* Legal routes */}
-            <Route path="/legal/terms" element={<TermsOfService />} />
-            <Route path="/legal/privacy" element={<PrivacyPolicy />} />
-            <Route path="/legal/cookies" element={<CookiePolicy />} />
-            
-            {/* Admin routes */}
-            <Route path="/admin/users" element={<UsersManagement />} />
-            <Route path="/admin/suppliers" element={<SuppliersManagement />} />
-            <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
-            <Route path="/admin/articles" element={<ArticlesManagement />} />
-            <Route path="/admin/reviews" element={<ReviewsModeration />} />
-            <Route path="/admin/notifications" element={<NotificationsManagement />} />
-            <Route path="/admin/seo" element={<SEOManagement />} />
-            <Route path="/admin/tracking" element={<TrackingSettings />} />
-            <Route path="/admin/security" element={<SecurityMonitoring />} />
-            <Route path="/admin/reports" element={<Reports />} />
-            
-            {/* 404 route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
+    <NextThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <ThemeProvider>
+        <TooltipProvider>
+          <GlobalSEO />
+          <TrackingScripts />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Main routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/landing-test" element={<LandingPageTest />} />
+              
+              {/* Sitemap route */}
+              <Route path="/sitemap.xml" element={<SitemapGenerator />} />
+              
+              {/* Auth routes */}
+              <Route path="/auth/login" element={<Login />} />
+              <Route path="/auth/register" element={<Register />} />
+              <Route path="/auth/select-plan" element={<SelectPlan />} />
+              <Route path="/auth/payment" element={<Payment />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
+              <Route path="/auth/reset-confirmation" element={<ResetConfirmation />} />
+              
+              {/* Profile routes */}
+              <Route path="/profile" element={<Profile />} />
+              
+              {/* Suppliers routes */}
+              <Route path="/suppliers" element={<SuppliersList />} />
+              <Route path="/suppliers/:id" element={<SupplierDetail />} />
+              
+              {/* Favorites routes */}
+              <Route path="/favorites" element={<Favorites />} />
+              <Route path="/favorites/list" element={<FavoritesList />} />
+              
+              {/* Articles routes */}
+              <Route path="/articles" element={<ArticlesPage />} />
+              <Route path="/articles/:id" element={<ArticleDetailPage />} />
+              
+              {/* Search routes */}
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/search/limited" element={<LimitedSearch />} />
+              
+              {/* Notifications routes */}
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/notifications/:id" element={<NotificationDetailPage />} />
+              
+              {/* Legal routes */}
+              <Route path="/legal/terms" element={<TermsOfService />} />
+              <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+              <Route path="/legal/cookies" element={<CookiePolicy />} />
+              
+              {/* Admin routes */}
+              <Route path="/admin/users" element={<UsersManagement />} />
+              <Route path="/admin/suppliers" element={<SuppliersManagement />} />
+              <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
+              <Route path="/admin/articles" element={<ArticlesManagement />} />
+              <Route path="/admin/reviews" element={<ReviewsModeration />} />
+              <Route path="/admin/notifications" element={<NotificationsManagement />} />
+              <Route path="/admin/seo" element={<SEOManagement />} />
+              <Route path="/admin/tracking" element={<TrackingSettings />} />
+              <Route path="/admin/security" element={<SecurityMonitoring />} />
+              <Route path="/admin/reports" element={<Reports />} />
+              
+              {/* 404 route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </NextThemeProvider>
   </QueryClientProvider>
 );
 
