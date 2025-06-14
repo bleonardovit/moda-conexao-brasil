@@ -6,7 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
 export const AdminRouteGuard: React.FC = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoading, isInitializing } = useAuth();
+  const authLoading = isLoading || isInitializing;
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
