@@ -61,8 +61,8 @@ const App = () => (
         <TrackingScripts />
         <Toaster />
         <Sonner />
-        <AuthProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider>
             <Routes>
               {/* Main routes */}
               <Route path="/" element={<Index />} />
@@ -126,8 +126,8 @@ const App = () => (
               {/* 404 route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </AuthProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
