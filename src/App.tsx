@@ -27,7 +27,7 @@ import FavoritesList from "./pages/favorites/FavoritesList";
 import ArticlesPage from "./pages/articles/ArticlesPage";
 import ArticleDetailPage from "./pages/articles/ArticleDetailPage";
 import SearchPage from "./pages/search/SearchPage";
-import LimitedSearch from "./pages/search/LimitedSearch";
+import { LimitedSearch } from "./pages/search/LimitedSearch";
 import NotificationsPage from "./pages/notifications/NotificationsPage";
 import NotificationDetailPage from "./pages/notifications/NotificationDetailPage";
 import NotFound from "./pages/NotFound";
@@ -50,6 +50,7 @@ import SecurityMonitoring from "./pages/admin/SecurityMonitoring";
 import Reports from "./pages/admin/Reports";
 
 import { SitemapGenerator } from "./components/sitemap/SitemapGenerator";
+import { AdminRouteGuard } from "./components/auth/AdminRouteGuard";
 
 const queryClient = new QueryClient();
 
@@ -109,16 +110,18 @@ const App = () => (
             <Route path="/legal/cookies" element={<CookiePolicy />} />
             
             {/* Admin routes */}
-            <Route path="/admin/users" element={<UsersManagement />} />
-            <Route path="/admin/suppliers" element={<SuppliersManagement />} />
-            <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
-            <Route path="/admin/articles" element={<ArticlesManagement />} />
-            <Route path="/admin/reviews" element={<ReviewsModeration />} />
-            <Route path="/admin/notifications" element={<NotificationsManagement />} />
-            <Route path="/admin/seo" element={<SEOManagement />} />
-            <Route path="/admin/tracking" element={<TrackingSettings />} />
-            <Route path="/admin/security" element={<SecurityMonitoring />} />
-            <Route path="/admin/reports" element={<Reports />} />
+            <Route element={<AdminRouteGuard />}>
+              <Route path="/admin/users" element={<UsersManagement />} />
+              <Route path="/admin/suppliers" element={<SuppliersManagement />} />
+              <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
+              <Route path="/admin/articles" element={<ArticlesManagement />} />
+              <Route path="/admin/reviews" element={<ReviewsModeration />} />
+              <Route path="/admin/notifications" element={<NotificationsManagement />} />
+              <Route path="/admin/seo" element={<SEOManagement />} />
+              <Route path="/admin/tracking" element={<TrackingSettings />} />
+              <Route path="/admin/security" element={<SecurityMonitoring />} />
+              <Route path="/admin/reports" element={<Reports />} />
+            </Route>
             
             {/* 404 route */}
             <Route path="*" element={<NotFound />} />
