@@ -115,11 +115,11 @@ const App = () => (
                 <Route path="/admin/suppliers" element={<SuppliersManagement />} />
                 <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
                 <Route path="/admin/articles" element={<ArticlesManagement />} />
-                <Route path="/admin/reviews" element={<ReviewsModeration />} />
+                <Route path="/admin/reviews-moderation" element={<ReviewsModeration />} />
                 <Route path="/admin/notifications" element={<NotificationsManagement />} />
                 <Route path="/admin/seo" element={<SEOManagement />} />
-                <Route path="/admin/tracking" element={<TrackingSettings />} />
-                <Route path="/admin/security" element={<SecurityMonitoring />} />
+                <Route path="/admin/tracking-settings" element={<TrackingSettings />} />
+                <Route path="/admin/security-monitoring" element={<SecurityMonitoring />} />
                 <Route path="/admin/reports" element={<Reports />} />
               </Route>
               
