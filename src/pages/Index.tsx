@@ -6,8 +6,8 @@ const Index = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Redirecionar para a landing page
-    navigate('/');
+    // Redirecionar para a landing page para evitar loop
+    navigate('/landing');
   }, [navigate]);
 
   return (
