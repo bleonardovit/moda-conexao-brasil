@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, Shield } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
@@ -98,7 +97,7 @@ export function DesktopSidebar() {
     {
       icon: Shield,
       label: 'Segurança',
-      path: '/admin/security'
+      path: '/admin/security-monitoring'
     }
   ];
 

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -50,6 +51,7 @@ import SEOManagement from "./pages/admin/SEOManagement";
 import TrackingSettings from "./pages/admin/TrackingSettings";
 import SecurityMonitoring from "./pages/admin/SecurityMonitoring";
 import Reports from "./pages/admin/Reports";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +113,7 @@ const App = () => (
               
               {/* Admin routes */}
               <Route element={<AdminRouteGuard />}>
+                <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<UsersManagement />} />
                 <Route path="/admin/suppliers" element={<SuppliersManagement />} />
                 <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
