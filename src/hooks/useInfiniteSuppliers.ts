@@ -85,5 +85,6 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
       return undefined;
     },
     staleTime: 1000 * 60 * 5,
+    initialPageParam: 0, // ADICIONADO conforme necessário pelo React Query v5+
   });
 }

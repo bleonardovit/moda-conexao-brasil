@@ -211,7 +211,8 @@ export default function SuppliersList() {
   });
 
   // Flat suppliers list for display
-  const paginatedSuppliers = data ? data.pages.flatMap(page => page.items) : [];
+  // data.pages será do tipo { items: Supplier[]; hasMore: boolean }[]
+  const paginatedSuppliers = data ? data.pages.flatMap((page) => page.items) : [];
 
   if (filtersLoading || isLoading) {
     return (
