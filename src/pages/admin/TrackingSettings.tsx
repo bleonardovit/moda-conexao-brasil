@@ -150,7 +150,7 @@ export default function TrackingSettings() {
       value?: string | null;
       script?: string | null;
       is_active: boolean;
-      meta_access_token?: string | null; // Allow this extra property
+      meta_access_token?: string | null;
     }) => {
       // Check if setting exists
       const { data: existingSettings } = await supabase
@@ -161,12 +161,22 @@ export default function TrackingSettings() {
 
       if (existingSettings && existingSettings.length > 0) {
         // Update existing setting
-        // Special handling if meta_access_token is provided (Meta Conversions API)
-        const updateObject: Record<string, any> = {
+        // Always include key and name for typings
+        const updateObject: {
+          key: string;
+          name: string;
+          value?: string | null;
+          script?: string | null;
+          is_active: boolean;
+          updated_at: string;
+          meta_access_token?: string | null;
+        } = {
+          key: data.key,
+          name: data.name,
           value: data.value,
           script: data.script,
           is_active: data.is_active,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
         if (data.meta_access_token !== undefined) {
           updateObject.meta_access_token = data.meta_access_token;
@@ -179,12 +189,19 @@ export default function TrackingSettings() {
         if (error) throw error;
       } else {
         // Create new setting
-        const insertObject: Record<string, any> = {
+        const insertObject: {
+          key: string;
+          name: string;
+          value?: string | null;
+          script?: string | null;
+          is_active: boolean;
+          meta_access_token?: string | null;
+        } = {
           key: data.key,
           name: data.name,
           value: data.value,
           script: data.script,
-          is_active: data.is_active
+          is_active: data.is_active,
         };
         if (data.meta_access_token !== undefined) {
           insertObject.meta_access_token = data.meta_access_token;
