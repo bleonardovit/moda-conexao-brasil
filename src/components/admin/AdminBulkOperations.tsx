@@ -28,8 +28,9 @@ export function AdminBulkOperations({
 
   const processBatch = async (
     items: Supplier[],
-    operation: (id: string) => Promise<void>,
-    operationName: string
+    operation: (id: string, newValue: boolean) => Promise<void>,
+    operationName: string,
+    newValue: boolean
   ) => {
     setIsProcessing(true);
     setCurrentOperation(operationName);
@@ -45,7 +46,7 @@ export function AdminBulkOperations({
     for (const batch of batches) {
       await Promise.allSettled(
         batch.map(async (supplier) => {
-          await operation(supplier.id);
+          await operation(supplier.id, newValue);
           completed++;
           setProgress((completed / items.length) * 100);
         })
@@ -75,8 +76,9 @@ export function AdminBulkOperations({
     try {
       await processBatch(
         selectedSuppliers,
-        (id) => toggleSupplierVisibility(id),
-        `${action} fornecedores`
+        (id, newValue) => toggleSupplierVisibility(id, newValue),
+        `${action} fornecedores`,
+        hide
       );
 
       toast({
@@ -103,8 +105,9 @@ export function AdminBulkOperations({
     try {
       await processBatch(
         selectedSuppliers,
-        (id) => toggleSupplierFeatured(id),
-        `${action} fornecedores`
+        (id, newValue) => toggleSupplierFeatured(id, newValue),
+        `${action} fornecedores`,
+        featured
       );
 
       toast({

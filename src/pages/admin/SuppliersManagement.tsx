@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import type { Supplier } from '@/types';
 
 export default function SuppliersManagement() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<Supplier[]>([]);
+  const selectAllCheckboxRef = useRef<HTMLButtonElement>(null);
   const { toast } = useToast();
 
   const {
@@ -62,7 +63,7 @@ export default function SuppliersManagement() {
 
   const handleToggleVisibility = async (supplier: Supplier) => {
     try {
-      await toggleSupplierVisibility(supplier.id);
+      await toggleSupplierVisibility(supplier.id, !supplier.hidden);
       toast({
         title: "Visibilidade alterada",
         description: `${supplier.name} agora está ${supplier.hidden ? 'visível' : 'oculto'}.`,
@@ -79,7 +80,7 @@ export default function SuppliersManagement() {
 
   const handleToggleFeatured = async (supplier: Supplier) => {
     try {
-      await toggleSupplierFeatured(supplier.id);
+      await toggleSupplierFeatured(supplier.id, !supplier.featured);
       toast({
         title: "Destaque alterado",
         description: `${supplier.name} agora ${supplier.featured ? 'não está mais' : 'está'} em destaque.`,
@@ -105,6 +106,14 @@ export default function SuppliersManagement() {
 
   const allSelected = suppliers.length > 0 && selectedSuppliers.length === suppliers.length;
   const someSelected = selectedSuppliers.length > 0 && selectedSuppliers.length < suppliers.length;
+
+  // Set indeterminate state for select all checkbox
+  if (selectAllCheckboxRef.current) {
+    const checkboxElement = selectAllCheckboxRef.current.querySelector('button');
+    if (checkboxElement) {
+      (checkboxElement as any).indeterminate = someSelected;
+    }
+  }
 
   return (
     <AdminLayout>
@@ -167,11 +176,9 @@ export default function SuppliersManagement() {
                     <TableRow>
                       <TableHead className="w-12">
                         <Checkbox
+                          ref={selectAllCheckboxRef}
                           checked={allSelected}
                           onCheckedChange={handleSelectAll}
-                          ref={(ref) => {
-                            if (ref) ref.indeterminate = someSelected;
-                          }}
                           aria-label="Selecionar todos"
                         />
                       </TableHead>
