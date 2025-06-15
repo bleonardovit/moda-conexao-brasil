@@ -58,7 +58,7 @@ export interface ReportData {
   }>;
 }
 
-// Simplified safe query wrapper - removed the problematic await issue
+// Simplified safe query wrapper with proper Promise handling
 const executeQuery = async (queryFn: () => Promise<any>, fallbackValue: any, context: string) => {
   try {
     console.log(`🔍 Executing query: ${context}`);
@@ -81,7 +81,10 @@ export async function getUserStatistics(): Promise<UserStatistics> {
 
     // Get total users count
     const totalUsersResult = await executeQuery(
-      () => supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      async () => {
+        const query = supabase.from('profiles').select('*', { count: 'exact', head: true });
+        return await query;
+      },
       null,
       'getUserStatistics-totalUsers'
     );
@@ -92,10 +95,13 @@ export async function getUserStatistics(): Promise<UserStatistics> {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
     const newUsers7DResult = await executeQuery(
-      () => supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', sevenDaysAgo.toISOString()),
+      async () => {
+        const query = supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', sevenDaysAgo.toISOString());
+        return await query;
+      },
       null,
       'getUserStatistics-newUsers7Days'
     );
@@ -106,10 +112,13 @@ export async function getUserStatistics(): Promise<UserStatistics> {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const newUsers30DResult = await executeQuery(
-      () => supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString()),
+      async () => {
+        const query = supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', thirtyDaysAgo.toISOString());
+        return await query;
+      },
       null,
       'getUserStatistics-newUsers30Days'
     );
@@ -120,11 +129,14 @@ export async function getUserStatistics(): Promise<UserStatistics> {
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
     
     const previousPeriodResult = await executeQuery(
-      () => supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', fourteenDaysAgo.toISOString())
-        .lt('created_at', sevenDaysAgo.toISOString()),
+      async () => {
+        const query = supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', fourteenDaysAgo.toISOString())
+          .lt('created_at', sevenDaysAgo.toISOString());
+        return await query;
+      },
       null,
       'getUserStatistics-previousPeriod'
     );
@@ -157,11 +169,14 @@ export async function getUserStatistics(): Promise<UserStatistics> {
       endOfMonth.setHours(23, 59, 59, 999);
       
       const monthResult = await executeQuery(
-        () => supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', startOfMonth.toISOString())
-          .lte('created_at', endOfMonth.toISOString()),
+        async () => {
+          const query = supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', startOfMonth.toISOString())
+            .lte('created_at', endOfMonth.toISOString());
+          return await query;
+        },
         null,
         `getUserStatistics-monthlyGrowth-${adjustedMonth}`
       );
@@ -200,7 +215,10 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
     console.log('🏪 Fetching supplier statistics...');
 
     const totalSuppliersResult = await executeQuery(
-      () => supabase.from('suppliers').select('*', { count: 'exact', head: true }),
+      async () => {
+        const query = supabase.from('suppliers').select('*', { count: 'exact', head: true });
+        return await query;
+      },
       null,
       'getSupplierStatistics-totalSuppliers'
     );
@@ -210,21 +228,27 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const newSuppliersResult = await executeQuery(
-      () => supabase
-        .from('suppliers')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString()),
+      async () => {
+        const query = supabase
+          .from('suppliers')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', thirtyDaysAgo.toISOString());
+        return await query;
+      },
       null,
       'getSupplierStatistics-newSuppliers'
     );
     const newSuppliers = newSuppliersResult.count || 0;
 
     const topSuppliersResult = await executeQuery(
-      () => supabase
-        .from('suppliers')
-        .select('id, name, featured')
-        .order('created_at', { ascending: false })
-        .limit(5),
+      async () => {
+        const query = supabase
+          .from('suppliers')
+          .select('id, name, featured')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        return await query;
+      },
       [],
       'getSupplierStatistics-topSuppliers'
     );
@@ -240,14 +264,17 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
     });
 
     const categoryResult = await executeQuery(
-      () => supabase
-        .from('suppliers_categories')
-        .select(`
-          category_id,
-          categories (
-            name
-          )
-        `),
+      async () => {
+        const query = supabase
+          .from('suppliers_categories')
+          .select(`
+            category_id,
+            categories (
+              name
+            )
+          `);
+        return await query;
+      },
       [],
       'getSupplierStatistics-categories'
     );
@@ -269,7 +296,10 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
       .slice(0, 5);
 
     const suppliersByStateResult = await executeQuery(
-      () => supabase.from('suppliers').select('state'),
+      async () => {
+        const query = supabase.from('suppliers').select('state');
+        return await query;
+      },
       [],
       'getSupplierStatistics-byState'
     );
@@ -323,9 +353,12 @@ export async function getConversionStatistics(): Promise<ConversionStatistics> {
     console.log('📈 Fetching conversion statistics...');
 
     const profilesResult = await executeQuery(
-      () => supabase
-        .from('profiles')
-        .select('id, subscription_status, trial_status, created_at'),
+      async () => {
+        const query = supabase
+          .from('profiles')
+          .select('id, subscription_status, trial_status, created_at');
+        return await query;
+      },
       [],
       'getConversionStatistics-profiles'
     );
@@ -401,7 +434,10 @@ export async function getRegionalData() {
     console.log('🌍 Fetching regional data...');
 
     const userProfilesResult = await executeQuery(
-      () => supabase.from('profiles').select('state'),
+      async () => {
+        const query = supabase.from('profiles').select('state');
+        return await query;
+      },
       [],
       'getRegionalData-userProfiles'
     );
@@ -467,9 +503,12 @@ export async function getCohortData(): Promise<ReportData['cohortData']> {
     const cohortsResult: ReportData['cohortData'] = [];
 
     const allProfilesResult = await executeQuery(
-      () => supabase
-        .from('profiles')
-        .select('id, created_at, subscription_status, last_login, trial_end_date'),
+      async () => {
+        const query = supabase
+          .from('profiles')
+          .select('id, created_at, subscription_status, last_login, trial_end_date');
+        return await query;
+      },
       [],
       'getCohortData-allProfiles'
     );
@@ -559,21 +598,27 @@ export async function getReportData(
     ]);
     
     const monthlyCountResult = await executeQuery(
-      () => supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('subscription_type', 'monthly')
-        .eq('subscription_status', 'active'),
+      async () => {
+        const query = supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('subscription_type', 'monthly')
+          .eq('subscription_status', 'active');
+        return await query;
+      },
       null,
       'getReportData-monthlySubscriptions'
     );
 
     const annualCountResult = await executeQuery(
-      () => supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('subscription_type', 'annual')
-        .eq('subscription_status', 'active'),
+      async () => {
+        const query = supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('subscription_type', 'annual')
+          .eq('subscription_status', 'active');
+        return await query;
+      },
       null,
       'getReportData-annualSubscriptions'
     );
