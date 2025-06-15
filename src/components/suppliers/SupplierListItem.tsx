@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +11,7 @@ import { useTrialStatus } from '@/hooks/use-trial-status';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Supplier } from '@/types';
+import { useLazyImage } from "@/hooks/useLazyImage";
 
 interface SupplierListItemProps {
   supplier: Supplier;
@@ -37,25 +37,10 @@ export function SupplierListItem({
   // For lazy loading images
   const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
   const hasMultipleImages = images.length > 1;
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const [imgSrc, setImgSrc] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    let observer: IntersectionObserver | null = null;
-    const img = imgRef.current;
-    if (img && !imgSrc) {
-      observer = new window.IntersectionObserver(entries => {
-        if (entries[0]?.isIntersecting) {
-          setImgSrc(images[0] || '/placeholder.svg');
-        }
-      });
-      observer.observe(img);
-    }
-    return () => observer && observer.disconnect();
-    // eslint-disable-next-line
-  }, [imgSrc, images]);
+  // Lazy loading para primeira imagem
+  const { ref: imgLazyRef, src: imgLazySrc, loaded: imgLoaded, setLoaded: setImgLoaded } = useLazyImage(images[0]);
 
-  // Instead of early return, render content conditionally
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
   }
@@ -122,7 +107,7 @@ export function SupplierListItem({
     );
   }
 
-  // Main render (no duplicate hook/variable declarations below)
+  // Main render (fornecedor normal, não-locked e não-expirado)
   return (
     <Card key={supplier.id} className="overflow-hidden card-hover">
       <div className={isMobile ? "flex flex-col" : "sm:flex"}>
@@ -130,12 +115,18 @@ export function SupplierListItem({
           <Carousel className={isMobile ? "h-full" : "w-full h-full"} style={isMobile ? { width: '336px', height: '400px' } : {}}>
             <CarouselContent>
               <CarouselItem key={0}>
-                <img
-                  ref={imgRef}
-                  src={imgSrc || '/placeholder.svg'} // Lazy loaded src
-                  alt={`${supplier.name} - Imagem 1`}
-                  className="w-full h-full object-cover"
-                />
+                <div className="w-full h-full relative flex items-center justify-center bg-muted">
+                  {!imgLoaded && (
+                    <Skeleton className="absolute w-full h-full" />
+                  )}
+                  <img
+                    ref={imgLazyRef}
+                    src={imgLazySrc}
+                    alt={`${supplier.name} - Imagem 1`}
+                    className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+                    onLoad={() => setImgLoaded(true)}
+                  />
+                </div>
               </CarouselItem>
               {hasMultipleImages && (
                 <>
@@ -151,13 +142,11 @@ export function SupplierListItem({
                 </>
               )}
             </CarouselContent>
-            
             {hasMultipleImages && (
               <>
                 <CarouselPrevious className="absolute left-0.5 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-5 w-5" />
                 <CarouselNext className="absolute right-0.5 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-5 w-5" />
-                
-                {/* Indicadores de pontos */}
+                {/* Pontos indicadores */}
                 <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
                   {images.map((_, index) => (
                     <div
@@ -170,7 +159,6 @@ export function SupplierListItem({
             )}
           </Carousel>
         </div>
-        
         <CardContent className={isMobile ? "w-full p-4" : "sm:w-2/3 md:w-3/4 p-4"}>
           <div className="flex items-start justify-between">
             <div className="flex-1">
