@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +9,7 @@ import { TrackingScripts } from "@/components/tracking/TrackingScripts";
 import { SitemapGenerator } from "./components/sitemap/SitemapGenerator";
 import { AdminRouteGuard } from "./components/auth/AdminRouteGuard";
 import { AuthProvider } from "./hooks/useAuth";
+import { TrialProvider } from "./contexts/TrialContext";
 import { GlobalErrorBoundary, QueryErrorBoundary } from "@/components/error-boundaries";
 import { OptimizedSuspense } from "@/components/ui/optimized-suspense";
 import { useWebVitals } from "@/hooks/useWebVitals";
@@ -102,167 +102,169 @@ function AppWithVitals() {
               <Sonner />
               <BrowserRouter>
                 <AuthProvider>
-                  <Routes>
-                    {/* Main routes */}
-                    <Route path="/" element={<Index />} />
-                    <Route path="/home" element={<Home />} />
-                    <Route path="/landing" element={<LandingPage />} />
-                    <Route path="/landing-test" element={<LandingPageTest />} />
-                    
-                    {/* Sitemap route */}
-                    <Route path="/sitemap.xml" element={<SitemapGenerator />} />
-                    
-                    {/* Pricing Route */}
-                    <Route path="/pricing" element={<SelectPlan />} />
-                    
-                    {/* Auth routes */}
-                    <Route path="/auth/login" element={<Login />} />
-                    <Route path="/auth/register" element={<Register />} />
-                    <Route path="/auth/select-plan" element={<SelectPlan />} />
-                    <Route path="/auth/payment" element={<Payment />} />
-                    <Route path="/auth/reset-password" element={<ResetPassword />} />
-                    <Route path="/auth/reset-confirmation" element={<ResetConfirmation />} />
-                    
-                    {/* Profile routes */}
-                    <Route path="/profile" element={<Profile />} />
-                    
-                    {/* Suppliers routes */}
-                    <Route path="/suppliers" element={<SuppliersList />} />
-                    <Route path="/suppliers/:id" element={<SupplierDetail />} />
-                    
-                    {/* Favorites routes */}
-                    <Route path="/favorites" element={<Favorites />} />
-                    <Route path="/favorites/list" element={<FavoritesList />} />
-                    
-                    {/* Articles routes */}
-                    <Route path="/articles" element={<ArticlesPage />} />
-                    <Route path="/articles/:id" element={<ArticleDetailPage />} />
-                    
-                    {/* Search routes - lazy loaded for better performance */}
-                    <Route 
-                      path="/search" 
-                      element={
-                        <OptimizedSuspense message="Carregando página de busca...">
-                          <LazySearchPage />
-                        </OptimizedSuspense>
-                      } 
-                    />
-                    <Route path="/search/limited" element={<LimitedSearch />} />
-                    
-                    {/* Notifications routes */}
-                    <Route path="/notifications" element={<NotificationsPage />} />
-                    <Route path="/notifications/:id" element={<NotificationDetailPage />} />
-                    
-                    {/* Legal routes */}
-                    <Route path="/legal/terms" element={<TermsOfService />} />
-                    <Route path="/legal/privacy" element={<PrivacyPolicy />} />
-                    <Route path="/legal/cookies" element={<CookiePolicy />} />
-                    
-                    {/* Admin routes - all lazy loaded */}
-                    <Route element={<AdminRouteGuard />}>
+                  <TrialProvider>
+                    <Routes>
+                      {/* Main routes */}
+                      <Route path="/" element={<Index />} />
+                      <Route path="/home" element={<Home />} />
+                      <Route path="/landing" element={<LandingPage />} />
+                      <Route path="/landing-test" element={<LandingPageTest />} />
+                      
+                      {/* Sitemap route */}
+                      <Route path="/sitemap.xml" element={<SitemapGenerator />} />
+                      
+                      {/* Pricing Route */}
+                      <Route path="/pricing" element={<SelectPlan />} />
+                      
+                      {/* Auth routes */}
+                      <Route path="/auth/login" element={<Login />} />
+                      <Route path="/auth/register" element={<Register />} />
+                      <Route path="/auth/select-plan" element={<SelectPlan />} />
+                      <Route path="/auth/payment" element={<Payment />} />
+                      <Route path="/auth/reset-password" element={<ResetPassword />} />
+                      <Route path="/auth/reset-confirmation" element={<ResetConfirmation />} />
+                      
+                      {/* Profile routes */}
+                      <Route path="/profile" element={<Profile />} />
+                      
+                      {/* Suppliers routes */}
+                      <Route path="/suppliers" element={<SuppliersList />} />
+                      <Route path="/suppliers/:id" element={<SupplierDetail />} />
+                      
+                      {/* Favorites routes */}
+                      <Route path="/favorites" element={<Favorites />} />
+                      <Route path="/favorites/list" element={<FavoritesList />} />
+                      
+                      {/* Articles routes */}
+                      <Route path="/articles" element={<ArticlesPage />} />
+                      <Route path="/articles/:id" element={<ArticleDetailPage />} />
+                      
+                      {/* Search routes - lazy loaded for better performance */}
                       <Route 
-                        path="/admin" 
+                        path="/search" 
                         element={
-                          <OptimizedSuspense message="Carregando dashboard administrativo...">
-                            <LazyAdminDashboard />
+                          <OptimizedSuspense message="Carregando página de busca...">
+                            <LazySearchPage />
                           </OptimizedSuspense>
                         } 
                       />
+                      <Route path="/search/limited" element={<LimitedSearch />} />
+                      
+                      {/* Notifications routes */}
+                      <Route path="/notifications" element={<NotificationsPage />} />
+                      <Route path="/notifications/:id" element={<NotificationDetailPage />} />
+                      
+                      {/* Legal routes */}
+                      <Route path="/legal/terms" element={<TermsOfService />} />
+                      <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+                      <Route path="/legal/cookies" element={<CookiePolicy />} />
+                      
+                      {/* Admin routes - all lazy loaded */}
+                      <Route element={<AdminRouteGuard />}>
+                        <Route 
+                          path="/admin" 
+                          element={
+                            <OptimizedSuspense message="Carregando dashboard administrativo...">
+                              <LazyAdminDashboard />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/users" 
+                          element={
+                            <OptimizedSuspense message="Carregando gerenciamento de usuários...">
+                              <LazyUsersManagement />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/suppliers" 
+                          element={
+                            <OptimizedSuspense message="Carregando gerenciamento de fornecedores...">
+                              <LazySuppliersManagement />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/suppliers/bulk-upload" 
+                          element={
+                            <OptimizedSuspense message="Carregando upload em massa...">
+                              <LazySuppliersBulkUpload />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/articles" 
+                          element={
+                            <OptimizedSuspense message="Carregando gerenciamento de artigos...">
+                              <LazyArticlesManagement />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/reviews-moderation" 
+                          element={
+                            <OptimizedSuspense message="Carregando moderação de avaliações...">
+                              <LazyReviewsModeration />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/notifications" 
+                          element={
+                            <OptimizedSuspense message="Carregando gerenciamento de notificações...">
+                              <LazyNotificationsManagement />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/seo" 
+                          element={
+                            <OptimizedSuspense message="Carregando configurações de SEO...">
+                              <LazySEOManagement />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/tracking-settings" 
+                          element={
+                            <OptimizedSuspense message="Carregando configurações de rastreamento...">
+                              <LazyTrackingSettings />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/security-monitoring" 
+                          element={
+                            <OptimizedSuspense message="Carregando monitoramento de segurança...">
+                              <LazySecurityMonitoring />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                        <Route 
+                          path="/admin/reports" 
+                          element={
+                            <OptimizedSuspense message="Carregando relatórios...">
+                              <LazyReports />
+                            </OptimizedSuspense>
+                          } 
+                        />
+                      </Route>
+                      
+                      {/* Performance route - lazy loaded */}
                       <Route 
-                        path="/admin/users" 
+                        path="/performance" 
                         element={
-                          <OptimizedSuspense message="Carregando gerenciamento de usuários...">
-                            <LazyUsersManagement />
+                          <OptimizedSuspense message="Carregando monitor de performance...">
+                            <LazyPerformanceMonitor />
                           </OptimizedSuspense>
                         } 
                       />
-                      <Route 
-                        path="/admin/suppliers" 
-                        element={
-                          <OptimizedSuspense message="Carregando gerenciamento de fornecedores...">
-                            <LazySuppliersManagement />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/suppliers/bulk-upload" 
-                        element={
-                          <OptimizedSuspense message="Carregando upload em massa...">
-                            <LazySuppliersBulkUpload />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/articles" 
-                        element={
-                          <OptimizedSuspense message="Carregando gerenciamento de artigos...">
-                            <LazyArticlesManagement />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/reviews-moderation" 
-                        element={
-                          <OptimizedSuspense message="Carregando moderação de avaliações...">
-                            <LazyReviewsModeration />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/notifications" 
-                        element={
-                          <OptimizedSuspense message="Carregando gerenciamento de notificações...">
-                            <LazyNotificationsManagement />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/seo" 
-                        element={
-                          <OptimizedSuspense message="Carregando configurações de SEO...">
-                            <LazySEOManagement />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/tracking-settings" 
-                        element={
-                          <OptimizedSuspense message="Carregando configurações de rastreamento...">
-                            <LazyTrackingSettings />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/security-monitoring" 
-                        element={
-                          <OptimizedSuspense message="Carregando monitoramento de segurança...">
-                            <LazySecurityMonitoring />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                      <Route 
-                        path="/admin/reports" 
-                        element={
-                          <OptimizedSuspense message="Carregando relatórios...">
-                            <LazyReports />
-                          </OptimizedSuspense>
-                        } 
-                      />
-                    </Route>
-                    
-                    {/* Performance route - lazy loaded */}
-                    <Route 
-                      path="/performance" 
-                      element={
-                        <OptimizedSuspense message="Carregando monitor de performance...">
-                          <LazyPerformanceMonitor />
-                        </OptimizedSuspense>
-                      } 
-                    />
-                    
-                    {/* 404 route */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
+                      
+                      {/* 404 route */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </TrialProvider>
                 </AuthProvider>
               </BrowserRouter>
             </TooltipProvider>
