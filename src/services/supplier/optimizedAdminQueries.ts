@@ -20,52 +20,83 @@ export const getOptimizedAdminSuppliers = async (
   filters: AdminFilters = {}
 ): Promise<AdminSuppliersResult> => {
   console.log('optimizedAdminQueries: Fetching admin suppliers with filters:', filters);
+  console.log('optimizedAdminQueries: Pagination - offset:', offset, 'limit:', limit);
 
-  // Query base para admins (vê todos os fornecedores)
-  let query = supabase
+  // Query base separada para contagem (sem joins complexos)
+  let countQuery = supabase
     .from('suppliers')
-    .select(`
-      *,
-      suppliers_categories!inner(category_id),
-      reviews(rating)
-    `);
+    .select('id', { count: 'exact', head: true });
 
-  // Aplicar filtros
+  // Aplicar filtros na query de contagem
   if (filters.searchTerm) {
-    query = query.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%,code.ilike.%${filters.searchTerm}%`);
+    countQuery = countQuery.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%,code.ilike.%${filters.searchTerm}%`);
   }
 
   if (filters.hiddenFilter === 'visible') {
-    query = query.eq('hidden', false);
+    countQuery = countQuery.eq('hidden', false);
   } else if (filters.hiddenFilter === 'hidden') {
-    query = query.eq('hidden', true);
+    countQuery = countQuery.eq('hidden', true);
   }
 
   if (filters.featuredFilter === 'featured') {
-    query = query.eq('featured', true);
+    countQuery = countQuery.eq('featured', true);
   } else if (filters.featuredFilter === 'normal') {
-    query = query.eq('featured', false);
+    countQuery = countQuery.eq('featured', false);
   }
 
-  // Contar total
-  const countQuery = query;
-  const { count } = await countQuery;
+  // Executar query de contagem
+  const { count, error: countError } = await countQuery;
+  
+  if (countError) {
+    console.error('Error counting admin suppliers:', countError);
+    return { suppliers: [], totalCount: 0, hasMore: false };
+  }
+
   const totalCount = count || 0;
+  console.log('optimizedAdminQueries: Total count from database:', totalCount);
+
+  // Query principal para buscar dados
+  let dataQuery = supabase
+    .from('suppliers')
+    .select(`
+      *,
+      suppliers_categories!left(category_id),
+      reviews!left(rating)
+    `);
+
+  // Aplicar os mesmos filtros na query de dados
+  if (filters.searchTerm) {
+    dataQuery = dataQuery.or(`name.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%,code.ilike.%${filters.searchTerm}%`);
+  }
+
+  if (filters.hiddenFilter === 'visible') {
+    dataQuery = dataQuery.eq('hidden', false);
+  } else if (filters.hiddenFilter === 'hidden') {
+    dataQuery = dataQuery.eq('hidden', true);
+  }
+
+  if (filters.featuredFilter === 'featured') {
+    dataQuery = dataQuery.eq('featured', true);
+  } else if (filters.featuredFilter === 'normal') {
+    dataQuery = dataQuery.eq('featured', false);
+  }
 
   // Aplicar paginação e ordenação
-  query = query
+  dataQuery = dataQuery
     .order('featured', { ascending: false })
     .order('updated_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
-  const { data, error } = await query;
+  const { data, error } = await dataQuery;
 
   if (error) {
-    console.error('Error fetching admin suppliers:', error);
-    return { suppliers: [], totalCount: 0, hasMore: false };
+    console.error('Error fetching admin suppliers data:', error);
+    return { suppliers: [], totalCount, hasMore: false };
   }
 
-  // Processar suppliers
+  console.log('optimizedAdminQueries: Raw data length:', data?.length || 0);
+
+  // Processar suppliers (remover duplicatas por join)
   const processedSuppliers = new Map<string, any>();
 
   (data || []).forEach((row: any) => {
@@ -84,6 +115,7 @@ export const getOptimizedAdminSuppliers = async (
       });
     }
 
+    // Adicionar categoria se existir
     if (row.suppliers_categories?.category_id) {
       const supplier = processedSuppliers.get(row.id);
       if (!supplier.categories.includes(row.suppliers_categories.category_id)) {
@@ -95,7 +127,9 @@ export const getOptimizedAdminSuppliers = async (
   const suppliers = Array.from(processedSuppliers.values());
   const hasMore = offset + limit < totalCount;
 
-  console.log(`optimizedAdminQueries: Found ${suppliers.length} suppliers, total: ${totalCount}, hasMore: ${hasMore}`);
+  console.log(`optimizedAdminQueries: Processed ${suppliers.length} suppliers`);
+  console.log(`optimizedAdminQueries: Total count: ${totalCount}, hasMore: ${hasMore}`);
+  console.log(`optimizedAdminQueries: Current range: ${offset + 1}-${Math.min(offset + limit, totalCount)} of ${totalCount}`);
 
   return {
     suppliers,

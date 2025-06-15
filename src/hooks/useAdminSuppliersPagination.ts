@@ -48,6 +48,13 @@ export function useAdminSuppliersPagination({
 
   const offset = (currentPage - 1) * pageSize;
 
+  console.log('useAdminSuppliersPagination: Current state:', {
+    currentPage,
+    pageSize,
+    offset,
+    filters
+  });
+
   const {
     data,
     isLoading,
@@ -65,13 +72,23 @@ export function useAdminSuppliersPagination({
   const hasMore = data?.hasMore || false;
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  console.log('useAdminSuppliersPagination: Query result:', {
+    suppliersCount: suppliers.length,
+    totalCount,
+    totalPages,
+    hasMore,
+    currentPage
+  });
+
   const handlePageChange = (page: number) => {
+    console.log('useAdminSuppliersPagination: Changing to page', page);
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
+    console.log('useAdminSuppliersPagination: Changing page size to', newPageSize);
     setPageSize(newPageSize);
     setCurrentPage(1);
   };
