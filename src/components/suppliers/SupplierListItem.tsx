@@ -122,28 +122,7 @@ export function SupplierListItem({
     );
   }
 
-  const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
-  const hasMultipleImages = images.length > 1;
-
-  // Lazy-loading das imagens:
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const [imgSrc, setImgSrc] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    let observer: IntersectionObserver | null = null;
-    const img = imgRef.current;
-    if (img && !imgSrc) {
-      observer = new window.IntersectionObserver(entries => {
-        if (entries[0]?.isIntersecting) {
-          setImgSrc(images[0] || '/placeholder.svg');
-        }
-      });
-      observer.observe(img);
-    }
-    return () => observer && observer.disconnect();
-    // eslint-disable-next-line
-  }, [imgSrc, images]);
-
+  // Main render (no duplicate hook/variable declarations below)
   return (
     <Card key={supplier.id} className="overflow-hidden card-hover">
       <div className={isMobile ? "flex flex-col" : "sm:flex"}>
