@@ -6,7 +6,7 @@ import type { Supplier, Category } from '@/types';
 // Lazy load do SupplierCard para otimizar bundle
 const SupplierCard = lazy(() => 
   import('@/components/suppliers/SupplierCard').then(module => ({
-    default: module.SupplierCard || module.default
+    default: module.SupplierCard
   }))
 );
 
