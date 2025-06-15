@@ -3,12 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { isCurrentUserAdminCached } from '../optimizedDbFunctions';
 
 export const getDistinctCitiesOptimized = async (): Promise<string[]> => {
-  console.log('optimizedFilters: Fetching distinct cities from view...');
+  console.log('optimizedFilters: Fetching distinct cities...');
 
   const isAdmin = await isCurrentUserAdminCached();
 
   let query = supabase
-    .from('suppliers_with_categories')
+    .from('suppliers')
     .select('city')
     .not('city', 'is', null)
     .neq('city', '');
@@ -30,12 +30,12 @@ export const getDistinctCitiesOptimized = async (): Promise<string[]> => {
 };
 
 export const getDistinctStatesOptimized = async (): Promise<string[]> => {
-  console.log('optimizedFilters: Fetching distinct states from view...');
+  console.log('optimizedFilters: Fetching distinct states...');
 
   const isAdmin = await isCurrentUserAdminCached();
 
   let query = supabase
-    .from('suppliers_with_categories')
+    .from('suppliers')
     .select('state')
     .not('state', 'is', null)
     .neq('state', '');
