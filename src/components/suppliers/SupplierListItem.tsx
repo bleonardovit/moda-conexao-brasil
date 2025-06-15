@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +12,6 @@ import { useTrialStatus } from '@/hooks/use-trial-status';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Supplier } from '@/types';
-import { useLazyImage } from "@/hooks/useLazyImage";
 
 interface SupplierListItemProps {
   supplier: Supplier;
