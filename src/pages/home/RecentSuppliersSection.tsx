@@ -26,8 +26,8 @@ export function RecentSuppliersSection({
   formatAvgPrice
 }: RecentSuppliersSectionProps) {
   return (
-    <section className="mb-8 px-4">
-      <div className="flex justify-between items-center mb-4">
+    <section className="mb-12 px-4">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl md:text-2xl font-bold text-gradient">Fornecedores Recentes</h2>
         <Link to="/suppliers" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm font-medium">
           Ver todos
@@ -35,13 +35,13 @@ export function RecentSuppliersSection({
         </Link>
       </div>
       {loadingSuppliers ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          {[1, 2, 3, 4].map(i => <SkeletonCard key={`recent-skeleton-${i}`} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {[1, 2, 3, 4, 5].map(i => <SkeletonCard key={`recent-skeleton-${i}`} />)}
         </div>
       ) : recentSuppliers.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-x-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full">
           {recentSuppliers.map(supplier => (
-            <div key={supplier.id} className="animate-fade-in w-full max-w-full">
+            <div key={supplier.id} className="animate-fade-in h-full">
               <OptimizedSupplierCard
                 supplier={supplier}
                 isFavorite={isFavorite}

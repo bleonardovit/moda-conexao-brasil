@@ -16,8 +16,8 @@ export function RecentArticlesSection({
   loadingArticles
 }: RecentArticlesSectionProps) {
   return (
-    <section className="mb-8 px-4">
-      <div className="flex justify-between items-center mb-4">
+    <section className="mb-12 px-4">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl md:text-2xl font-bold text-gradient">Artigos Recentes</h2>
         <Link to="/articles" className="text-[#9b87f5] hover:text-[#D946EF] flex items-center gap-1 transition-colors text-sm font-medium">
           Ver todos
@@ -25,13 +25,13 @@ export function RecentArticlesSection({
         </Link>
       </div>
       {loadingArticles ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {[1, 2, 3].map(i => <SkeletonCard key={`article-skeleton-${i}`} />)}
         </div>
       ) : recentArticles.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 w-full max-w-full overflow-x-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full">
           {recentArticles.map(article => (
-            <div key={article.id} className="animate-fade-in w-full max-w-full">
+            <div key={article.id} className="animate-fade-in h-full">
               <ArticleCard article={article} />
             </div>
           ))}

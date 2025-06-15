@@ -10,9 +10,9 @@ export function ArticleCard({ article }: { article: Article }) {
   const isMobile = useIsMobile();
 
   return (
-    <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
+    <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full flex flex-col">
       <div className="relative overflow-hidden w-full" style={{
-        height: isMobile ? '130px' : '160px'
+        height: isMobile ? '130px' : '180px'
       }}>
         <img
           src={article.image_url}
@@ -28,9 +28,9 @@ export function ArticleCard({ article }: { article: Article }) {
           </Badge>
         </div>
       </div>
-      <CardContent className="p-4">
-        <h3 className="font-medium line-clamp-2 mb-2">{article.title}</h3>
-        <div className="flex justify-between items-center">
+      <CardContent className="p-4 flex-1 flex flex-col justify-between">
+        <h3 className="font-medium line-clamp-2 mb-3 flex-1">{article.title}</h3>
+        <div className="flex justify-between items-center mt-auto">
           <span className="text-sm text-gray-400">
             {new Date(article.created_at).toLocaleDateString('pt-BR')}
           </span>
