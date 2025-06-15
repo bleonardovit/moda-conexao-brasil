@@ -1,8 +1,8 @@
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
 import { TrialBanner } from '@/components/trial/TrialBanner';
+import { TrialProvider } from '@/contexts/TrialContext';
 import { useToast } from "@/hooks/use-toast";
 import type { Supplier, Category } from '@/types';
 import { getCategories } from '@/services/categoryService';
@@ -199,55 +199,57 @@ export default function SuppliersList() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
-        <SupplierSearchAndActions
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          showOnlyFavorites={showOnlyFavorites}
-          onToggleShowOnlyFavorites={() => setShowOnlyFavorites(!showOnlyFavorites)}
-          isFilterOpen={isFilterOpen}
-          onToggleFilterOpen={() => setIsFilterOpen(!isFilterOpen)}
-          filteredSuppliersCount={paginatedSuppliers.length}
-        />
-
-        <TrialBanner />
-
-        {isFilterOpen && (
-          <SupplierFilters
-            categoryFilter={categoryFilter}
-            onCategoryFilterChange={setCategoryFilter}
-            stateFilter={stateFilter}
-            onStateFilterChange={setStateFilter}
-            cityFilter={cityFilter}
-            onCityFilterChange={setCityFilter}
-            priceFilter={priceFilter}
-            onPriceFilterChange={setPriceFilter}
-            cnpjFilter={cnpjFilter}
-            onCnpjFilterChange={setCnpjFilter}
-            categoryOptions={categoryOptions}
-            stateOptions={stateOptions}
-            cityOptions={cityOptions}
-            priceRanges={PRICE_RANGES}
-            cnpjOptions={CNPJ_OPTIONS}
+      <TrialProvider>
+        <div className="space-y-4">
+          <SupplierSearchAndActions
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            showOnlyFavorites={showOnlyFavorites}
+            onToggleShowOnlyFavorites={() => setShowOnlyFavorites(!showOnlyFavorites)}
+            isFilterOpen={isFilterOpen}
+            onToggleFilterOpen={() => setIsFilterOpen(!isFilterOpen)}
+            filteredSuppliersCount={paginatedSuppliers.length}
           />
-        )}
 
-        {paginatedSuppliers.length === 0 && !isLoading ? (
-          <NoSuppliersFound onClearFilters={clearAllFilters} />
-        ) : (
-          <SupplierListVirtualized
-            suppliers={paginatedSuppliers}
-            isFavorite={isFavorite}
-            onToggleFavorite={handleToggleFavorite}
-            getCategoryName={getCategoryName}
-            getCategoryStyle={getCategoryStyle}
-            formatAvgPrice={formatAvgPrice}
-            fetchNextPage={fetchNextPage}
-            hasNextPage={!!hasNextPage}
-            isLoading={isLoading || isFetchingNextPage}
-          />
-        )}
-      </div>
+          <TrialBanner />
+
+          {isFilterOpen && (
+            <SupplierFilters
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
+              stateFilter={stateFilter}
+              onStateFilterChange={setStateFilter}
+              cityFilter={cityFilter}
+              onCityFilterChange={setCityFilter}
+              priceFilter={priceFilter}
+              onPriceFilterChange={setPriceFilter}
+              cnpjFilter={cnpjFilter}
+              onCnpjFilterChange={setCnpjFilter}
+              categoryOptions={categoryOptions}
+              stateOptions={stateOptions}
+              cityOptions={cityOptions}
+              priceRanges={PRICE_RANGES}
+              cnpjOptions={CNPJ_OPTIONS}
+            />
+          )}
+
+          {paginatedSuppliers.length === 0 && !isLoading ? (
+            <NoSuppliersFound onClearFilters={clearAllFilters} />
+          ) : (
+            <SupplierListVirtualized
+              suppliers={paginatedSuppliers}
+              isFavorite={isFavorite}
+              onToggleFavorite={handleToggleFavorite}
+              getCategoryName={getCategoryName}
+              getCategoryStyle={getCategoryStyle}
+              formatAvgPrice={formatAvgPrice}
+              fetchNextPage={fetchNextPage}
+              hasNextPage={!!hasNextPage}
+              isLoading={isLoading || isFetchingNextPage}
+            />
+          )}
+        </div>
+      </TrialProvider>
     </AppLayout>
   );
 }

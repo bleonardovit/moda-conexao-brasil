@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useCallback } from "react";
-import { SupplierListItem } from "@/components/suppliers/SupplierListItem";
+import { SupplierCard } from "@/components/suppliers/SupplierCard";
 import type { Supplier } from "@/types";
 
 interface SupplierListVirtualizedProps {
@@ -57,7 +57,7 @@ export const SupplierListVirtualized: React.FC<SupplierListVirtualizedProps> = (
   return (
     <div className="space-y-4">
       {suppliers.map(supplier => (
-        <SupplierListItem
+        <SupplierCard
           key={supplier.id}
           supplier={supplier}
           isFavorite={isFavorite}
