@@ -1,3 +1,4 @@
+
 import * as z from 'zod';
 
 // Função para normalizar strings
@@ -101,7 +102,7 @@ export const supplierFormSchema = z.object({
   code: z.string().min(1, 'Código é obrigatório').max(20, 'Código deve ter no máximo 20 caracteres'),
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome deve ter no máximo 100 caracteres'),
   description: z.string().min(10, 'Descrição deve ter pelo menos 10 caracteres').max(500, 'Descrição deve ter no máximo 500 caracteres'),
-  images: z.array(z.string()).min(0).max(10, 'Máximo de 10 imagens permitidas').default([]),
+  images: z.array(z.string()).min(0).default([]),
   instagram: stringPreprocess50,
   whatsapp: stringPreprocess20,
   website: stringPreprocess100,
