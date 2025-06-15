@@ -25,13 +25,13 @@ export default function Home() {
   const { user } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  // Fornecedores para home com cache
+  // Fornecedores para home com cache - limitando fornecedores recentes a 5
   const {
     data: homeSuppliers,
     isLoading: loadingSuppliers
   } = useQuery({
     queryKey: ['home-suppliers', user?.id],
-    queryFn: () => getOptimizedHomeSuppiers(user?.id, 6, 8),
+    queryFn: () => getOptimizedHomeSuppiers(user?.id, 6, 5),
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
