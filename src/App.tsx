@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -51,6 +52,9 @@ import TrackingSettings from "./pages/admin/TrackingSettings";
 import SecurityMonitoring from "./pages/admin/SecurityMonitoring";
 import Reports from "./pages/admin/Reports";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+
+// Import performance page
+import PerformanceMonitor from "./pages/performance/PerformanceMonitor";
 
 const queryClient = new QueryClient();
 
