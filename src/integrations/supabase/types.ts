@@ -757,6 +757,47 @@ export type Database = {
         Args: { check_ip: string; hours?: number }
         Returns: number
       }
+      get_suppliers_paginated: {
+        Args: {
+          p_user_id?: string
+          p_offset?: number
+          p_limit?: number
+          p_search_term?: string
+          p_category_id?: string
+          p_state?: string
+          p_city?: string
+          p_price?: string
+          p_requires_cnpj?: boolean
+          p_favorites?: string[]
+        }
+        Returns: {
+          id: string
+          code: string
+          name: string
+          description: string
+          images: string[]
+          instagram: string
+          whatsapp: string
+          website: string
+          min_order: string
+          payment_methods: string[]
+          requires_cnpj: boolean
+          avg_price: string
+          shipping_methods: string[]
+          custom_shipping_method: string
+          city: string
+          state: string
+          categories: string[]
+          featured: boolean
+          hidden: boolean
+          created_at: string
+          updated_at: string
+          average_rating: number
+          is_locked_for_trial: boolean
+          total_count: number
+          has_more: boolean
+        }[]
+      }
       get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string

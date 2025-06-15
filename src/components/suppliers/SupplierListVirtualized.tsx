@@ -28,26 +28,31 @@ export const SupplierListVirtualized: React.FC<SupplierListVirtualizedProps> = (
 }) => {
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
-  // Infinite scroll trigger
+  // Infinite scroll trigger otimizado
+  const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
+    if (entries[0].isIntersecting && hasNextPage && !isLoading) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isLoading, fetchNextPage]);
+
   useEffect(() => {
     if (!hasNextPage || isLoading) return;
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 1 }
-    );
+    
+    const observer = new IntersectionObserver(handleIntersection, { 
+      threshold: 0.1,
+      rootMargin: '100px' // Pre-carrega quando está próximo
+    });
+    
     if (loaderRef.current) {
       observer.observe(loaderRef.current);
     }
+    
     return () => {
       if (loaderRef.current) {
         observer.unobserve(loaderRef.current);
       }
     };
-  }, [loaderRef, hasNextPage, isLoading, fetchNextPage]);
+  }, [handleIntersection, hasNextPage, isLoading]);
 
   return (
     <div className="space-y-4">
@@ -62,13 +67,16 @@ export const SupplierListVirtualized: React.FC<SupplierListVirtualizedProps> = (
           formatAvgPrice={formatAvgPrice}
         />
       ))}
-      <div ref={loaderRef} />
+      <div ref={loaderRef} className="h-4" />
       {isLoading && (
         <div className="flex justify-center p-4">
-          <span className="text-muted-foreground">Carregando mais fornecedores...</span>
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            <span className="text-muted-foreground">Carregando mais fornecedores...</span>
+          </div>
         </div>
       )}
-      {!hasNextPage && (
+      {!hasNextPage && suppliers.length > 0 && (
         <div className="flex justify-center p-2 text-xs text-muted-foreground">
           Fim dos fornecedores
         </div>

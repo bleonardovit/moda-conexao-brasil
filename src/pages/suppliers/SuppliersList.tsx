@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
 import { TrialBanner } from '@/components/trial/TrialBanner';
@@ -7,13 +7,13 @@ import { useToast } from "@/hooks/use-toast";
 import type { Supplier, Category } from '@/types';
 import { getCategories } from '@/services/categoryService';
 import { useAuth } from '@/hooks/useAuth';
-import { useTrialStatus } from '@/hooks/use-trial-status';
 import { getDistinctCitiesOptimized, getDistinctStatesOptimized } from '@/services/supplier/optimizedFilters';
 
 import { SupplierSearchAndActions } from '@/components/suppliers/SupplierSearchAndActions';
 import { SupplierFilters } from '@/components/suppliers/SupplierFilters';
 import { useInfiniteSuppliers } from '@/hooks/useInfiniteSuppliers';
 import { SupplierListVirtualized } from '@/components/suppliers/SupplierListVirtualized';
+import { NoSuppliersFound } from '@/components/suppliers/NoSuppliersFound';
 
 const PRICE_RANGES = [
   { label: 'Todos', value: 'all' },
@@ -41,7 +41,6 @@ export default function SuppliersList() {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { isInTrial, allowedSupplierIds } = useTrialStatus();
 
   // Estados para opções de filtro
   const [filtersLoading, setFiltersLoading] = useState(true);
@@ -55,6 +54,28 @@ export default function SuppliersList() {
   const [cityOptions, setCityOptions] = useState<{ label: string; value: string; }[]>([
     { label: 'Todas as Cidades', value: 'all' }
   ]);
+
+  // Debounced search term para evitar queries desnecessárias
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Memoizar filtros para evitar re-renders desnecessários
+  const filters = useMemo(() => ({
+    searchTerm: debouncedSearchTerm,
+    category: categoryFilter,
+    state: stateFilter,
+    city: cityFilter,
+    price: priceFilter,
+    cnpj: cnpjFilter,
+    favorites: showOnlyFavorites ? favorites : undefined,
+  }), [debouncedSearchTerm, categoryFilter, stateFilter, cityFilter, priceFilter, cnpjFilter, showOnlyFavorites, favorites]);
 
   // Carregar opções de filtro usando as funções otimizadas
   useEffect(() => {
@@ -97,16 +118,17 @@ export default function SuppliersList() {
     fetchFilterOptions();
   }, [toast]);
 
-  const formatAvgPrice = (price: string) => {
+  // Helper functions memoizadas
+  const formatAvgPrice = useCallback((price: string) => {
     switch (price) {
       case 'low': return 'Baixo';
       case 'medium': return 'Médio';
       case 'high': return 'Alto';
       default: return 'Não informado';
     }
-  };
+  }, []);
 
-  const handleToggleFavorite = (supplier: Supplier, e: React.MouseEvent) => {
+  const handleToggleFavorite = useCallback((supplier: Supplier, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const currentlyFavorite = isFavorite(supplier.id);
@@ -117,14 +139,14 @@ export default function SuppliersList() {
       description: `${supplier.name} foi ${action} seus favoritos.`,
       duration: 2000
     });
-  };
+  }, [isFavorite, toggleFavorite, toast]);
 
-  const getCategoryName = (categoryId: string) => {
+  const getCategoryName = useCallback((categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     return category ? category.name : '';
-  };
+  }, [categories]);
 
-  const getCategoryStyle = (categoryName: string) => {
+  const getCategoryStyle = useCallback((categoryName: string) => {
     const categoryColors: Record<string, string> = {
       'Casual': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
       'Fitness': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -133,9 +155,9 @@ export default function SuppliersList() {
       'Praia': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300'
     };
     return categoryColors[categoryName] || '';
-  };
+  }, []);
   
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setSearchTerm('');
     setCategoryFilter('all');
     setStateFilter('all');
@@ -143,9 +165,9 @@ export default function SuppliersList() {
     setPriceFilter('all');
     setCnpjFilter('all');
     setShowOnlyFavorites(false);
-  };
+  }, []);
 
-  // Hook otimizado de paginação
+  // Hook otimizado de paginação com nova função SQL
   const {
     data,
     isLoading,
@@ -154,25 +176,22 @@ export default function SuppliersList() {
     isFetchingNextPage
   } = useInfiniteSuppliers({
     userId: user?.id,
-    filters: {
-      searchTerm,
-      category: categoryFilter,
-      state: stateFilter,
-      city: cityFilter,
-      price: priceFilter,
-      cnpj: cnpjFilter,
-      favorites: showOnlyFavorites ? favorites : undefined,
-    }
+    filters
   });
 
-  // Suppliers paginados vindos do backend
-  const paginatedSuppliers = data ? data.pages.flatMap((page) => page.items) : [];
+  // Suppliers otimizados vindos do backend
+  const paginatedSuppliers = useMemo(() => 
+    data ? data.pages.flatMap((page) => page.items) : []
+  , [data]);
 
   if (filtersLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando filtros...</p>
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <p className="text-muted-foreground">Carregando filtros...</p>
+          </div>
         </div>
       </AppLayout>
     );
@@ -213,17 +232,21 @@ export default function SuppliersList() {
           />
         )}
 
-        <SupplierListVirtualized
-          suppliers={paginatedSuppliers}
-          isFavorite={isFavorite}
-          onToggleFavorite={handleToggleFavorite}
-          getCategoryName={getCategoryName}
-          getCategoryStyle={getCategoryStyle}
-          formatAvgPrice={formatAvgPrice}
-          fetchNextPage={fetchNextPage}
-          hasNextPage={!!hasNextPage}
-          isLoading={isLoading || isFetchingNextPage}
-        />
+        {paginatedSuppliers.length === 0 && !isLoading ? (
+          <NoSuppliersFound onClearFilters={clearAllFilters} />
+        ) : (
+          <SupplierListVirtualized
+            suppliers={paginatedSuppliers}
+            isFavorite={isFavorite}
+            onToggleFavorite={handleToggleFavorite}
+            getCategoryName={getCategoryName}
+            getCategoryStyle={getCategoryStyle}
+            formatAvgPrice={formatAvgPrice}
+            fetchNextPage={fetchNextPage}
+            hasNextPage={!!hasNextPage}
+            isLoading={isLoading || isFetchingNextPage}
+          />
+        )}
       </div>
     </AppLayout>
   );
