@@ -11,14 +11,17 @@ import { useAdminSuppliersPagination } from '@/hooks/useAdminSuppliersPagination
 import { AdminSupplierFilters } from '@/components/admin/AdminSupplierFilters';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { AdminBulkOperations } from '@/components/admin/AdminBulkOperations';
-import { toggleSupplierFeatured, toggleSupplierVisibility } from '@/services/supplierService';
-import { Eye, EyeOff, Star, StarOff, Edit, Loader2 } from 'lucide-react';
+import { ConfirmDeleteDialog } from '@/components/admin/ConfirmDeleteDialog';
+import { toggleSupplierFeatured, toggleSupplierVisibility, deleteSupplierMutation } from '@/services/supplierService';
+import { Eye, EyeOff, Star, StarOff, Edit, Loader2, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import type { Supplier } from '@/types';
 
 export default function SuppliersManagement() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<Supplier[]>([]);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const selectAllCheckboxRef = useRef<HTMLButtonElement>(null);
   const { toast } = useToast();
 
@@ -92,6 +95,35 @@ export default function SuppliersManagement() {
         description: "Não foi possível alterar o destaque do fornecedor.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDeleteClick = (supplier: Supplier) => {
+    setSupplierToDelete(supplier);
+  };
+
+  const confirmDelete = async () => {
+    if (!supplierToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteSupplierMutation(supplierToDelete.id);
+      toast({
+        title: "Fornecedor excluído",
+        description: `${supplierToDelete.name} foi excluído permanentemente do sistema.`,
+      });
+      setSupplierToDelete(null);
+      refetch();
+      // Clear selection if deleted supplier was selected
+      setSelectedSuppliers(prev => prev.filter(s => s.id !== supplierToDelete.id));
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir o fornecedor. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -248,6 +280,15 @@ export default function SuppliersManagement() {
                                 <Edit className="h-4 w-4" />
                               </Button>
                             </Link>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteClick(supplier)}
+                              title="Excluir fornecedor"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -269,6 +310,14 @@ export default function SuppliersManagement() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDeleteDialog
+        open={!!supplierToDelete}
+        onClose={() => setSupplierToDelete(null)}
+        onConfirm={confirmDelete}
+        supplier={supplierToDelete}
+        isDeleting={isDeleting}
+      />
     </AdminLayout>
   );
 }
