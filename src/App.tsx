@@ -10,7 +10,6 @@ import { SitemapGenerator } from "./components/sitemap/SitemapGenerator";
 import { AdminRouteGuard } from "./components/auth/AdminRouteGuard";
 import { AuthProvider } from "./hooks/useAuth";
 import { GlobalErrorBoundary, QueryErrorBoundary } from "@/components/error-boundaries";
-import { logger } from "@/utils/logger";
 
 // Import pages
 import Index from "./pages/Index";
@@ -66,7 +65,7 @@ const queryClient = new QueryClient({
       retry: (failureCount, error) => {
         // Don't retry on UUID errors
         if (error?.message?.includes('invalid input syntax for type uuid')) {
-          logger.error('UUID error detected, not retrying:', error);
+          console.error('UUID error detected, not retrying:', error);
           return false;
         }
         return failureCount < 3;
@@ -77,7 +76,7 @@ const queryClient = new QueryClient({
 
 // Global error handler for unhandled errors
 const handleGlobalError = (error: Error, errorInfo: React.ErrorInfo) => {
-  logger.error('Global unhandled error:', {
+  console.error('Global unhandled error:', {
     error: error.message,
     stack: error.stack,
     errorInfo
