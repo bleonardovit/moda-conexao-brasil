@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0"; // Use a specific version
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -15,20 +14,14 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 // ==========================================================================================
 // !! IMPORTANTE !! ATENÇÃO !! IMPORTANTE !!
 //
-// OS IDs ABAIXO SÃO PLACEHOLDERS. VOCÊ PRECISA SUBSTITUÍ-LOS PELOS SEUS
-// PRICE IDs REAIS CRIADOS NO SEU PAINEL DO STRIPE.
+// OS IDs ABAIXO SÃO AGORA OS IDs REAIS DO SEU STRIPE (NÃO MAIS PLACEHOLDER)
+// Mensal (R$ 14,70/mês) - ID: price_1RXwAmGAftlLH3Q1F93oSMOc
+// Anual (R$ 87,00/ano)   - ID: price_1RXwBJGAftlLH3Q1OxvodKz9
 //
-// Mensal (R$ 9,70/mês) - Produto ID: prod_SKDr4FhH8ZMx1z
-// Anual (R$ 87,00/ano) - Produto ID: prod_SKDstDNOxG1OOV
-//
-// Para cada um desses PRODUTOS, você deve criar um PREÇO (Price) no Stripe
-// e usar o ID do PREÇO (ex: price_xxxxxxxxxxxxxx) aqui.
-//
-// SE VOCÊ NÃO SUBSTITUIR ESTES IDs, O CHECKOUT DO STRIPE FALHARÁ.
-// O erro "No such price" nos logs da função indica que este é o problema.
+// Agora a função aponta para os dados reais.
 // ==========================================================================================
-const MONTHLY_PLAN_ID = "price_1Pbdo4RvHwzH1TqS400LSxZd"; // SUBSTITUA PELO SEU PRICE ID MENSAL REAL
-const YEARLY_PLAN_ID = "price_1PbdrLRvHwzH1TqSEgDxcLzI";   // SUBSTITUA PELO SEU PRICE ID ANUAL REAL
+const MONTHLY_PLAN_ID = "price_1RXwAmGAftlLH3Q1F93oSMOc"; // SEU PRICE ID MENSAL REAL
+const YEARLY_PLAN_ID = "price_1RXwBJGAftlLH3Q1OxvodKz9"; // SEU PRICE ID ANUAL REAL
 
 
 serve(async (req: Request) => {
@@ -150,4 +143,3 @@ serve(async (req: Request) => {
     });
   }
 });
-
