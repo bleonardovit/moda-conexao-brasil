@@ -3,7 +3,6 @@ import React, { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { LockedSupplierCard } from '@/components/trial/LockedSupplierCard';
 import { useTrialContext } from '@/contexts/TrialContext';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { SupplierImage } from './SupplierImage';
 import { SupplierHeader } from './SupplierHeader';
 import { SupplierDetails } from './SupplierDetails';
@@ -30,7 +29,6 @@ export const OptimizedSupplierCard = memo(function OptimizedSupplierCard({
   formatAvgPrice,
 }: OptimizedSupplierCardProps) {
   const { isLoading, isVerified } = useTrialContext();
-  const isMobile = useIsMobile();
 
   // Use LockedSupplierCard for any supplier marked as locked for trial
   if (supplier.isLockedForTrial) {
@@ -42,46 +40,44 @@ export const OptimizedSupplierCard = memo(function OptimizedSupplierCard({
     return <SupplierSkeleton />;
   }
 
-  // Main render - optimized supplier card with consistent height
+  // Main render - vertical layout with image on top
   return (
     <Card key={supplier.id} className="overflow-hidden card-hover h-full flex flex-col">
-      <div className={isMobile ? "flex flex-col h-full" : "sm:flex h-full"}>
-        <SupplierImage 
-          images={supplier.images || []} 
-          supplierName={supplier.name} 
+      <SupplierImage 
+        images={supplier.images || []} 
+        supplierName={supplier.name} 
+      />
+      
+      <CardContent className="p-4 flex-1 flex flex-col">
+        <SupplierHeader 
+          supplier={supplier}
+          isFavorite={isFavorite(supplier.id)}
+          onToggleFavorite={onToggleFavorite}
         />
-        
-        <CardContent className={`p-4 flex-1 flex flex-col ${isMobile ? 'w-full' : 'sm:w-2/3 md:w-3/4'}`}>
-          <SupplierHeader 
-            supplier={supplier}
-            isFavorite={isFavorite(supplier.id)}
-            onToggleFavorite={onToggleFavorite}
+
+        <div className="flex-1 flex flex-col justify-between">
+          <SupplierDetails 
+            description={supplier.description}
+            categories={supplier.categories || []}
+            getCategoryName={getCategoryName}
+            getCategoryStyle={getCategoryStyle}
           />
 
-          <div className="flex-1 flex flex-col justify-between">
-            <SupplierDetails 
-              description={supplier.description}
-              categories={supplier.categories || []}
-              getCategoryName={getCategoryName}
-              getCategoryStyle={getCategoryStyle}
+          <div className="mt-auto space-y-3">
+            <SupplierInfo 
+              minOrder={supplier.min_order}
+              avgPrice={supplier.avg_price}
+              formatAvgPrice={formatAvgPrice}
             />
 
-            <div className="mt-auto space-y-3">
-              <SupplierInfo 
-                minOrder={supplier.min_order}
-                avgPrice={supplier.avg_price}
-                formatAvgPrice={formatAvgPrice}
-              />
-
-              <SupplierActions 
-                supplierId={supplier.id}
-                instagram={supplier.instagram}
-                website={supplier.website}
-              />
-            </div>
+            <SupplierActions 
+              supplierId={supplier.id}
+              instagram={supplier.instagram}
+              website={supplier.website}
+            />
           </div>
-        </CardContent>
-      </div>
+        </div>
+      </CardContent>
     </Card>
   );
 });
