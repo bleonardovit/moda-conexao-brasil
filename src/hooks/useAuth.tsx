@@ -178,18 +178,21 @@ const validateUserProfile = async (userId: string): Promise<{ isValid: boolean; 
       return { isValid: false, reason: 'NO_PROFILE' };
     }
     
-    // UPDATED: Check user status considering trial
+    // UPDATED: Allow users with expired trials to login
     // User is considered valid if:
     // 1. Is admin (always valid)
     // 2. Has active subscription
-    // 3. Has active trial (even with inactive subscription)
+    // 3. Has active trial
+    // 4. Has expired trial (still allow login, but suppliers will be locked)
     const isAdmin = profile.role === 'admin';
     const hasActiveSubscription = profile.subscription_status === 'active';
     const hasActiveTrial = profile.trial_status === 'active';
+    const hasExpiredTrial = profile.trial_status === 'expired';
     
-    if (!isAdmin && !hasActiveSubscription && !hasActiveTrial) {
-      console.warn(`SECURITY ALERT: User without valid access attempted login: ${userId} - subscription: ${profile.subscription_status}, trial: ${profile.trial_status}`);
-      return { isValid: false, reason: 'INACTIVE_USER' };
+    // Only block login if user has no subscription AND no trial (not even expired)
+    if (!isAdmin && !hasActiveSubscription && !hasActiveTrial && !hasExpiredTrial) {
+      console.warn(`SECURITY ALERT: User without any access attempted login: ${userId} - subscription: ${profile.subscription_status}, trial: ${profile.trial_status}`);
+      return { isValid: false, reason: 'NO_ACCESS' };
     }
     
     return { isValid: true, profile };
@@ -490,11 +493,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               title: "Conta não encontrada",
               description: "Esta conta não existe mais no sistema. Entre em contato com o suporte se necessário.",
             });
-          } else if (validation.reason === 'INACTIVE_USER') {
+          } else if (validation.reason === 'NO_ACCESS') {
             toast({
               variant: "destructive",
-              title: "Conta sem acesso ativo",
-              description: "Sua conta não possui assinatura ativa ou trial válido. Entre em contato com o suporte.",
+              title: "Conta sem acesso",
+              description: "Sua conta não possui assinatura ou trial. Entre em contato com o suporte.",
             });
           } else {
             toast({
