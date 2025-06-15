@@ -31,11 +31,11 @@ import {
   FileSpreadsheet,
   UserX, 
   UserCheck, 
-  DollarSign
+  DollarSign,
+  AlertCircle
 } from 'lucide-react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { useToast } from '@/hooks/use-toast';
-import { ReportsErrorBoundary } from '@/components/error-boundaries/ReportsErrorBoundary';
 import {
   ChartContainer,
   ChartTooltipContent,
@@ -64,17 +64,6 @@ import { getReportData, exportReportToCSV, ReportData } from '@/services/reportS
 // Cores para os gráficos
 const COLORS = ['#8884d8', '#83a6ed', '#8dd1e1', '#82ca9d', '#a4de6c', '#d0ed57'];
 
-// Default empty stats structure, matching ReportData for consistency
-const defaultStats: ReportData = {
-  users: { totalUsers: 0, newUsersLast7Days: 0, newUsersLast30Days: 0, growthRate: 0, activeUsers: Array(7).fill(0), monthlyGrowth: [] },
-  suppliers: { totalSuppliers: 0, newSuppliers: 0, topSuppliers: [], byCategories: [], byState: [] },
-  conversions: { visitToRegister: 0, registerToSubscription: 0, visitToSubscription: 0, churnRate: 0, retentionRates: { thirtyDays: 0, sixtyDays: 0, ninetyDays: 0, annual: 0 }, trialToPaidRate: 0, blockedFreeUsers: 0 },
-  totalLogins: 0,
-  subscriptionDistribution: [{ name: 'Mensal', value: 0 }, { name: 'Anual', value: 0 }],
-  regionData: { users: [], suppliers: [], conversions: [] },
-  cohortData: []
-};
-
 function ReportsContent() {
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<'7days' | '30days' | '90days' | 'year'>('30days');
@@ -85,9 +74,9 @@ function ReportsContent() {
   const { data: reportData, isLoading, error, isError } = useQuery<ReportData>({
     queryKey: ['report-data', dateRange, categoryFilter, locationFilter],
     queryFn: () => getReportData(dateRange, categoryFilter, locationFilter),
-    placeholderData: defaultStats,
-    retry: 3,
+    retry: 2,
     retryDelay: 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
   const exportReport = useCallback(async () => {
@@ -118,6 +107,7 @@ function ReportsContent() {
   
   const usersByStatePieData = useMemo(() => {
     return (reportData?.regionData.users || [])
+      .slice(0, 5) // Limit to top 5 states
       .map(item => ({ name: item.state, value: item.count }));
   }, [reportData?.regionData.users]);
 
@@ -129,7 +119,7 @@ function ReportsContent() {
         date: `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`,
         count: Math.max(0, Math.floor(value * 0.1)) 
       };
-    });
+    }) || [];
   }, [reportData?.users.activeUsers]);
 
   const dailyActiveUsersChartData = useMemo(() => {
@@ -140,7 +130,7 @@ function ReportsContent() {
         date: `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`,
         active: value
       };
-    });
+    }) || [];
   }, [reportData?.users.activeUsers]);
 
   const monthlyRevenueData = [
@@ -152,19 +142,76 @@ function ReportsContent() {
       { month: "Nov", value: 11200 }, { month: "Dez", value: 12000 }
   ];
 
-  const stats = reportData || defaultStats;
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="space-y-4 p-4 md:p-6">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-10 w-40" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-4 w-24" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-3 w-32" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   if (isError) {
-    throw error; // This will be caught by the error boundary
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-96">
+          <Card className="max-w-md">
+            <CardHeader className="text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <CardTitle className="text-destructive">Erro ao Carregar Relatórios</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Ocorreu um erro ao carregar os dados dos relatórios:
+              </p>
+              <div className="p-3 bg-muted rounded text-xs">
+                {(error as Error)?.message || 'Erro desconhecido'}
+              </div>
+              <Button onClick={() => window.location.reload()} className="w-full">
+                Recarregar Página
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
   }
+
+  const stats = reportData || {
+    users: { totalUsers: 0, newUsersLast7Days: 0, newUsersLast30Days: 0, growthRate: 0, activeUsers: Array(7).fill(0), monthlyGrowth: [] },
+    suppliers: { totalSuppliers: 0, newSuppliers: 0, topSuppliers: [], byCategories: [], byState: [] },
+    conversions: { visitToRegister: 0, registerToSubscription: 0, visitToSubscription: 0, churnRate: 0, retentionRates: { thirtyDays: 0, sixtyDays: 0, ninetyDays: 0, annual: 0 }, trialToPaidRate: 0, blockedFreeUsers: 0 },
+    totalLogins: 0,
+    subscriptionDistribution: [{ name: 'Mensal', value: 0 }, { name: 'Anual', value: 0 }],
+    regionData: { users: [], suppliers: [], conversions: [] },
+    cohortData: []
+  };
   
   return (
     <div className="space-y-4 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h1 className="text-2xl font-bold">Dashboard & Relatórios</h1>
         {activeTab === 'dashboard' && ( 
-          <Button onClick={exportReport} disabled={isLoading}>
-            {isLoading ? "Carregando..." : <><FileSpreadsheet className="mr-2 h-4 w-4" /> Exportar Dashboard CSV</>}
+          <Button onClick={exportReport}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Exportar Dashboard CSV
           </Button>
         )}
       </div>
@@ -231,79 +278,63 @@ function ReportsContent() {
             </Select>
           </div>
           
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i}>
-                  <CardHeader className="pb-2">
-                    <Skeleton className="h-4 w-24" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-8 w-16 mb-2" />
-                    <Skeleton className="h-3 w-32" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Usuárias</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.users.totalUsers.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">
-                    +{stats.users.newUsersLast30Days.toLocaleString()} no último mês
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Novas Usuárias (7d)</CardTitle>
-                  {stats.users.growthRate >= 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-500" />
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">+{stats.users.newUsersLast7Days.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {stats.users.growthRate >= 0 ? '+' : ''}{stats.users.growthRate.toFixed(1)}% vs. 7d anteriores
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Fornecedores</CardTitle>
-                  <Store className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.suppliers.totalSuppliers.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">
-                    +{stats.suppliers.newSuppliers.toLocaleString()} no último mês
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Logins (Est.)</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalLogins.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Estimativa histórica
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total de Usuárias</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.users.totalUsers.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                  +{stats.users.newUsersLast30Days.toLocaleString()} no último mês
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Novas Usuárias (7d)</CardTitle>
+                {stats.users.growthRate >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">+{stats.users.newUsersLast7Days.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.users.growthRate >= 0 ? '+' : ''}{stats.users.growthRate.toFixed(1)}% vs. 7d anteriores
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Fornecedores</CardTitle>
+                <Store className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.suppliers.totalSuppliers.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                  +{stats.suppliers.newSuppliers.toLocaleString()} no último mês
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total de Logins (Est.)</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalLogins.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                  Estimativa histórica
+                </p>
+              </CardContent>
+            </Card>
+          </div>
           
           <Card>
             <CardHeader><CardTitle>Métricas de Conversão Chave</CardTitle></CardHeader>
@@ -577,9 +608,7 @@ function ReportsContent() {
 export default function Reports() {
   return (
     <AdminLayout>
-      <ReportsErrorBoundary>
-        <ReportsContent />
-      </ReportsErrorBoundary>
+      <ReportsContent />
     </AdminLayout>
   );
 }

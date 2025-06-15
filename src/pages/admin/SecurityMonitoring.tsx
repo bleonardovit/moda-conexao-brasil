@@ -8,11 +8,10 @@ import { AllowlistedIPsTable } from '@/components/admin/security/AllowlistedIPsT
 import { SecuritySettings } from '@/components/admin/security/SecuritySettings';
 import { LoginStatsCards } from '@/components/admin/security/LoginStatsCards';
 import { LoginActivityChart } from '@/components/admin/security/LoginActivityChart';
-import { SecurityErrorBoundary } from '@/components/error-boundaries/SecurityErrorBoundary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { Shield } from 'lucide-react';
+import { Shield, AlertCircle } from 'lucide-react';
 import { Helmet } from 'react-helmet';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function SecurityMonitoring() {
   return (
@@ -26,17 +25,13 @@ export default function SecurityMonitoring() {
         <h1 className="text-2xl font-bold">Monitoramento de Segurança</h1>
       </div>
       
-      <SecurityErrorBoundary>
-        <div className="mb-6">
-          <LoginStatsCards />
-        </div>
-      </SecurityErrorBoundary>
+      <div className="mb-6">
+        <LoginStatsCards />
+      </div>
       
-      <SecurityErrorBoundary>
-        <div className="mb-6">
-          <LoginActivityChart />
-        </div>
-      </SecurityErrorBoundary>
+      <div className="mb-6">
+        <LoginActivityChart />
+      </div>
       
       <Tabs defaultValue="sessions" className="w-full">
         <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
@@ -48,33 +43,23 @@ export default function SecurityMonitoring() {
         </TabsList>
         
         <TabsContent value="sessions">
-          <SecurityErrorBoundary>
-            <ActiveSessionsTable />
-          </SecurityErrorBoundary>
+          <ActiveSessionsTable />
         </TabsContent>
         
         <TabsContent value="logs">
-          <SecurityErrorBoundary>
-            <LoginLogsTable />
-          </SecurityErrorBoundary>
+          <LoginLogsTable />
         </TabsContent>
         
         <TabsContent value="blocked">
-          <SecurityErrorBoundary>
-            <BlockedIPsTable />
-          </SecurityErrorBoundary>
+          <BlockedIPsTable />
         </TabsContent>
         
         <TabsContent value="allowlist">
-          <SecurityErrorBoundary>
-            <AllowlistedIPsTable />
-          </SecurityErrorBoundary>
+          <AllowlistedIPsTable />
         </TabsContent>
 
         <TabsContent value="settings">
-          <SecurityErrorBoundary>
-            <SecuritySettings />
-          </SecurityErrorBoundary>
+          <SecuritySettings />
         </TabsContent>
       </Tabs>
     </AdminLayout>
