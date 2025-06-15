@@ -1,6 +1,8 @@
 // SECURITY: Enhanced IP Security Service
 // Provides secure IP detection with fallback methods and validation
 
+import { supabase } from '@/integrations/supabase/client';
+
 export interface IPDetectionResult {
   ip: string;
   source: 'ipify' | 'ipapi' | 'ipinfo' | 'fallback';
