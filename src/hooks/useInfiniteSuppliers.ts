@@ -25,6 +25,8 @@ interface SuppliersPage {
 }
 
 export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersProps) {
+  console.log('useInfiniteSuppliers: Hook called with:', { userId, filters });
+
   return useInfiniteQuery<SuppliersPage, Error>({
     queryKey: [
       "suppliers-paginated",
@@ -38,6 +40,7 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
       filters.favorites,
     ],
     queryFn: async ({ pageParam = 0 }) => {
+      console.log('useInfiniteSuppliers: Fetching page:', pageParam);
       const offset = Number(pageParam) * PAGE_SIZE;
       
       const result = await getSuppliersWithPagination(
@@ -47,6 +50,14 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
         filters
       );
 
+      console.log('useInfiniteSuppliers: Page result:', {
+        pageParam,
+        offset,
+        suppliersCount: result.suppliers.length,
+        totalCount: result.totalCount,
+        hasMore: result.hasMore
+      });
+
       return {
         items: result.suppliers,
         hasMore: result.hasMore,
@@ -55,12 +66,15 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
     },
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage && lastPage.hasMore) {
-        return allPages.length;
+        const nextPage = allPages.length;
+        console.log('useInfiniteSuppliers: Next page param:', nextPage);
+        return nextPage;
       }
+      console.log('useInfiniteSuppliers: No more pages');
       return undefined;
     },
-    staleTime: 1000 * 60 * 10, // Cache por 10 minutos (otimizado)
-    gcTime: 1000 * 60 * 15, // Manter no cache por 15 minutos
+    staleTime: 1000 * 60 * 5, // Cache por 5 minutos para debug
+    gcTime: 1000 * 60 * 10, // Manter no cache por 10 minutos
     initialPageParam: 0,
   });
 }
