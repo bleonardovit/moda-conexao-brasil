@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
@@ -60,7 +61,8 @@ export default function SuppliersList() {
   const { user } = useAuth();
   const { isInTrial, allowedSupplierIds } = useTrialStatus();
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Corrigido: variáveis para loading só dos filtros
+  const [filtersLoading, setFiltersLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<{
     label: string;
@@ -84,10 +86,11 @@ export default function SuppliersList() {
     value: 'all'
   }]);
 
+  // Correção do carregamento dos filtros
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setIsLoading(true);
+        setFiltersLoading(true);
         const [suppliersData, categoriesData] = await Promise.all([
           getSuppliers(user?.id), // getSuppliers já filtra fornecedores ocultos
           getCategories()
@@ -128,7 +131,7 @@ export default function SuppliersList() {
           variant: "destructive"
         });
       } finally {
-        setIsLoading(false);
+        setFiltersLoading(false);
       }
     };
     fetchData();
@@ -210,7 +213,7 @@ export default function SuppliersList() {
   // Flat suppliers list for display
   const paginatedSuppliers = data ? data.pages.flatMap(page => page.items) : [];
 
-  if (isLoading) {
+  if (filtersLoading || isLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64">

@@ -18,8 +18,14 @@ interface UseInfiniteSuppliersProps {
   };
 }
 
+// Defina o tipo de retorno da página
+interface SuppliersPage {
+  items: Supplier[];
+  hasMore: boolean;
+}
+
 export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersProps) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<SuppliersPage, Error>({
     queryKey: [
       "suppliers",
       userId,
@@ -32,7 +38,6 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
       filters.favorites,
     ],
     queryFn: async ({ pageParam = 0 }) => {
-      // Ajuste aqui se seu getSuppliers suportar filtros/offset!
       const allSuppliers: Supplier[] = await getSuppliers(userId);
       let filtered = allSuppliers;
 
@@ -64,7 +69,7 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
         filtered = filtered.filter(s => s.requires_cnpj === (filters.cnpj === "true"));
       }
 
-      const start = pageParam * PAGE_SIZE;
+      const start = Number(pageParam) * PAGE_SIZE;
       const end = start + PAGE_SIZE;
       const currentPage = filtered.slice(start, end);
 
@@ -74,12 +79,11 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
       };
     },
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.hasMore) {
+      if (lastPage && lastPage.hasMore) {
         return allPages.length;
       }
       return undefined;
     },
-    keepPreviousData: true,
     staleTime: 1000 * 60 * 5,
   });
 }
