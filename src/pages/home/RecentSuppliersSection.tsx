@@ -32,7 +32,7 @@ export function RecentSuppliersSection({
       </div>
       {loadingSuppliers ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {[1, 2, 3, 4, 5].map(i => <SkeletonCard key={`recent-skeleton-${i}`} />)}
-        </div> : recentSuppliers.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4 md:gap-6 w-full">
+        </div> : recentSuppliers.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 w-full">
           {recentSuppliers.map(supplier => <div key={supplier.id} className="animate-fade-in h-full">
               <OptimizedSupplierCard supplier={supplier} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} getCategoryName={getCategoryName} getCategoryStyle={getCategoryStyle} formatAvgPrice={formatAvgPrice} />
             </div>)}
