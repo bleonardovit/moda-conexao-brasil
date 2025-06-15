@@ -11,8 +11,9 @@ import { useTrialStatus } from '@/hooks/use-trial-status';
 
 import { SupplierSearchAndActions } from '@/components/suppliers/SupplierSearchAndActions';
 import { SupplierFilters } from '@/components/suppliers/SupplierFilters';
-import { SupplierListItem } from '@/components/suppliers/SupplierListItem';
 import { NoSuppliersFound } from '@/components/suppliers/NoSuppliersFound';
+import { useInfiniteSuppliers } from '@/hooks/useInfiniteSuppliers';
+import { SupplierListVirtualized } from '@/components/suppliers/SupplierListVirtualized';
 
 const PRICE_RANGES = [{
   label: 'Todos',
@@ -60,7 +61,6 @@ export default function SuppliersList() {
   const { isInTrial, allowedSupplierIds } = useTrialStatus();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<{
     label: string;
@@ -92,8 +92,6 @@ export default function SuppliersList() {
           getSuppliers(user?.id), // getSuppliers já filtra fornecedores ocultos
           getCategories()
         ]);
-
-        setSuppliers(suppliersData);
 
         setCategories(categoriesData);
         setCategoryOptions([{
@@ -135,32 +133,6 @@ export default function SuppliersList() {
     };
     fetchData();
   }, [toast, user?.id]);
-
-  const filteredSuppliers = suppliers.filter(supplier => {
-    if (!supplier.categories) {
-      return false;
-    }
-    const matchesSearch = searchTerm === '' || supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) || supplier.description.toLowerCase().includes(searchTerm.toLowerCase()) || supplier.code && supplier.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || supplier.categories.includes(categoryFilter);
-    const matchesState = stateFilter === 'all' || supplier.state === stateFilter;
-    const matchesCity = cityFilter === 'all' || supplier.city === cityFilter;
-    const matchesPrice = priceFilter === 'all' || supplier.avg_price === priceFilter;
-    const matchesCnpj = cnpjFilter === 'all' || supplier.requires_cnpj === (cnpjFilter === 'true');
-    const matchesFavorites = !showOnlyFavorites || isFavorite(supplier.id);
-    return matchesSearch && matchesCategory && matchesState && matchesCity && matchesPrice && matchesCnpj && matchesFavorites;
-  });
-
-  const displaySuppliers = [...filteredSuppliers].sort((a, b) => {
-    if (isInTrial && allowedSupplierIds && allowedSupplierIds.length > 0) {
-      const aIsAllowed = allowedSupplierIds.includes(a.id);
-      const bIsAllowed = allowedSupplierIds.includes(b.id);
-
-      if (aIsAllowed && !bIsAllowed) return -1;
-      if (!aIsAllowed && bIsAllowed) return 1;
-    }
-    // Fallback para ordenação alfabética em todos os outros casos
-    return a.name.localeCompare(b.name);
-  });
 
   const formatAvgPrice = (price: string) => {
     switch (price) {
@@ -215,6 +187,29 @@ export default function SuppliersList() {
     setShowOnlyFavorites(false);
   };
 
+  // Novo hook de paginação virtualizada
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteSuppliers({
+    userId: user?.id,
+    filters: {
+      searchTerm,
+      category: categoryFilter,
+      state: stateFilter,
+      city: cityFilter,
+      price: priceFilter,
+      cnpj: cnpjFilter,
+      favorites: showOnlyFavorites ? favorites : undefined,
+    }
+  });
+
+  // Flat suppliers list for display
+  const paginatedSuppliers = data ? data.pages.flatMap(page => page.items) : [];
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -235,7 +230,7 @@ export default function SuppliersList() {
           onToggleShowOnlyFavorites={() => setShowOnlyFavorites(!showOnlyFavorites)}
           isFilterOpen={isFilterOpen}
           onToggleFilterOpen={() => setIsFilterOpen(!isFilterOpen)}
-          filteredSuppliersCount={displaySuppliers.length}
+          filteredSuppliersCount={paginatedSuppliers.length}
         />
 
         <TrialBanner />
@@ -260,23 +255,17 @@ export default function SuppliersList() {
           />
         )}
 
-        <div className="space-y-4">
-          {displaySuppliers.length > 0 ? (
-            displaySuppliers.map(supplier => (
-              <SupplierListItem
-                key={supplier.id}
-                supplier={supplier}
-                isFavorite={isFavorite}
-                onToggleFavorite={handleToggleFavorite}
-                getCategoryName={getCategoryName}
-                getCategoryStyle={getCategoryStyle}
-                formatAvgPrice={formatAvgPrice}
-              />
-            ))
-          ) : (
-            <NoSuppliersFound onClearFilters={clearAllFilters} />
-          )}
-        </div>
+        <SupplierListVirtualized
+          suppliers={paginatedSuppliers}
+          isFavorite={isFavorite}
+          onToggleFavorite={handleToggleFavorite}
+          getCategoryName={getCategoryName}
+          getCategoryStyle={getCategoryStyle}
+          formatAvgPrice={formatAvgPrice}
+          fetchNextPage={fetchNextPage}
+          hasNextPage={!!hasNextPage}
+          isLoading={isLoading || isFetchingNextPage}
+        />
       </div>
     </AppLayout>
   );

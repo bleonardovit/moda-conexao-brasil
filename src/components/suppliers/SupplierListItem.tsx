@@ -1,6 +1,4 @@
-
-
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,21 +103,52 @@ export function SupplierListItem({
   const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
   const hasMultipleImages = images.length > 1;
 
+  // Lazy-loading das imagens:
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [imgSrc, setImgSrc] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    let observer: IntersectionObserver | null = null;
+    const img = imgRef.current;
+    if (img && !imgSrc) {
+      observer = new window.IntersectionObserver(entries => {
+        if (entries[0]?.isIntersecting) {
+          setImgSrc(images[0] || '/placeholder.svg');
+        }
+      });
+      observer.observe(img);
+    }
+    return () => observer && observer.disconnect();
+    // eslint-disable-next-line
+  }, [imgSrc, images]);
+
   return (
     <Card key={supplier.id} className="overflow-hidden card-hover">
       <div className={isMobile ? "flex flex-col" : "sm:flex"}>
         <div className={isMobile ? "w-full relative" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent relative"} style={isMobile ? { width: '336px', height: '400px', overflow: 'hidden' } : {}}>
           <Carousel className={isMobile ? "h-full" : "w-full h-full"} style={isMobile ? { width: '336px', height: '400px' } : {}}>
             <CarouselContent>
-              {images.map((image, index) => (
-                <CarouselItem key={index}>
-                  <img
-                    src={image}
-                    alt={`${supplier.name} - Imagem ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </CarouselItem>
-              ))}
+              <CarouselItem key={0}>
+                <img
+                  ref={imgRef}
+                  src={imgSrc || '/placeholder.svg'} // Lazy loaded src
+                  alt={`${supplier.name} - Imagem 1`}
+                  className="w-full h-full object-cover"
+                />
+              </CarouselItem>
+              {hasMultipleImages && (
+                <>
+                  {images.slice(1).map((image, index) => (
+                    <CarouselItem key={index + 1}>
+                      <img
+                        src={image}
+                        alt={`${supplier.name} - Imagem ${index + 2}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </CarouselItem>
+                  ))}
+                </>
+              )}
             </CarouselContent>
             
             {hasMultipleImages && (
@@ -239,4 +268,3 @@ export function SupplierListItem({
     </Card>
   );
 }
-
