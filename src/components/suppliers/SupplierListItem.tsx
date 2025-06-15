@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,14 +30,36 @@ export function SupplierListItem({
   getCategoryStyle,
   formatAvgPrice,
 }: SupplierListItemProps) {
+  // ===== Move ALL hooks here, before any return =====
   const { hasExpired, isLoading, isVerified } = useTrialStatus();
   const isMobile = useIsMobile();
 
+  // For lazy loading images
+  const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
+  const hasMultipleImages = images.length > 1;
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [imgSrc, setImgSrc] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    let observer: IntersectionObserver | null = null;
+    const img = imgRef.current;
+    if (img && !imgSrc) {
+      observer = new window.IntersectionObserver(entries => {
+        if (entries[0]?.isIntersecting) {
+          setImgSrc(images[0] || '/placeholder.svg');
+        }
+      });
+      observer.observe(img);
+    }
+    return () => observer && observer.disconnect();
+    // eslint-disable-next-line
+  }, [imgSrc, images]);
+
+  // Instead of early return, render content conditionally
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
   }
 
-  // Se ainda está carregando o status do trial, mostrar apenas a foto com loading
   if (isLoading || !isVerified) {
     return (
       <Card key={supplier.id} className="overflow-hidden card-hover">
@@ -72,7 +95,6 @@ export function SupplierListItem({
     );
   }
 
-  // Se o trial expirou E a verificação foi concluída, mostrar versão completamente bloqueada
   if (hasExpired && isVerified) {
     return (
       <Card key={supplier.id} className="overflow-hidden card-hover">
