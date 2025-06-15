@@ -41,6 +41,7 @@ interface TrackingSetting {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  meta_access_token?: string | null; // <-- add support for meta_access_token
 }
 
 // Define the form schema with validation
@@ -149,6 +150,7 @@ export default function TrackingSettings() {
       value?: string | null;
       script?: string | null;
       is_active: boolean;
+      meta_access_token?: string | null; // Allow this extra property
     }) => {
       // Check if setting exists
       const { data: existingSettings } = await supabase
@@ -159,28 +161,37 @@ export default function TrackingSettings() {
 
       if (existingSettings && existingSettings.length > 0) {
         // Update existing setting
+        // Special handling if meta_access_token is provided (Meta Conversions API)
+        const updateObject: Record<string, any> = {
+          value: data.value,
+          script: data.script,
+          is_active: data.is_active,
+          updated_at: new Date().toISOString()
+        };
+        if (data.meta_access_token !== undefined) {
+          updateObject.meta_access_token = data.meta_access_token;
+        }
         const { error } = await supabase
           .from('tracking_settings')
-          .update({
-            value: data.value,
-            script: data.script,
-            is_active: data.is_active,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateObject)
           .eq('key', data.key);
         
         if (error) throw error;
       } else {
         // Create new setting
+        const insertObject: Record<string, any> = {
+          key: data.key,
+          name: data.name,
+          value: data.value,
+          script: data.script,
+          is_active: data.is_active
+        };
+        if (data.meta_access_token !== undefined) {
+          insertObject.meta_access_token = data.meta_access_token;
+        }
         const { error } = await supabase
           .from('tracking_settings')
-          .insert({
-            key: data.key,
-            name: data.name,
-            value: data.value,
-            script: data.script,
-            is_active: data.is_active
-          });
+          .insert(insertObject);
         
         if (error) throw error;
       }
