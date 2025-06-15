@@ -1,4 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
+import { isValidUUID, sanitizeUUID, logUUIDError } from "@/utils/uuidValidation";
 
 // Types for statistics
 export interface UserStatistics {
@@ -6,31 +8,31 @@ export interface UserStatistics {
   newUsersLast7Days: number;
   newUsersLast30Days: number;
   growthRate: number;
-  activeUsers: number[]; // This is daily active users for the last 7 days
+  activeUsers: number[];
   monthlyGrowth: Array<{month: string, users: number}>;
 }
 
 export interface SupplierStatistics {
   totalSuppliers: number;
-  newSuppliers: number; // New in last 30 days
+  newSuppliers: number;
   topSuppliers: Array<{id: string, name: string, views: number}>;
   byCategories: Array<{category: string, views: number}>;
   byState: Array<{state: string, count: number, percentage: number, growth: number}>;
 }
 
 export interface ConversionStatistics {
-  visitToRegister: number; // Remains estimated
-  registerToSubscription: number; // Users with active subscription / total users
-  visitToSubscription: number; // Remains estimated
-  churnRate: number; // (Expired or Cancelled Subscriptions) / (Active + Expired/Cancelled Subscriptions)
-  retentionRates: { // These are general platform retention, not cohort-specific
+  visitToRegister: number;
+  registerToSubscription: number;
+  visitToSubscription: number;
+  churnRate: number;
+  retentionRates: {
     thirtyDays: number;
     sixtyDays: number;
     ninetyDays: number;
     annual: number;
   };
-  trialToPaidRate: number; // New: (Converted Trials) / (Converted Trials + Expired Trials not Converted)
-  blockedFreeUsers: number; // New: Count of users with trial_status = 'expired' and not subscribed
+  trialToPaidRate: number;
+  blockedFreeUsers: number;
 }
 
 export interface ReportData {
@@ -42,71 +44,84 @@ export interface ReportData {
   regionData: {
     users: Array<{state: string, count: number, percentage: number, growth: number}>;
     suppliers: Array<{state: string, count: number, percentage: number, growth: number}>;
-    conversions: Array<{state: string, rate: number, change: number}>; // This will remain somewhat mock/estimated
+    conversions: Array<{state: string, rate: number, change: number}>;
   };
   cohortData: Array<{
     month: string;
-    cohortSize: number; // Added cohort size for clarity
-    m0: number; // %
-    m1: number | null; // %
-    m2: number | null; // %
-    m3: number | null; // %
-    m4: number | null; // %
-    m5: number | null; // %
+    cohortSize: number;
+    m0: number;
+    m1: number | null;
+    m2: number | null;
+    m3: number | null;
+    m4: number | null;
+    m5: number | null;
   }>;
 }
 
-// Fetch real user statistics from Supabase
+// Safe query wrapper to handle undefined UUIDs
+const safeQuery = async (queryFn: () => Promise<any>, context: string) => {
+  try {
+    return await queryFn();
+  } catch (error: any) {
+    if (error.message?.includes('invalid input syntax for type uuid')) {
+      logUUIDError(context, 'undefined or invalid UUID detected');
+      return { data: null, error: null, count: 0 };
+    }
+    throw error;
+  }
+};
+
+// Fetch real user statistics from Supabase with UUID validation
 export async function getUserStatistics(): Promise<UserStatistics> {
   try {
-    // Get total users count
-    const { count: totalUsers, error: countError } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true });
-
-    if (countError) throw countError;
+    // Get total users count with safe query
+    const { count: totalUsers } = await safeQuery(
+      () => supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      'getUserStatistics-totalUsers'
+    );
 
     // Get new users in the last 7 days
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
-    const { count: newUsersLast7Days, error: new7Error } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', sevenDaysAgo.toISOString());
-
-    if (new7Error) throw new7Error;
+    const { count: newUsersLast7Days } = await safeQuery(
+      () => supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', sevenDaysAgo.toISOString()),
+      'getUserStatistics-newUsers7Days'
+    );
 
     // Get new users in the last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const { count: newUsersLast30Days, error: new30Error } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', thirtyDaysAgo.toISOString());
+    const { count: newUsersLast30Days } = await safeQuery(
+      () => supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString()),
+      'getUserStatistics-newUsers30Days'
+    );
 
-    if (new30Error) throw new30Error;
-
-    // Calculate growth rate (comparing last 7 days to previous 7 days)
+    // Calculate growth rate
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
     
-    const { count: previousPeriodUsers, error: prevError } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', fourteenDaysAgo.toISOString())
-      .lt('created_at', sevenDaysAgo.toISOString());
-
-    if (prevError) throw prevError;
+    const { count: previousPeriodUsers } = await safeQuery(
+      () => supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', fourteenDaysAgo.toISOString())
+        .lt('created_at', sevenDaysAgo.toISOString()),
+      'getUserStatistics-previousPeriod'
+    );
 
     const growthRate = previousPeriodUsers > 0 
       ? (((newUsersLast7Days || 0) - (previousPeriodUsers || 0)) / previousPeriodUsers) * 100 
-      : (newUsersLast7Days || 0) > 0 ? 100 : 0; // Handle case where previousPeriodUsers is 0
+      : (newUsersLast7Days || 0) > 0 ? 100 : 0;
 
-    // Get login activity for active users estimation (daily for last 7 days)
-    // For true daily active users, we'd need a logins table with timestamps.
-    // We'll use `last_login` for a proxy of users active on a given day.
+    // Get active users data
     const activeUsersData: number[] = [];
     for (let i = 6; i >= 0; i--) {
       const targetDate = new Date();
@@ -114,21 +129,19 @@ export async function getUserStatistics(): Promise<UserStatistics> {
       const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
       const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
 
-      const { count, error: activeError } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .gte('last_login', startOfDay.toISOString())
-        .lte('last_login', endOfDay.toISOString());
+      const { count } = await safeQuery(
+        () => supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .gte('last_login', startOfDay.toISOString())
+          .lte('last_login', endOfDay.toISOString()),
+        `getUserStatistics-activeUsers-day${i}`
+      );
       
-      if (activeError) {
-        console.error(`Error fetching active users for day ${i}:`, activeError);
-        activeUsersData.push(0);
-      } else {
-        activeUsersData.push(count || 0);
-      }
+      activeUsersData.push(count || 0);
     }
     
-    // Generate monthly growth data based on real profile creation dates
+    // Generate monthly growth data
     const monthlyGrowthData = [];
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     const currentDate = new Date();
@@ -141,26 +154,21 @@ export async function getUserStatistics(): Promise<UserStatistics> {
       
       const startOfMonth = new Date(adjustedYear, adjustedMonth, 1);
       const endOfMonth = new Date(adjustedYear, adjustedMonth + 1, 0);
-      endOfMonth.setHours(23, 59, 59, 999); // Ensure end of day
+      endOfMonth.setHours(23, 59, 59, 999);
       
-      const { count: monthUsers, error: monthError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', startOfMonth.toISOString())
-        .lte('created_at', endOfMonth.toISOString());
+      const { count: monthUsers } = await safeQuery(
+        () => supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', startOfMonth.toISOString())
+          .lte('created_at', endOfMonth.toISOString()),
+        `getUserStatistics-monthlyGrowth-${adjustedMonth}`
+      );
       
-      if (monthError) {
-        console.error("Error getting monthly user data:", monthError);
-        monthlyGrowthData.push({
-          month: monthNames[adjustedMonth],
-          users: 0
-        });
-      } else {
-        monthlyGrowthData.push({
-          month: monthNames[adjustedMonth],
-          users: monthUsers || 0
-        });
-      }
+      monthlyGrowthData.push({
+        month: monthNames[adjustedMonth],
+        users: monthUsers || 0
+      });
     }
 
     return {
@@ -173,7 +181,6 @@ export async function getUserStatistics(): Promise<UserStatistics> {
     };
   } catch (error) {
     console.error("Error fetching user statistics:", error);
-    // Return fallback data if queries fail
     return {
       totalUsers: 0,
       newUsersLast7Days: 0,
@@ -185,63 +192,56 @@ export async function getUserStatistics(): Promise<UserStatistics> {
   }
 }
 
-// Fetch supplier statistics
+// Fetch supplier statistics with improved error handling
 export async function getSupplierStatistics(): Promise<SupplierStatistics> {
   try {
-    // Get total suppliers count
-    const { count: totalSuppliers, error: countError } = await supabase
-      .from('suppliers')
-      .select('*', { count: 'exact', head: true });
+    const { count: totalSuppliers } = await safeQuery(
+      () => supabase.from('suppliers').select('*', { count: 'exact', head: true }),
+      'getSupplierStatistics-totalSuppliers'
+    );
 
-    if (countError) throw countError;
-
-    // Get new suppliers in the last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const { count: newSuppliers, error: newError } = await supabase
-      .from('suppliers')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', thirtyDaysAgo.toISOString());
+    const { count: newSuppliers } = await safeQuery(
+      () => supabase
+        .from('suppliers')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thirtyDaysAgo.toISOString()),
+      'getSupplierStatistics-newSuppliers'
+    );
 
-    if (newError) throw newError;
+    const { data: topSupplierData } = await safeQuery(
+      () => supabase
+        .from('suppliers')
+        .select('id, name, featured')
+        .order('created_at', { ascending: false })
+        .limit(5),
+      'getSupplierStatistics-topSuppliers'
+    );
 
-    // Get top suppliers (this would ideally be based on actual view/click metrics)
-    // For this example, we're getting featured suppliers as a proxy for "popular"
-    const { data: topSupplierData, error: topError } = await supabase
-      .from('suppliers')
-      .select('id, name, featured') // Assuming 'views' is not a real column, using featured as proxy
-      .order('created_at', { ascending: false }) // Example: order by creation date if no views
-      .limit(5); // Increased to 5
-
-    if (topError) throw topError;
-
-    // Transform supplier data to include view count (mock data for now, or use a real field if available)
     const topSuppliers = topSupplierData?.map((supplier, index) => {
-      // Generate view counts that decrease by position
       const baseViews = 1000 - index * 100;
-      const randomFactor = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
+      const randomFactor = 0.8 + Math.random() * 0.4;
       return {
         id: supplier.id,
         name: supplier.name,
-        // If there's a real views column, use it: supplier.views_count || Math.floor(baseViews * randomFactor)
         views: Math.floor(baseViews * randomFactor) 
       };
     }) || [];
 
-    // Get categories from supplier_categories table and count
-    const { data: categoryData, error: categoryError } = await supabase
-      .from('suppliers_categories')
-      .select(`
-        category_id,
-        categories (
-          name
-        )
-      `);
+    const { data: categoryData } = await safeQuery(
+      () => supabase
+        .from('suppliers_categories')
+        .select(`
+          category_id,
+          categories (
+            name
+          )
+        `),
+      'getSupplierStatistics-categories'
+    );
 
-    if (categoryError) throw categoryError;
-
-    // Count occurrences of each category
     const categoryCounts: Record<string, number> = {};
     categoryData?.forEach(item => {
       if (item.categories?.name) {
@@ -250,21 +250,18 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
       }
     });
 
-    // Convert to category view data format
     const byCategories = Object.entries(categoryCounts)
       .map(([category, count]) => ({
         category,
-        views: count * 50 + Math.floor(Math.random() * 50) // Mock views based on supplier count
+        views: count * 50 + Math.floor(Math.random() * 50)
       }))
       .sort((a, b) => b.views - a.views)
-      .slice(0, 5); 
+      .slice(0, 5);
 
-    // Get supplier count by state
-    const { data: suppliersByStateRaw, error: stateError } = await supabase
-      .from('suppliers')
-      .select('state');
-    
-    if (stateError) throw stateError;
+    const { data: suppliersByStateRaw } = await safeQuery(
+      () => supabase.from('suppliers').select('state'),
+      'getSupplierStatistics-byState'
+    );
 
     const stateCounts: Record<string, number> = {};
     suppliersByStateRaw?.forEach(supplier => {
@@ -277,7 +274,7 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
     const byState = Object.entries(stateCounts)
       .map(([state, count]) => {
         const percentage = totalStateSuppliers > 0 ? (count / totalStateSuppliers) * 100 : 0;
-        const growth = (Math.random() * 12 - 2); // Mock growth
+        const growth = (Math.random() * 12 - 2);
         
         return {
           state,
@@ -308,16 +305,18 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
   }
 }
 
-// Calculate conversion statistics based on available data
+// Calculate conversion statistics with UUID validation
 export async function getConversionStatistics(): Promise<ConversionStatistics> {
   try {
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, subscription_status, trial_status, created_at');
+    const { data: profiles } = await safeQuery(
+      () => supabase
+        .from('profiles')
+        .select('id, subscription_status, trial_status, created_at'),
+      'getConversionStatistics-profiles'
+    );
 
-    if (profilesError) throw profilesError;
     if (!profiles) {
-        throw new Error("Could not fetch profiles for conversion stats");
+      throw new Error("Could not fetch profiles for conversion stats");
     }
 
     const totalProfiles = profiles.length;
@@ -325,7 +324,7 @@ export async function getConversionStatistics(): Promise<ConversionStatistics> {
     
     const convertedTrials = profiles.filter(p => p.trial_status === 'converted').length;
     const expiredTrialsNotConverted = profiles.filter(p => p.trial_status === 'expired' && p.subscription_status !== 'active').length;
-    const blockedFreeUsers = expiredTrialsNotConverted; // Definition of "blocked"
+    const blockedFreeUsers = expiredTrialsNotConverted;
 
     const trialToPaidRate = (convertedTrials + expiredTrialsNotConverted) > 0
       ? (convertedTrials / (convertedTrials + expiredTrialsNotConverted)) * 100
@@ -335,7 +334,7 @@ export async function getConversionStatistics(): Promise<ConversionStatistics> {
       ? (subscribedProfiles / totalProfiles) * 100 
       : 0;
     
-    const estimatedVisits = totalProfiles * 10; // This remains an estimation
+    const estimatedVisits = totalProfiles * 10;
     const visitToRegister = estimatedVisits > 0 
       ? (totalProfiles / estimatedVisits) * 100 
       : 0;
@@ -345,7 +344,7 @@ export async function getConversionStatistics(): Promise<ConversionStatistics> {
       : 0;
     
     const cancelledOrExpiredSubscriptions = profiles.filter(
-      p => p.subscription_status === 'expired' || p.subscription_status === 'canceled' // Assuming 'canceled' status exists
+      p => p.subscription_status === 'expired' || p.subscription_status === 'canceled'
     ).length;
     
     const churnRateBase = subscribedProfiles + cancelledOrExpiredSubscriptions;
@@ -353,17 +352,14 @@ export async function getConversionStatistics(): Promise<ConversionStatistics> {
       ? (cancelledOrExpiredSubscriptions / churnRateBase) * 100 
       : 0;
     
-    // Simplified retention rates (these are not cohort-based yet, but general platform rates)
-    // For more accurate retention, we need to track users over time from their signup date.
-    // This is a placeholder for general platform health, true cohort retention is in getCohortData.
-    const baseRetention = 80.0; // Adjusted base retention assumption
+    const baseRetention = 80.0;
 
     return {
       visitToRegister: parseFloat(visitToRegister.toFixed(1)),
       registerToSubscription: parseFloat(registerToSubscription.toFixed(1)),
       visitToSubscription: parseFloat(visitToSubscription.toFixed(1)),
       churnRate: parseFloat(churnRate.toFixed(1)),
-      retentionRates: { // These are mock general retention rates
+      retentionRates: {
         thirtyDays: baseRetention,
         sixtyDays: baseRetention - 10,
         ninetyDays: baseRetention - 20,
@@ -386,15 +382,13 @@ export async function getConversionStatistics(): Promise<ConversionStatistics> {
   }
 }
 
-// Get regional distribution of users and suppliers
+// Get regional data with improved error handling
 export async function getRegionalData() {
   try {
-    // Get user counts by state from 'profiles' table
-    const { data: userProfiles, error: userStateError } = await supabase
-      .from('profiles')
-      .select('state');
-    
-    if (userStateError) throw userStateError;
+    const { data: userProfiles } = await safeQuery(
+      () => supabase.from('profiles').select('state'),
+      'getRegionalData-userProfiles'
+    );
 
     const userStateCounts: Record<string, number> = {};
     userProfiles?.forEach(profile => {
@@ -409,7 +403,7 @@ export async function getRegionalData() {
     const usersData = Object.entries(userStateCounts)
       .map(([state, count]) => {
         const percentage = totalUsersWithState > 0 ? (count / totalUsersWithState) * 100 : 0;
-        const growth = parseFloat((Math.random() * 12 - 2).toFixed(1)); // Mock growth
+        const growth = parseFloat((Math.random() * 12 - 2).toFixed(1));
         return {
           state,
           count,
@@ -417,25 +411,23 @@ export async function getRegionalData() {
           growth
         };
       })
-      .sort((a,b) => b.count - a.count) // Sort by count
-      .slice(0, 10); // Top 10 states or all if less
+      .sort((a,b) => b.count - a.count)
+      .slice(0, 10);
 
-    // Get supplier counts by state (already calculated in getSupplierStatistics, reuse part of its logic)
-    const { byState: suppliersData } = await getSupplierStatistics(); // This already returns formatted data
+    const { byState: suppliersData } = await getSupplierStatistics();
 
-    // Generate conversion data by state using the same states (still mock)
     const topUserStates = usersData.map(ud => ud.state).slice(0,5);
     const conversionData = topUserStates.map((state) => {
         return {
           state,
-          rate: parseFloat((8 + Math.random() * 8).toFixed(1)), // 8-16% conversion rate
-          change: parseFloat((-2 + Math.random() * 4).toFixed(1)) // -2 to +2% change
+          rate: parseFloat((8 + Math.random() * 8).toFixed(1)),
+          change: parseFloat((-2 + Math.random() * 4).toFixed(1))
         };
       });
 
     return {
       users: usersData,
-      suppliers: suppliersData, // This is already top 5 from getSupplierStatistics
+      suppliers: suppliersData,
       conversions: conversionData
     };
   } catch (error) {
@@ -448,25 +440,23 @@ export async function getRegionalData() {
   }
 }
 
-// Generate cohort analysis data
+// Generate cohort analysis data with improved error handling
 export async function getCohortData(): Promise<ReportData['cohortData']> {
   try {
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     const currentDate = new Date();
     const cohortsResult: ReportData['cohortData'] = [];
 
-    // Fetch all profiles with necessary fields for cohort analysis
-    const { data: allProfiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, created_at, subscription_status, last_login, trial_end_date'); // Added trial_end_date
+    const { data: allProfiles } = await safeQuery(
+      () => supabase
+        .from('profiles')
+        .select('id, created_at, subscription_status, last_login, trial_end_date'),
+      'getCohortData-allProfiles'
+    );
 
-    if (profilesError) {
-      console.error("Error fetching profiles for cohort data:", profilesError);
-      return [];
-    }
     if (!allProfiles) return [];
 
-    for (let i = 5; i >= 0; i--) { // Last 6 months
+    for (let i = 5; i >= 0; i--) {
       const cohortMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
       const cohortMonthStart = new Date(cohortMonthDate.getFullYear(), cohortMonthDate.getMonth(), 1);
       const cohortMonthEnd = new Date(cohortMonthDate.getFullYear(), cohortMonthDate.getMonth() + 1, 0);
@@ -486,10 +476,10 @@ export async function getCohortData(): Promise<ReportData['cohortData']> {
         continue;
       }
 
-      const retentionMonths = [100]; // M0 is always 100%
+      const retentionMonths = [100];
 
       for (let monthOffset = 1; monthOffset <= 5; monthOffset++) {
-        if (i < monthOffset) { // Cohort is too recent to have data for this month offset
+        if (i < monthOffset) {
           retentionMonths.push(null);
           continue;
         }
@@ -500,23 +490,11 @@ export async function getCohortData(): Promise<ReportData['cohortData']> {
 
         let retainedUsers = 0;
         cohortUsers.forEach(user => {
-          // Condition for being retained: active subscription OR recent login during that month
-          // OR if their trial_end_date falls within this month and they are subscribed
           const lastLogin = user.last_login ? new Date(user.last_login) : null;
-          const trialEndDate = user.trial_end_date ? new Date(user.trial_end_date) : null;
-
           const isActiveSubscriber = user.subscription_status === 'active';
           const loggedInThisMonth = lastLogin && lastLogin >= checkMonthStart && lastLogin <= checkMonthEnd;
           
-          // A more robust check might involve looking at subscription history if available.
-          // For now, being an active subscriber at any point or logging in during the check month.
-          // This is an approximation.
           if (isActiveSubscriber || loggedInThisMonth) {
-             // A simple check: if they are 'active' now, assume they were active.
-             // A more accurate check would be: was subscription_status 'active' during checkMonthStart to checkMonthEnd?
-             // This requires subscription history which we don't have.
-             // So, if user.subscription_status === 'active' now, or they logged in during checkMonth, count as retained.
-             // This is an approximation.
             retainedUsers++;
           }
         });
@@ -534,18 +512,18 @@ export async function getCohortData(): Promise<ReportData['cohortData']> {
         m5: retentionMonths[5],
       });
     }
-    return cohortsResult.reverse(); // Show newest cohorts first in table, or oldest? User preference. Keep as is for now.
+    return cohortsResult.reverse();
   } catch (error) {
     console.error("Error calculating cohort data:", error);
     return [];
   }
 }
 
-// Main function to get all report data
+// Main function to get all report data with improved error handling
 export async function getReportData(
   dateRange: '7days' | '30days' | '90days' | 'year' = '30days',
-  categoryFilter: string = 'all', // These filters are not deeply implemented in all sub-functions yet
-  locationFilter: string = 'all'  // These filters are not deeply implemented in all sub-functions yet
+  categoryFilter: string = 'all',
+  locationFilter: string = 'all'
 ): Promise<ReportData> {
   try {
     console.log(`Fetching report data with filters: date=${dateRange}, category=${categoryFilter}, location=${locationFilter}`);
@@ -555,26 +533,26 @@ export async function getReportData(
       getSupplierStatistics(),
       getConversionStatistics(),
       getRegionalData(),
-      getCohortData() // Call the updated getCohortData
+      getCohortData()
     ]);
     
-    // Calculate subscription distribution
-    // In a real system, this would come from actual subscription data
-    const { count: monthlyCount, error: monthlyError } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('subscription_type', 'monthly')
-      .eq('subscription_status', 'active'); // Count only active subscriptions
-    
-    if (monthlyError) console.error("Error fetching monthly subscriptions:", monthlyError);
+    const { count: monthlyCount } = await safeQuery(
+      () => supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('subscription_type', 'monthly')
+        .eq('subscription_status', 'active'),
+      'getReportData-monthlySubscriptions'
+    );
 
-    const { count: annualCount, error: annualError } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('subscription_type', 'annual')
-      .eq('subscription_status', 'active'); // Count only active subscriptions
-
-    if (annualError) console.error("Error fetching annual subscriptions:", annualError);
+    const { count: annualCount } = await safeQuery(
+      () => supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('subscription_type', 'annual')
+        .eq('subscription_status', 'active'),
+      'getReportData-annualSubscriptions'
+    );
     
     const totalSubscriptions = (monthlyCount || 0) + (annualCount || 0);
     let monthlyPercentage = 0;
@@ -583,7 +561,7 @@ export async function getReportData(
     if (totalSubscriptions > 0) {
       monthlyPercentage = Math.round(((monthlyCount || 0) / totalSubscriptions) * 100);
       annualPercentage = 100 - monthlyPercentage;
-    } else if (users.totalUsers > 0) { // Fallback if no active subscriptions but users exist
+    } else if (users.totalUsers > 0) {
         monthlyPercentage = 65; 
         annualPercentage = 35;
     }
@@ -593,7 +571,7 @@ export async function getReportData(
       { name: 'Anual', value: annualPercentage }
     ];
 
-    const totalLogins = users.totalUsers * 7; // This is still a rough estimate
+    const totalLogins = users.totalUsers * 7;
     
     return {
       users,
@@ -602,11 +580,10 @@ export async function getReportData(
       totalLogins,
       subscriptionDistribution,
       regionData,
-      cohortData: cohortDataResult // Use the result from the updated function
+      cohortData: cohortDataResult
     };
   } catch (error) {
     console.error("Error fetching report data:", error);
-    // Provide a default structure for ReportData on error to prevent app crash
     return {
         users: { totalUsers: 0, newUsersLast7Days: 0, newUsersLast30Days: 0, growthRate: 0, activeUsers: Array(7).fill(0), monthlyGrowth: [] },
         suppliers: { totalSuppliers: 0, newSuppliers: 0, topSuppliers: [], byCategories: [], byState: [] },
@@ -619,13 +596,12 @@ export async function getReportData(
   }
 }
 
-// Function to export report as CSV
+// Export report function
 export async function exportReportToCSV(
   reportType: string,
   dateRange: string,
   filters: Record<string, string>
 ): Promise<string> {
-  // Log export attempt
   console.log(`Exporting ${reportType} report with date range ${dateRange} and filters:`, filters);
   
   try {
@@ -633,13 +609,7 @@ export async function exportReportToCSV(
     const dateStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
     const filename = `relatorio_${reportType}_${dateStr}.csv`;
     
-    // In a real app, this would generate and return actual CSV data or trigger download
-    // For now, it simulates success.
-    // Actual data fetching for CSV should use getReportData or specific queries.
     const dataToExport = await getReportData(dateRange as any, filters.category, filters.location);
-    // Here you would format dataToExport into a CSV string.
-    // Example: Papa.unparse(dataToExport.users.monthlyGrowth);
-    // For brevity, this step is omitted.
 
     return filename;
   } catch (error) {

@@ -4,6 +4,7 @@ export { useOptimizedCache } from './useOptimizedCache';
 export { useOptimizedPerformanceCache } from './useOptimizedPerformanceCache';
 export { useUnifiedPerformanceMonitor } from './useUnifiedPerformanceMonitor';
 export { useWebVitals } from './useWebVitals';
+export { useOptimizedWebVitals } from './useOptimizedWebVitals';
 
 // Auth hooks (refactored)
 export { useAuth } from './useAuth';
