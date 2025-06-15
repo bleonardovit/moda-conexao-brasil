@@ -105,7 +105,9 @@ export function SuppliersListView() {
     const startTime = performance.now();
     
     try {
-      await handleToggleFavorite(supplier.id);
+      // Create a mock event to pass to the original handler
+      const mockEvent = e || { preventDefault: () => {}, stopPropagation: () => {} } as React.MouseEvent;
+      await handleToggleFavorite(supplier, mockEvent);
       invalidate('favorites');
       invalidate('suppliers');
       
