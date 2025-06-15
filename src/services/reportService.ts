@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { isValidUUID, sanitizeUUID, logUUIDError } from "@/utils/uuidValidation";
 
@@ -58,8 +57,8 @@ export interface ReportData {
   }>;
 }
 
-// Safe query wrapper to handle undefined UUIDs
-const safeQuery = async (queryFn: () => Promise<any>, context: string) => {
+// Safe query wrapper to handle undefined UUIDs - FIXED AWAIT ISSUE
+const safeQuery = async (queryFn: () => any, context: string) => {
   try {
     return await queryFn();
   } catch (error: any) {
@@ -74,42 +73,42 @@ const safeQuery = async (queryFn: () => Promise<any>, context: string) => {
 // Fetch real user statistics from Supabase with UUID validation
 export async function getUserStatistics(): Promise<UserStatistics> {
   try {
-    // Get total users count with safe query
+    // Get total users count with safe query - FIXED
     const { count: totalUsers } = await safeQuery(
-      () => supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      async () => await supabase.from('profiles').select('*', { count: 'exact', head: true }),
       'getUserStatistics-totalUsers'
     );
 
-    // Get new users in the last 7 days
+    // Get new users in the last 7 days - FIXED
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
     const { count: newUsersLast7Days } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', sevenDaysAgo.toISOString()),
       'getUserStatistics-newUsers7Days'
     );
 
-    // Get new users in the last 30 days
+    // Get new users in the last 30 days - FIXED
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const { count: newUsersLast30Days } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', thirtyDaysAgo.toISOString()),
       'getUserStatistics-newUsers30Days'
     );
 
-    // Calculate growth rate
+    // Calculate growth rate - FIXED
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
     
     const { count: previousPeriodUsers } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', fourteenDaysAgo.toISOString())
@@ -121,7 +120,7 @@ export async function getUserStatistics(): Promise<UserStatistics> {
       ? (((newUsersLast7Days || 0) - (previousPeriodUsers || 0)) / previousPeriodUsers) * 100 
       : (newUsersLast7Days || 0) > 0 ? 100 : 0;
 
-    // Get active users data
+    // Get active users data - FIXED
     const activeUsersData: number[] = [];
     for (let i = 6; i >= 0; i--) {
       const targetDate = new Date();
@@ -130,7 +129,7 @@ export async function getUserStatistics(): Promise<UserStatistics> {
       const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
 
       const { count } = await safeQuery(
-        () => supabase
+        async () => await supabase
           .from('profiles')
           .select('id', { count: 'exact', head: true })
           .gte('last_login', startOfDay.toISOString())
@@ -141,7 +140,7 @@ export async function getUserStatistics(): Promise<UserStatistics> {
       activeUsersData.push(count || 0);
     }
     
-    // Generate monthly growth data
+    // Generate monthly growth data - FIXED
     const monthlyGrowthData = [];
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     const currentDate = new Date();
@@ -157,7 +156,7 @@ export async function getUserStatistics(): Promise<UserStatistics> {
       endOfMonth.setHours(23, 59, 59, 999);
       
       const { count: monthUsers } = await safeQuery(
-        () => supabase
+        async () => await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })
           .gte('created_at', startOfMonth.toISOString())
@@ -192,11 +191,11 @@ export async function getUserStatistics(): Promise<UserStatistics> {
   }
 }
 
-// Fetch supplier statistics with improved error handling
+// Fetch supplier statistics with improved error handling - FIXED
 export async function getSupplierStatistics(): Promise<SupplierStatistics> {
   try {
     const { count: totalSuppliers } = await safeQuery(
-      () => supabase.from('suppliers').select('*', { count: 'exact', head: true }),
+      async () => await supabase.from('suppliers').select('*', { count: 'exact', head: true }),
       'getSupplierStatistics-totalSuppliers'
     );
 
@@ -204,7 +203,7 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const { count: newSuppliers } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('suppliers')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', thirtyDaysAgo.toISOString()),
@@ -212,7 +211,7 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
     );
 
     const { data: topSupplierData } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('suppliers')
         .select('id, name, featured')
         .order('created_at', { ascending: false })
@@ -231,7 +230,7 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
     }) || [];
 
     const { data: categoryData } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('suppliers_categories')
         .select(`
           category_id,
@@ -259,7 +258,7 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
       .slice(0, 5);
 
     const { data: suppliersByStateRaw } = await safeQuery(
-      () => supabase.from('suppliers').select('state'),
+      async () => await supabase.from('suppliers').select('state'),
       'getSupplierStatistics-byState'
     );
 
@@ -305,11 +304,11 @@ export async function getSupplierStatistics(): Promise<SupplierStatistics> {
   }
 }
 
-// Calculate conversion statistics with UUID validation
+// Calculate conversion statistics with UUID validation - FIXED
 export async function getConversionStatistics(): Promise<ConversionStatistics> {
   try {
     const { data: profiles } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('profiles')
         .select('id, subscription_status, trial_status, created_at'),
       'getConversionStatistics-profiles'
@@ -382,11 +381,11 @@ export async function getConversionStatistics(): Promise<ConversionStatistics> {
   }
 }
 
-// Get regional data with improved error handling
+// Get regional data with improved error handling - FIXED
 export async function getRegionalData() {
   try {
     const { data: userProfiles } = await safeQuery(
-      () => supabase.from('profiles').select('state'),
+      async () => await supabase.from('profiles').select('state'),
       'getRegionalData-userProfiles'
     );
 
@@ -440,7 +439,7 @@ export async function getRegionalData() {
   }
 }
 
-// Generate cohort analysis data with improved error handling
+// Generate cohort analysis data with improved error handling - FIXED
 export async function getCohortData(): Promise<ReportData['cohortData']> {
   try {
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -448,7 +447,7 @@ export async function getCohortData(): Promise<ReportData['cohortData']> {
     const cohortsResult: ReportData['cohortData'] = [];
 
     const { data: allProfiles } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('profiles')
         .select('id, created_at, subscription_status, last_login, trial_end_date'),
       'getCohortData-allProfiles'
@@ -519,7 +518,7 @@ export async function getCohortData(): Promise<ReportData['cohortData']> {
   }
 }
 
-// Main function to get all report data with improved error handling
+// Main function to get all report data with improved error handling - FIXED
 export async function getReportData(
   dateRange: '7days' | '30days' | '90days' | 'year' = '30days',
   categoryFilter: string = 'all',
@@ -537,7 +536,7 @@ export async function getReportData(
     ]);
     
     const { count: monthlyCount } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('subscription_type', 'monthly')
@@ -546,7 +545,7 @@ export async function getReportData(
     );
 
     const { count: annualCount } = await safeQuery(
-      () => supabase
+      async () => await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('subscription_type', 'annual')

@@ -41,15 +41,15 @@ export function useOptimizedWebVitals() {
 
     let cleanup: (() => void) | undefined;
 
-    // Dynamically import web-vitals with better error handling
+    // Dynamically import web-vitals with corrected API
     import('web-vitals')
-      .then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      .then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
         try {
-          getCLS(reportMetric);
-          getFID(reportMetric);
-          getFCP(reportMetric);
-          getLCP(reportMetric);
-          getTTFB(reportMetric);
+          onCLS(reportMetric);
+          onFID(reportMetric);
+          onFCP(reportMetric);
+          onLCP(reportMetric);
+          onTTFB(reportMetric);
         } catch (error) {
           console.warn('Error setting up web vitals:', error);
         }
