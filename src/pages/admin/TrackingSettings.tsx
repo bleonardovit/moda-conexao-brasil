@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +62,8 @@ const trackingFormSchema = z.object({
   google_tag_manager_active: z.boolean().default(false),
   hotjar_active: z.boolean().default(false),
   custom_script_active: z.boolean().default(false),
+  meta_access_token: z.string().optional(),
+  meta_conversions_api_active: z.boolean().default(false),
 });
 
 type TrackingFormValues = z.infer<typeof trackingFormSchema>;
@@ -85,6 +86,8 @@ export default function TrackingSettings() {
       google_tag_manager_active: false,
       hotjar_active: false,
       custom_script_active: false,
+      meta_access_token: '',
+      meta_conversions_api_active: false,
     }
   });
 
@@ -126,6 +129,10 @@ export default function TrackingSettings() {
           case 'custom_script':
             formValues.custom_script = setting.script || '';
             formValues.custom_script_active = setting.is_active;
+            break;
+          case 'meta_conversions_api':
+            formValues.meta_access_token = setting.meta_access_token || '';
+            formValues.meta_conversions_api_active = setting.is_active;
             break;
         }
       });
@@ -223,6 +230,16 @@ export default function TrackingSettings() {
         value: null,
         script: values.custom_script || null,
         is_active: values.custom_script_active
+      });
+
+      // Process Meta Conversions API
+      await updateSettingMutation.mutateAsync({
+        key: 'meta_conversions_api',
+        name: 'Meta Conversions API',
+        value: null,
+        script: null,
+        meta_access_token: values.meta_access_token || null,
+        is_active: values.meta_conversions_api_active
       });
 
       // Show success message
@@ -422,6 +439,48 @@ export default function TrackingSettings() {
                         </FormControl>
                         <FormDescription>
                           Insira qualquer código JavaScript ou HTML que será injetado na página.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Meta Conversions API */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Meta Conversions API</h3>
+                    <FormField
+                      control={form.control}
+                      name="meta_conversions_api_active"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2">
+                          <FormLabel>Ativar</FormLabel>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="meta_access_token"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Access Token da Conversions API</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="EAABsb... (token fornecido pelo Meta)"
+                            autoComplete="off"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Informe o token de acesso da sua Conversions API no Meta for Developers.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

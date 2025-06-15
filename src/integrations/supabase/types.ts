@@ -677,6 +677,7 @@ export type Database = {
           is_active: boolean
           key: string
           last_updated_by: string | null
+          meta_access_token: string | null
           name: string
           script: string | null
           updated_at: string
@@ -688,6 +689,7 @@ export type Database = {
           is_active?: boolean
           key: string
           last_updated_by?: string | null
+          meta_access_token?: string | null
           name: string
           script?: string | null
           updated_at?: string
@@ -699,6 +701,7 @@ export type Database = {
           is_active?: boolean
           key?: string
           last_updated_by?: string | null
+          meta_access_token?: string | null
           name?: string
           script?: string | null
           updated_at?: string
