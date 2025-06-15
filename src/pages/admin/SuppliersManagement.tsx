@@ -1,29 +1,22 @@
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { useAdminSuppliersPagination } from '@/hooks/useAdminSuppliersPagination';
+import { useSuppliersManagementActions } from '@/hooks/useSuppliersManagementActions';
 import { AdminSupplierFilters } from '@/components/admin/AdminSupplierFilters';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { AdminBulkOperations } from '@/components/admin/AdminBulkOperations';
+import { SuppliersTable } from '@/components/admin/SuppliersTable';
 import { ConfirmDeleteDialog } from '@/components/admin/ConfirmDeleteDialog';
-import { toggleSupplierFeatured, toggleSupplierVisibility, deleteSupplierMutation } from '@/services/supplierService';
-import { Eye, EyeOff, Star, StarOff, Edit, Loader2, Trash2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import type { Supplier } from '@/types';
 
 export default function SuppliersManagement() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<Supplier[]>([]);
-  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const selectAllCheckboxRef = useRef<HTMLButtonElement>(null);
-  const { toast } = useToast();
 
   const {
     suppliers,
@@ -44,6 +37,16 @@ export default function SuppliersManagement() {
     refetch,
   } = useAdminSuppliersPagination();
 
+  const {
+    supplierToDelete,
+    isDeleting,
+    handleToggleVisibility,
+    handleToggleFeatured,
+    handleDeleteClick,
+    confirmDelete,
+    setSupplierToDelete
+  } = useSuppliersManagementActions(refetch);
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedSuppliers(suppliers);
@@ -60,92 +63,13 @@ export default function SuppliersManagement() {
     }
   };
 
-  const isSupplierSelected = (supplierId: string) => {
-    return selectedSuppliers.some(s => s.id === supplierId);
-  };
-
-  const handleToggleVisibility = async (supplier: Supplier) => {
-    try {
-      await toggleSupplierVisibility(supplier.id, !supplier.hidden);
-      toast({
-        title: "Visibilidade alterada",
-        description: `${supplier.name} agora está ${supplier.hidden ? 'visível' : 'oculto'}.`,
-      });
-      refetch();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível alterar a visibilidade do fornecedor.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleToggleFeatured = async (supplier: Supplier) => {
-    try {
-      await toggleSupplierFeatured(supplier.id, !supplier.featured);
-      toast({
-        title: "Destaque alterado",
-        description: `${supplier.name} agora ${supplier.featured ? 'não está mais' : 'está'} em destaque.`,
-      });
-      refetch();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível alterar o destaque do fornecedor.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteClick = (supplier: Supplier) => {
-    setSupplierToDelete(supplier);
-  };
-
-  const confirmDelete = async () => {
-    if (!supplierToDelete) return;
-
-    setIsDeleting(true);
-    try {
-      await deleteSupplierMutation(supplierToDelete.id);
-      toast({
-        title: "Fornecedor excluído",
-        description: `${supplierToDelete.name} foi excluído permanentemente do sistema.`,
-      });
-      setSupplierToDelete(null);
-      refetch();
+  const handleConfirmDelete = async () => {
+    const deletedSupplierId = await confirmDelete();
+    if (deletedSupplierId) {
       // Clear selection if deleted supplier was selected
-      setSelectedSuppliers(prev => prev.filter(s => s.id !== supplierToDelete.id));
-    } catch (error) {
-      toast({
-        title: "Erro ao excluir",
-        description: "Não foi possível excluir o fornecedor. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
+      setSelectedSuppliers(prev => prev.filter(s => s.id !== deletedSupplierId));
     }
   };
-
-  const formatAvgPrice = (price: string) => {
-    const priceMap = {
-      'low': 'Baixo',
-      'medium': 'Médio', 
-      'high': 'Alto'
-    };
-    return priceMap[price as keyof typeof priceMap] || 'N/A';
-  };
-
-  const allSelected = suppliers.length > 0 && selectedSuppliers.length === suppliers.length;
-  const someSelected = selectedSuppliers.length > 0 && selectedSuppliers.length < suppliers.length;
-
-  // Set indeterminate state for select all checkbox
-  if (selectAllCheckboxRef.current) {
-    const checkboxElement = selectAllCheckboxRef.current.querySelector('button');
-    if (checkboxElement) {
-      (checkboxElement as any).indeterminate = someSelected;
-    }
-  }
 
   return (
     <AdminLayout>
@@ -203,98 +127,15 @@ export default function SuppliersManagement() {
               </div>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
-                        <Checkbox
-                          ref={selectAllCheckboxRef}
-                          checked={allSelected}
-                          onCheckedChange={handleSelectAll}
-                          aria-label="Selecionar todos"
-                        />
-                      </TableHead>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Localização</TableHead>
-                      <TableHead>Preço Médio</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Avaliação</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {suppliers.map((supplier) => (
-                      <TableRow key={supplier.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={isSupplierSelected(supplier.id)}
-                            onCheckedChange={(checked) => handleSelectSupplier(supplier, checked as boolean)}
-                            aria-label={`Selecionar ${supplier.name}`}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{supplier.code}</TableCell>
-                        <TableCell className="font-medium">{supplier.name}</TableCell>
-                        <TableCell>{supplier.city}, {supplier.state}</TableCell>
-                        <TableCell>{formatAvgPrice(supplier.avg_price)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Badge variant={supplier.hidden ? "destructive" : "default"}>
-                              {supplier.hidden ? "Oculto" : "Visível"}
-                            </Badge>
-                            {supplier.featured && (
-                              <Badge variant="secondary">Destaque</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {supplier.averageRating ? (
-                            <div className="flex items-center gap-1">
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              <span className="text-sm">{supplier.averageRating.toFixed(1)}</span>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">Sem avaliações</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleVisibility(supplier)}
-                              title={supplier.hidden ? "Mostrar fornecedor" : "Ocultar fornecedor"}
-                            >
-                              {supplier.hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleFeatured(supplier)}
-                              title={supplier.featured ? "Remover destaque" : "Destacar fornecedor"}
-                            >
-                              {supplier.featured ? <StarOff className="h-4 w-4" /> : <Star className="h-4 w-4" />}
-                            </Button>
-                            <Link to={`/suppliers/${supplier.id}`}>
-                              <Button variant="ghost" size="sm" title="Editar fornecedor">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteClick(supplier)}
-                              title="Excluir fornecedor"
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <SuppliersTable
+                  suppliers={suppliers}
+                  selectedSuppliers={selectedSuppliers}
+                  onSelectAll={handleSelectAll}
+                  onSelectSupplier={handleSelectSupplier}
+                  onToggleVisibility={handleToggleVisibility}
+                  onToggleFeatured={handleToggleFeatured}
+                  onDeleteSupplier={handleDeleteClick}
+                />
 
                 <AdminPagination
                   currentPage={currentPage}
@@ -314,7 +155,7 @@ export default function SuppliersManagement() {
       <ConfirmDeleteDialog
         open={!!supplierToDelete}
         onClose={() => setSupplierToDelete(null)}
-        onConfirm={confirmDelete}
+        onConfirm={handleConfirmDelete}
         supplier={supplierToDelete}
         isDeleting={isDeleting}
       />
