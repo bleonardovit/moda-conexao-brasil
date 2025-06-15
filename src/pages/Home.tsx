@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -19,156 +18,7 @@ import { getArticles } from '@/services/articleService';
 import { getCategories } from '@/services/categoryService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
-
-// Component for supplier card - optimized for mobile
-const SupplierCard = ({
-  supplier,
-  allCategories
-}: {
-  supplier: Supplier;
-  allCategories: Category[];
-}) => {
-  const {
-    toggleFavorite,
-    isFavorite
-  } = useFavorites();
-  const [isHovering, setIsHovering] = useState(false);
-  const isMobile = useIsMobile();
-  const { hasExpired, isLoading, isVerified } = useTrialStatus();
-  
-  const getCategoryNameFromId = (categoryId: string): string => {
-    const foundCategory = allCategories.find(cat => cat.id === categoryId);
-    return foundCategory ? foundCategory.name : categoryId;
-  };
-
-  // Se ainda está carregando o status do trial, mostrar apenas a foto com loading
-  if (isLoading || !isVerified) {
-    return (
-      <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
-        <div className="relative overflow-hidden w-full" style={{
-          height: isMobile ? '130px' : '180px'
-        }}>
-          <img
-            src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'}
-            alt="Carregando..."
-            className="w-full h-full object-cover"
-            onError={e => {
-              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158';
-            }}
-          />
-        </div>
-        <CardContent className="p-4">
-          <div className="space-y-2">
-            <Skeleton className="h-5 w-3/4" />
-            <div className="flex gap-2">
-              <Skeleton className="h-4 w-12" />
-              <Skeleton className="h-4 w-12" />
-            </div>
-            <div className="flex justify-between items-center mt-3">
-              <Skeleton className="h-4 w-1/3" />
-              <Skeleton className="h-4 w-1/4" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Se o trial expirou E a verificação foi concluída, mostrar versão completamente bloqueada
-  if (hasExpired && isVerified) {
-    return (
-      <Card className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full">
-        <div className="relative overflow-hidden w-full" style={{
-          height: isMobile ? '130px' : '180px'
-        }}>
-          <img
-            src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'}
-            alt="Fornecedor"
-            className="w-full h-full object-cover"
-            onError={e => {
-              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158';
-            }}
-          />
-        </div>
-        <CardContent className="p-4 flex items-center justify-center min-h-[120px]">
-          <div className="text-center">
-            <h4 className="font-medium text-sm mb-1">Conteúdo Bloqueado</h4>
-            <p className="text-xs text-muted-foreground mb-3">
-              Trial expirado
-            </p>
-            <Button size="sm" asChild>
-              <Link to="/auth/payment">Assinar</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card 
-      className="glass-morphism border-white/10 card-hover overflow-hidden h-full transition-all duration-300 w-full max-w-full" 
-      onMouseEnter={() => setIsHovering(true)} 
-      onMouseLeave={() => setIsHovering(false)}
-    >
-      <div className="relative overflow-hidden w-full" style={{
-        height: isMobile ? '130px' : '180px'
-      }}>
-        <img 
-          src={supplier.images && supplier.images.length > 0 ? supplier.images[0] : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158'} 
-          alt={supplier.name} 
-          className="w-full h-full object-cover transition-transform duration-500" 
-          style={{
-            transform: isHovering ? 'scale(1.05)' : 'scale(1)'
-          }} 
-          onError={e => {
-            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158';
-          }} 
-        />
-        <div className="absolute top-2 right-2 flex gap-2">
-          {supplier.featured && (
-            <Badge className="bg-[#F97316]/90 text-white border-0">
-              <Star className="h-3 w-3 mr-1" />
-              Destaque
-            </Badge>
-          )}
-          <button 
-            onClick={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleFavorite(supplier.id);
-            }} 
-            className="bg-black/40 hover:bg-black/60 p-2 rounded-full text-white transition-colors"
-          >
-            <Heart className={`h-4 w-4 ${isFavorite(supplier.id) ? "fill-[#D946EF] text-[#D946EF]" : ""}`} />
-          </button>
-        </div>
-      </div>
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-medium truncate">{supplier.name}</h3>
-        </div>
-        <div className="flex gap-2 mb-2 flex-wrap">
-          {supplier.categories && supplier.categories.slice(0, 2).map(categoryId => (
-            <Badge key={categoryId} variant="secondary" className="bg-white/10">
-              {getCategoryNameFromId(categoryId)}
-            </Badge>
-          ))}
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-400">{supplier.city}, {supplier.state}</span>
-          <Link 
-            to={`/suppliers/${supplier.id}`} 
-            className="text-[#9b87f5] hover:text-[#D946EF] text-sm font-medium transition-colors flex items-center gap-1"
-          >
-            Ver detalhes
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+import { OptimizedSupplierCard } from '@/components/suppliers/OptimizedSupplierCard';
 
 // Component for article card
 const ArticleCard = ({
@@ -244,6 +94,7 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const { user } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   // Usar query otimizada para suppliers da home com cache de 10 minutos
   const {
@@ -278,6 +129,32 @@ export default function Home() {
     };
     fetchAllCategories();
   }, []);
+
+  // Funções auxiliares para categorias e preço para passar ao OptimizedSupplierCard:
+  const getCategoryName = (categoryId: string): string => {
+    const foundCategory = allCategories.find(cat => cat.id === categoryId);
+    return foundCategory ? foundCategory.name : categoryId;
+  };
+
+  const getCategoryStyle = (categoryName: string): string => {
+    // Estilo simples de categoria
+    return "bg-white/10";
+  };
+
+  const formatAvgPrice = (price: string): string => {
+    const priceMap = {
+      'low': 'Baixo',
+      'medium': 'Médio', 
+      'high': 'Alto'
+    };
+    return priceMap[price as keyof typeof priceMap] || price;
+  };
+
+  const handleToggleFavorite = (supplier: Supplier, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite(supplier.id);
+  };
 
   // Extrair suppliers otimizados
   const featuredSuppliers = homeSuppliers?.featuredSuppliers || [];
@@ -332,7 +209,14 @@ export default function Home() {
                 <CarouselContent className="-ml-2 md:-ml-4">
                   {featuredSuppliers.map(supplier => (
                     <CarouselItem key={supplier.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 w-full max-w-full">
-                      <SupplierCard supplier={supplier} allCategories={allCategories} />
+                      <OptimizedSupplierCard
+                        supplier={supplier}
+                        isFavorite={isFavorite}
+                        onToggleFavorite={handleToggleFavorite}
+                        getCategoryName={getCategoryName}
+                        getCategoryStyle={getCategoryStyle}
+                        formatAvgPrice={formatAvgPrice}
+                      />
                     </CarouselItem>
                   ))}
                 </CarouselContent>
@@ -366,7 +250,14 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-x-auto">
             {recentSuppliers.map(supplier => (
               <div key={supplier.id} className="animate-fade-in w-full max-w-full">
-                <SupplierCard supplier={supplier} allCategories={allCategories} />
+                <OptimizedSupplierCard
+                  supplier={supplier}
+                  isFavorite={isFavorite}
+                  onToggleFavorite={handleToggleFavorite}
+                  getCategoryName={getCategoryName}
+                  getCategoryStyle={getCategoryStyle}
+                  formatAvgPrice={formatAvgPrice}
+                />
               </div>
             ))}
           </div>
