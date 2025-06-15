@@ -36,8 +36,8 @@ export interface ImportResult {
   errors: ValidationErrors;
 }
 
-// Helper function to normalize strings consistently
-const normalizeString = (str: string | undefined | null): string => {
+// Helper function to normalize strings for comparison
+const normalizeStringForComparison = (str: string | undefined | null): string => {
   if (!str) return "";
   return str
     .toLowerCase()
@@ -50,8 +50,8 @@ export const mapRowToSupplierFormValues = (
   row: SupplierRowData,
   categoryNameToIdMap: Map<string, string> // NormalizedCategoryName -> CategoryID
 ): SupplierFormValues => {
-  // Function to normalize strings (using the shared helper)
-  const normalize = normalizeString;
+  // Function to normalize strings for comparison
+  const normalize = normalizeStringForComparison;
 
   // Parse payment methods
   const paymentMethods: ('pix' | 'card' | 'bankslip')[] = [];
@@ -133,7 +133,7 @@ export const validateSupplierRow = (
   categoryNameToIdMap: Map<string, string> // NormalizedCategoryName -> CategoryID
 ): string[] => {
   const errors: string[] = [];
-  const normalize = normalizeString; // Use the shared helper
+  const normalize = normalizeStringForComparison; // Use the shared helper
 
   // Check required fields
   if (!row.codigo || row.codigo.trim() === '') errors.push('Código é obrigatório');
@@ -225,7 +225,7 @@ export const importSuppliers = async (
     const categoryNameToIdMap = new Map<string, string>();
     (categoriesData || []).forEach(c => {
       if (c.id && c.name) {
-        categoryNameToIdMap.set(normalizeString(c.name), c.id);
+        categoryNameToIdMap.set(normalizeStringForComparison(c.name), c.id);
       }
     });
     console.log('Mapa NomeNormalizado->ID de Categoria construído em importSuppliers:', categoryNameToIdMap);

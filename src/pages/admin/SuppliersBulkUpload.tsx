@@ -55,8 +55,8 @@ const TEMPLATE_HEADERS = [
   'imagens' 
 ];
 
-// Helper function to normalize strings consistently (can be moved to a utils file later)
-const normalizeString = (str: string | undefined | null): string => {
+// Helper function to normalize strings for comparison purposes
+const normalizeStringForComparison = (str: string | undefined | null): string => {
   if (!str) return "";
   return str
     .toLowerCase()
@@ -116,7 +116,7 @@ export default function SuppliersBulkUpload() {
           (categoriesData || []).forEach(cat => {
             if (cat.id && cat.name) {
               idToNameMap.set(cat.id, cat.name);
-              nameToIdMap.set(normalizeString(cat.name), cat.id);
+              nameToIdMap.set(normalizeStringForComparison(cat.name), cat.id);
             }
           });
           
@@ -274,7 +274,7 @@ export default function SuppliersBulkUpload() {
       const workbook = XLSX.read(data);
       const worksheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[worksheetName];
-      const jsonSuppliers = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 }); // Obter como array de arrays
+      const jsonSuppliers = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1, raw: false }); // Obter como array de arrays e usar texto formatado
 
       if (jsonSuppliers.length < 2) { // Pelo menos cabeçalho e uma linha de dados
         toast({ title: "Arquivo Excel vazio", description: "O arquivo parece não conter dados de fornecedores.", variant: "destructive" });
@@ -282,8 +282,8 @@ export default function SuppliersBulkUpload() {
         return;
       }
       
-      const headers = (jsonSuppliers[0] as string[]).map(h => normalizeString(h));
-      const missingHeaders = TEMPLATE_HEADERS.filter(th => !headers.includes(normalizeString(th)));
+      const headers = (jsonSuppliers[0] as string[]).map(h => normalizeStringForComparison(h));
+      const missingHeaders = TEMPLATE_HEADERS.filter(th => !headers.includes(normalizeStringForComparison(th)));
 
       if (missingHeaders.length > 0) {
         toast({
@@ -299,7 +299,7 @@ export default function SuppliersBulkUpload() {
         const row: any = {};
         headers.forEach((header, index) => {
           // Encontra o nome original do header no template para usar como chave
-          const templateHeaderKey = TEMPLATE_HEADERS.find(th => normalizeString(th) === header) || header;
+          const templateHeaderKey = TEMPLATE_HEADERS.find(th => normalizeStringForComparison(th) === header) || header;
           row[templateHeaderKey] = rowArray[index];
         });
         row.originalRowIndex = rowIndex + 2; // +1 para slice, +1 para 1-based index
@@ -892,7 +892,7 @@ export default function SuppliersBulkUpload() {
                               {categoriesFromSheetAsNames.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
                                   {categoriesFromSheetAsNames.map((catNameFromSheet, i) => {
-                                    const normalizedSheetName = normalizeString(catNameFromSheet);
+                                    const normalizedSheetName = normalizeStringForComparison(catNameFromSheet);
                                     const categoryId = categoryNameToIdMap.get(normalizedSheetName);
                                     const actualDbName = categoryId ? existingCategories.get(categoryId) : undefined;
 
