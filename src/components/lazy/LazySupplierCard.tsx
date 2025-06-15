@@ -1,6 +1,7 @@
 
 import { lazy, Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFavorites } from '@/hooks/use-favorites';
 import type { Supplier, Category } from '@/types';
 
 // Lazy load do SupplierCard para otimizar bundle
@@ -34,12 +35,42 @@ interface LazySupplierCardProps {
 }
 
 export function LazySupplierCard({ supplier, allCategories, priority = 'normal' }: LazySupplierCardProps) {
+  const { isFavorite, toggleFavorite } = useFavorites();
+
+  const getCategoryName = (categoryId: string): string => {
+    const foundCategory = allCategories.find(cat => cat.id === categoryId);
+    return foundCategory ? foundCategory.name : categoryId;
+  };
+
+  const getCategoryStyle = (categoryName: string): string => {
+    // Simple category styling
+    return "bg-white/10";
+  };
+
+  const formatAvgPrice = (price: string): string => {
+    const priceMap = {
+      'low': 'Baixo',
+      'medium': 'Médio', 
+      'high': 'Alto'
+    };
+    return priceMap[price as keyof typeof priceMap] || price;
+  };
+
+  const handleToggleFavorite = (supplier: Supplier, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite(supplier.id);
+  };
+
   return (
     <Suspense fallback={<SupplierCardSkeleton />}>
       <SupplierCard 
         supplier={supplier} 
-        allCategories={allCategories}
-        loading={priority}
+        isFavorite={isFavorite}
+        onToggleFavorite={handleToggleFavorite}
+        getCategoryName={getCategoryName}
+        getCategoryStyle={getCategoryStyle}
+        formatAvgPrice={formatAvgPrice}
       />
     </Suspense>
   );
