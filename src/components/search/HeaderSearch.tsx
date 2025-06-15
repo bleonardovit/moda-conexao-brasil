@@ -1,5 +1,5 @@
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,69 +11,15 @@ import {
   CommandItem,
   CommandList
 } from '@/components/ui/command';
-import { getSuppliers } from '@/services/supplierService';
-import { getArticles } from '@/services/articleService';
-import type { Supplier } from '@/types';
-import type { Article } from '@/types/article';
-import { useAuth } from '@/hooks/useAuth';
+import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
 
 export function HeaderSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
 
-  // Fetch suppliers and articles when search is opened
-  useEffect(() => {
-    if (open) {
-      const fetchData = async () => {
-        setIsLoading(true);
-        try {
-          // Fetch suppliers (getSuppliers já filtra fornecedores ocultos)
-          if (suppliers.length === 0) {
-            const suppliersData = await getSuppliers(user?.id);
-            setSuppliers(suppliersData || []);
-          }
-          
-          // Fetch articles
-          if (articles.length === 0) {
-            const articlesData = await getArticles();
-            // Filter only published articles
-            setArticles(articlesData.filter(article => article.published));
-          }
-        } catch (error) {
-          console.error('Error fetching data for search:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      fetchData();
-    }
-  }, [open, suppliers.length, articles.length, user?.id]);
-
-  // Dynamic search for suppliers
-  const filteredSuppliers = useMemo(() => {
-    if (!query || !Array.isArray(suppliers)) return [];
-    
-    return suppliers.filter(supplier =>
-      supplier.name?.toLowerCase().includes(query.toLowerCase()) ||
-      supplier.description?.toLowerCase().includes(query.toLowerCase())
-    );
-  }, [query, suppliers]);
-
-  // Dynamic search for articles
-  const filteredArticles = useMemo(() => {
-    if (!query || !Array.isArray(articles)) return [];
-    
-    return articles.filter(article =>
-      article.title?.toLowerCase().includes(query.toLowerCase()) ||
-      article.summary?.toLowerCase().includes(query.toLowerCase())
-    );
-  }, [query, articles]);
+  // Usar hook otimizado para busca
+  const { suppliers, articles, isLoading } = useOptimizedSearch(query, 5);
 
   // Handle command selection
   const handleSelect = (value: string) => {
@@ -102,11 +48,11 @@ export function HeaderSearch() {
           <CommandEmpty>
             {isLoading ? "Carregando..." : "Nenhum resultado encontrado."}
           </CommandEmpty>
-          {query ? (
+          {query && query.length >= 2 ? (
             <>
-              {filteredSuppliers && filteredSuppliers.length > 0 && (
+              {suppliers && suppliers.length > 0 && (
                 <CommandGroup heading="Fornecedores">
-                  {filteredSuppliers.map(supplier => (
+                  {suppliers.map(supplier => (
                     <CommandItem
                       key={supplier.id}
                       value={`/suppliers/${supplier.id}`}
@@ -118,9 +64,9 @@ export function HeaderSearch() {
                   ))}
                 </CommandGroup>
               )}
-              {filteredArticles && filteredArticles.length > 0 && (
+              {articles && articles.length > 0 && (
                 <CommandGroup heading="Artigos">
-                  {filteredArticles.map(article => (
+                  {articles.map(article => (
                     <CommandItem
                       key={article.id}
                       value={`/articles/${article.id}`}
@@ -147,7 +93,7 @@ export function HeaderSearch() {
           )}
           <CommandGroup heading="Dicas">
             <CommandItem>
-              <span className="text-muted-foreground text-sm">Digite o nome do fornecedor ou artigo que deseja buscar</span>
+              <span className="text-muted-foreground text-sm">Digite pelo menos 2 caracteres para buscar</span>
             </CommandItem>
           </CommandGroup>
         </CommandList>

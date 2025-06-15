@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,86 +8,60 @@ import { Search, Heart, Instagram, Star } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { useFavorites } from '@/hooks/use-favorites';
+import { useOptimizedFavorites } from '@/hooks/useOptimizedFavorites';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast as sonnerToast } from "@/components/ui/sonner";
 import type { Supplier, Category } from '@/types';
-import { getSuppliers, getSupplierCategories } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffect, useState as useReactState } from 'react';
 
 export default function Favorites() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { favorites: favoriteIds, removeFavorite, isLoading: isLoadingFavorites } = useFavorites();
+  const { removeFavorite } = useFavorites();
   const { user } = useAuth();
 
-  const [allSuppliers, setAllSuppliers] = useState<Supplier[]>([]);
-  const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
+  // Usar hook otimizado para favoritos
+  const { 
+    suppliers: favoriteSuppliers, 
+    totalCount, 
+    hasMore, 
+    isLoading, 
+    loadMore, 
+    search 
+  } = useOptimizedFavorites();
+
   const [allCategoriesFetched, setAllCategoriesFetched] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoadingSuppliers(true);
-      setIsLoadingCategories(true);
-
-      if (!user?.id) {
-        console.warn("Favorites: User not authenticated. Cannot load favorites.");
-        // sonnerToast.error("Autenticação necessária", { // This was causing issues without user interaction
-        //   description: "Você precisa estar logado para ver seus favoritos."
-        // });
-        setIsLoadingSuppliers(false);
-        setIsLoadingCategories(false);
-        setAllSuppliers([]);
-        setAllCategoriesFetched([]);
-        return;
-      }
-      const userId = user.id;
-
+    const fetchCategories = async () => {
       try {
-        const [suppliersData, categoriesData] = await Promise.all([
-          getSuppliers(userId), // Pass userId
-          getCategories()       // Call without userId
-        ]);
-
+        const categoriesData = await getCategories();
         setAllCategoriesFetched(categoriesData);
-
-        const suppliersWithCategories = await Promise.all(
-          suppliersData.map(async (supplier) => {
-            const categoryIdsForSupplier = await getSupplierCategories(supplier.id); // This seems fine
-            return {
-              ...supplier,
-              categories: categoryIdsForSupplier
-            };
-          })
-        );
-        setAllSuppliers(suppliersWithCategories);
-
       } catch (error) {
-        console.error("Erro ao buscar dados para favoritos:", error);
-        sonnerToast.error("Erro ao carregar dados", {
-          description: "Não foi possível buscar os dados necessários."
-        });
+        console.error("Erro ao buscar categorias:", error);
       } finally {
-        setIsLoadingSuppliers(false);
         setIsLoadingCategories(false);
       }
     };
 
-    fetchData();
-  }, [user]); // Removed userId from dependency array as it's derived from user
+    fetchCategories();
+  }, []);
+
+  // Atualizar busca com debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      search(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, search]);
 
   const getCategoryNameFromId = (categoryId: string): string => {
     const foundCategory = allCategoriesFetched.find(cat => cat.id === categoryId);
     return foundCategory ? foundCategory.name : categoryId;
   };
-
-  // Filter suppliers to show only favorites
-  const favoriteSuppliers = allSuppliers.filter(supplier => 
-    favoriteIds.includes(supplier.id) && 
-    (searchTerm === '' || 
-     supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     (supplier.description && supplier.description.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
 
   const formatAvgPrice = (price?: string) => {
     switch(price) {
@@ -109,7 +84,8 @@ export default function Favorites() {
     });
   };
 
-  if (isLoadingFavorites || isLoadingSuppliers || isLoadingCategories) {
+  // Loading state
+  if (isLoading && favoriteSuppliers.length === 0) {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -146,10 +122,10 @@ export default function Favorites() {
         </div>
         
         <div className="text-sm text-muted-foreground text-right">
-          {favoriteSuppliers.length} fornecedor(es) nos favoritos
+          {totalCount} fornecedor(es) nos favoritos
         </div>
         
-        {favoriteSuppliers.length === 0 && !isLoadingSuppliers && !isLoadingFavorites && !isLoadingCategories && (
+        {favoriteSuppliers.length === 0 && !isLoading && (
           <div className="text-center py-10">
             <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-2">Nenhum favorito ainda</h2>
@@ -245,6 +221,19 @@ export default function Favorites() {
             </Card>
           ))}
         </div>
+
+        {/* Load More Button */}
+        {hasMore && (
+          <div className="flex justify-center pt-6">
+            <Button 
+              variant="outline" 
+              onClick={loadMore}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Carregando...' : 'Carregar mais favoritos'}
+            </Button>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

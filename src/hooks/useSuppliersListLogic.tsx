@@ -2,6 +2,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useFavorites } from '@/hooks/use-favorites';
 import { useToast } from "@/hooks/use-toast";
+import { useCachedData } from '@/hooks/usePerformanceCache';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import type { Supplier, Category } from '@/types';
 import { getCategories } from '@/services/categoryService';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,13 +24,43 @@ export function useSuppliersListLogic() {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { recordQuery } = usePerformanceMonitor();
 
   // Estados para opções de filtro
   const [filtersLoading, setFiltersLoading] = useState(true);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [categoryOptions, setCategoryOptions] = useState(DEFAULT_FILTER_OPTIONS.categories);
   const [stateOptions, setStateOptions] = useState(DEFAULT_FILTER_OPTIONS.states);
   const [cityOptions, setCityOptions] = useState(DEFAULT_FILTER_OPTIONS.cities);
+
+  // Cache otimizado para categorias
+  const { 
+    data: categories, 
+    isLoading: categoriesLoading 
+  } = useCachedData(
+    'categories',
+    () => getCategories(),
+    10 * 60 * 1000 // 10 minutos de cache
+  );
+
+  // Cache otimizado para estados
+  const { 
+    data: states, 
+    isLoading: statesLoading 
+  } = useCachedData(
+    'distinct-states',
+    () => getDistinctStatesOptimized(),
+    15 * 60 * 1000 // 15 minutos de cache
+  );
+
+  // Cache otimizado para cidades
+  const { 
+    data: cities, 
+    isLoading: citiesLoading 
+  } = useCachedData(
+    'distinct-cities',
+    () => getDistinctCitiesOptimized(),
+    15 * 60 * 1000 // 15 minutos de cache
+  );
 
   // Debounced search term para evitar queries desnecessárias
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
@@ -52,46 +84,36 @@ export function useSuppliersListLogic() {
     favorites: showOnlyFavorites ? favorites : undefined,
   }), [debouncedSearchTerm, categoryFilter, stateFilter, cityFilter, priceFilter, cnpjFilter, showOnlyFavorites, favorites]);
 
-  // Carregar opções de filtro usando as funções otimizadas
+  // Configurar opções de filtro quando os dados chegarem
   useEffect(() => {
-    const fetchFilterOptions = async () => {
-      try {
-        setFiltersLoading(true);
-        const [categoriesData, statesData, citiesData] = await Promise.all([
-          getCategories(),
-          getDistinctStatesOptimized(),
-          getDistinctCitiesOptimized()
-        ]);
+    let loading = true;
 
-        setCategories(categoriesData);
-        setCategoryOptions([
-          ...DEFAULT_FILTER_OPTIONS.categories,
-          ...categoriesData.map(cat => ({ label: cat.name, value: cat.id }))
-        ]);
+    if (categories && !categoriesLoading) {
+      setCategoryOptions([
+        ...DEFAULT_FILTER_OPTIONS.categories,
+        ...categories.map(cat => ({ label: cat.name, value: cat.id }))
+      ]);
+      loading = false;
+    }
 
-        setStateOptions([
-          ...DEFAULT_FILTER_OPTIONS.states,
-          ...statesData.map(state => ({ label: state, value: state }))
-        ]);
+    if (states && !statesLoading) {
+      setStateOptions([
+        ...DEFAULT_FILTER_OPTIONS.states,
+        ...states.map(state => ({ label: state, value: state }))
+      ]);
+      loading = false;
+    }
 
-        setCityOptions([
-          ...DEFAULT_FILTER_OPTIONS.cities,
-          ...citiesData.map(city => ({ label: city, value: city }))
-        ]);
-      } catch (error) {
-        console.error('Error fetching filter options:', error);
-        toast({
-          title: "Erro ao carregar filtros",
-          description: "Não foi possível carregar as opções de filtros. Por favor, tente novamente mais tarde.",
-          variant: "destructive"
-        });
-      } finally {
-        setFiltersLoading(false);
-      }
-    };
+    if (cities && !citiesLoading) {
+      setCityOptions([
+        ...DEFAULT_FILTER_OPTIONS.cities,
+        ...cities.map(city => ({ label: city, value: city }))
+      ]);
+      loading = false;
+    }
 
-    fetchFilterOptions();
-  }, [toast]);
+    setFiltersLoading(categoriesLoading || statesLoading || citiesLoading);
+  }, [categories, states, cities, categoriesLoading, statesLoading, citiesLoading]);
 
   // Helper functions memoizadas
   const formatAvgPrice = useCallback((price: string) => {
@@ -117,7 +139,7 @@ export function useSuppliersListLogic() {
   }, [isFavorite, toggleFavorite, toast]);
 
   const getCategoryName = useCallback((categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
+    const category = categories?.find(c => c.id === categoryId);
     return category ? category.name : '';
   }, [categories]);
 
@@ -153,6 +175,15 @@ export function useSuppliersListLogic() {
     userId: user?.id,
     filters
   });
+
+  // Log performance das queries
+  useEffect(() => {
+    if (!isLoading && data) {
+      const totalSuppliers = data.pages.reduce((sum, page) => sum + page.items.length, 0);
+      recordQuery('infinite-suppliers', 0, true); // Marcar como cached pois usa React Query
+      console.log(`Performance: Loaded ${totalSuppliers} suppliers from cache/pagination`);
+    }
+  }, [isLoading, data, recordQuery]);
 
   // Suppliers otimizados vindos do backend
   const paginatedSuppliers = useMemo(() => 
