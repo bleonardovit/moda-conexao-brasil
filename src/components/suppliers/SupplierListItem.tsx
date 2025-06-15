@@ -35,15 +35,22 @@ export function SupplierListItem({
   const isMobile = useIsMobile();
 
   // Correção/novos hooks de lazy loading:
+  // Imagens
   const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
   const hasMultipleImages = images.length > 1;
 
-  // Para a primeira imagem: sempre carrega imediatamente (sem lazy loading)
+  // Primeira imagem (NÃO lazy)
   const { ref: firstImgRef, src: firstImgSrc, loaded: firstImgLoaded, setLoaded: setFirstImgLoaded } = useLazyImage(
     images[0],
     '/placeholder.svg',
     { loadImmediately: true }
   );
+
+  // =========== LAZY LOADING DAS DEMAIS IMAGENS =============
+  // Prepare hooks for all secondary images (images[1..])
+  const lazyImages = hasMultipleImages
+    ? images.slice(1).map((img) => useLazyImage(img, '/placeholder.svg'))
+    : [];
 
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
@@ -139,7 +146,8 @@ export function SupplierListItem({
               {hasMultipleImages && (
                 <>
                   {images.slice(1).map((image, index) => {
-                    const { ref, src, loaded, setLoaded } = useLazyImage(image, '/placeholder.svg');
+                    // Use the pre-created hook object for each image
+                    const { ref, src, loaded, setLoaded } = lazyImages[index];
                     return (
                       <CarouselItem key={index + 1}>
                         <div className="w-full h-full relative flex items-center justify-center bg-muted">
