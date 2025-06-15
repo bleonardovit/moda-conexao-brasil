@@ -1,6 +1,8 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { getSuppliersWithPagination } from "@/services/supplier/optimizedPaginatedQueries";
+import { useOptimizedCache } from "./useOptimizedCache";
+import { sanitizeUUID, validateUUIDArray } from "@/utils/uuidValidation";
 import type { Supplier } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -26,43 +28,75 @@ interface SuppliersPage {
 
 export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersProps) {
   console.log('useInfiniteSuppliers: Hook called with:', { userId, filters });
+  
+  const { get, set } = useOptimizedCache();
+  
+  // Sanitizar userId e favorites
+  const sanitizedUserId = sanitizeUUID(userId);
+  const sanitizedFavorites = filters.favorites ? validateUUIDArray(filters.favorites) : undefined;
+
+  const queryKey = [
+    "infinite-suppliers-optimized",
+    sanitizedUserId,
+    filters.searchTerm,
+    filters.category,
+    filters.state,
+    filters.city,
+    filters.price,
+    filters.cnpj,
+    sanitizedFavorites,
+  ];
 
   return useInfiniteQuery<SuppliersPage, Error>({
-    queryKey: [
-      "suppliers-paginated",
-      userId,
-      filters.searchTerm,
-      filters.category,
-      filters.state,
-      filters.city,
-      filters.price,
-      filters.cnpj,
-      filters.favorites,
-    ],
+    queryKey,
     queryFn: async ({ pageParam = 0 }) => {
       console.log('useInfiniteSuppliers: Fetching page:', pageParam);
       const offset = Number(pageParam) * PAGE_SIZE;
       
+      // Verificar cache para esta página específica
+      const cacheKey = `page-${queryKey.join('-')}-${pageParam}`;
+      const cachedPage = get<SuppliersPage>(cacheKey, 2 * 60 * 1000); // 2 minutos
+      
+      if (cachedPage) {
+        console.log('useInfiniteSuppliers: Using cached page:', pageParam);
+        return cachedPage;
+      }
+
+      const startTime = performance.now();
+      
       const result = await getSuppliersWithPagination(
-        userId,
+        sanitizedUserId || undefined,
         offset,
         PAGE_SIZE,
-        filters
+        {
+          ...filters,
+          favorites: sanitizedFavorites
+        }
       );
+
+      const page: SuppliersPage = {
+        items: result.suppliers,
+        hasMore: result.hasMore,
+        totalCount: result.totalCount
+      };
+
+      const duration = performance.now() - startTime;
+      
+      // Cache com prioridade baseada na performance
+      const priority = duration < 500 ? 3 : duration < 1000 ? 2 : 1;
+      set(cacheKey, page, 2 * 60 * 1000, priority);
 
       console.log('useInfiniteSuppliers: Page result:', {
         pageParam,
         offset,
         suppliersCount: result.suppliers.length,
         totalCount: result.totalCount,
-        hasMore: result.hasMore
+        hasMore: result.hasMore,
+        duration: `${duration.toFixed(2)}ms`,
+        cached: false
       });
 
-      return {
-        items: result.suppliers,
-        hasMore: result.hasMore,
-        totalCount: result.totalCount
-      };
+      return page;
     },
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage && lastPage.hasMore) {
@@ -73,8 +107,21 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
       console.log('useInfiniteSuppliers: No more pages');
       return undefined;
     },
-    staleTime: 1000 * 60 * 5, // Cache por 5 minutos para debug
-    gcTime: 1000 * 60 * 10, // Manter no cache por 10 minutos
+    staleTime: 1000 * 60 * 3, // 3 minutos
+    gcTime: 1000 * 60 * 10, // 10 minutos no cache do React Query
     initialPageParam: 0,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      // Retry logic mais inteligente
+      if (failureCount >= 3) return false;
+      
+      // Não retry em erros de UUID
+      if (error.message.includes('invalid input syntax for type uuid')) {
+        console.error('UUID error detected, not retrying:', error);
+        return false;
+      }
+      
+      return true;
+    }
   });
 }
