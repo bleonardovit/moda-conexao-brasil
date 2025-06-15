@@ -1,4 +1,3 @@
-
 import { SupplierSearchAndActions } from '@/components/suppliers/SupplierSearchAndActions';
 import { SupplierFilters } from '@/components/suppliers/SupplierFilters';
 import { SupplierListVirtualized } from '@/components/suppliers/SupplierListVirtualized';
@@ -6,6 +5,7 @@ import { NoSuppliersFound } from '@/components/suppliers/NoSuppliersFound';
 import { TrialBanner } from '@/components/trial/TrialBanner';
 import { PRICE_RANGES, CNPJ_OPTIONS } from '@/components/suppliers/SupplierFiltersConfig';
 import { useSuppliersListLogic } from '@/hooks/useSuppliersListLogic';
+import { PerformanceIndicator } from '@/components/performance/PerformanceIndicator';
 
 export function SuppliersListView() {
   const {
@@ -109,6 +109,8 @@ export function SuppliersListView() {
           isLoading={isLoading || isFetchingNextPage}
         />
       )}
+
+      <PerformanceIndicator />
     </div>
   );
 }

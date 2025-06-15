@@ -128,6 +128,9 @@ const App = () => (
                 <Route path="/admin/reports" element={<Reports />} />
               </Route>
               
+              {/* Performance route */}
+              <Route path="/performance" element={<PerformanceMonitor />} />
+              
               {/* 404 route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
