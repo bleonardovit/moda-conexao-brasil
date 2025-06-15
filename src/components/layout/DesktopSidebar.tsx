@@ -1,5 +1,6 @@
+
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, Shield } from 'lucide-react';
+import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, Shield, Activity } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,6 +89,11 @@ export function DesktopSidebar() {
       icon: FileText,
       label: 'Relatórios',
       path: '/admin/reports'
+    },
+    {
+      icon: Activity,
+      label: 'Performance',
+      path: '/performance'
     },
     {
       icon: Book,

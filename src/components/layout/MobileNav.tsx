@@ -1,5 +1,6 @@
+
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, LogOut } from 'lucide-react';
+import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, LogOut, Activity } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -92,6 +93,11 @@ export function MobileNav() {
       icon: FileText,
       label: 'Relatórios',
       path: '/admin/reports'
+    },
+    {
+      icon: Activity,
+      label: 'Performance',
+      path: '/performance'
     },
     {
       icon: Book,

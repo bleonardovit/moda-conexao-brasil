@@ -1,7 +1,7 @@
 
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Book, FileText, Shield, Users, Store, MessageSquare } from 'lucide-react';
+import { Book, FileText, Shield, Users, Store, MessageSquare, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
@@ -35,6 +35,12 @@ const adminFeatures = [
     description: 'Acesse relatórios e métricas de uso.',
     path: '/admin/reports',
     icon: <FileText className="h-6 w-6 text-primary" />,
+  },
+  {
+    title: 'Performance',
+    description: 'Monitore performance e métricas técnicas do sistema.',
+    path: '/performance',
+    icon: <Activity className="h-6 w-6 text-primary" />,
   },
   {
     title: 'Segurança',
