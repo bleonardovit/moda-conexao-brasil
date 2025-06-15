@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -74,6 +73,9 @@ const App = () => (
               
               {/* Sitemap route */}
               <Route path="/sitemap.xml" element={<SitemapGenerator />} />
+              
+              {/* Pricing Route */}
+              <Route path="/pricing" element={<SelectPlan />} />
               
               {/* Auth routes */}
               <Route path="/auth/login" element={<Login />} />
