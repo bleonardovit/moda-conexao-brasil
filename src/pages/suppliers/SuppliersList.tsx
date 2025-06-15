@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFavorites } from '@/hooks/use-favorites';
@@ -8,6 +7,7 @@ import type { Supplier, Category } from '@/types';
 import { getSuppliers } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
 import { useAuth } from '@/hooks/useAuth';
+import { useTrialStatus } from '@/hooks/use-trial-status';
 
 import { SupplierSearchAndActions } from '@/components/suppliers/SupplierSearchAndActions';
 import { SupplierFilters } from '@/components/suppliers/SupplierFilters';
@@ -57,6 +57,7 @@ export default function SuppliersList() {
     toast
   } = useToast();
   const { user } = useAuth();
+  const { isInTrial, allowedSupplierIds } = useTrialStatus();
 
   const [isLoading, setIsLoading] = useState(true);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -149,6 +150,18 @@ export default function SuppliersList() {
     return matchesSearch && matchesCategory && matchesState && matchesCity && matchesPrice && matchesCnpj && matchesFavorites;
   });
 
+  const displaySuppliers = [...filteredSuppliers].sort((a, b) => {
+    if (isInTrial && allowedSupplierIds && allowedSupplierIds.length > 0) {
+      const aIsAllowed = allowedSupplierIds.includes(a.id);
+      const bIsAllowed = allowedSupplierIds.includes(b.id);
+
+      if (aIsAllowed && !bIsAllowed) return -1;
+      if (!aIsAllowed && bIsAllowed) return 1;
+    }
+    // Fallback para ordenação alfabética em todos os outros casos
+    return a.name.localeCompare(b.name);
+  });
+
   const formatAvgPrice = (price: string) => {
     switch (price) {
       case 'low':
@@ -222,7 +235,7 @@ export default function SuppliersList() {
           onToggleShowOnlyFavorites={() => setShowOnlyFavorites(!showOnlyFavorites)}
           isFilterOpen={isFilterOpen}
           onToggleFilterOpen={() => setIsFilterOpen(!isFilterOpen)}
-          filteredSuppliersCount={filteredSuppliers.length}
+          filteredSuppliersCount={displaySuppliers.length}
         />
 
         <TrialBanner />
@@ -248,8 +261,8 @@ export default function SuppliersList() {
         )}
 
         <div className="space-y-4">
-          {filteredSuppliers.length > 0 ? (
-            filteredSuppliers.map(supplier => (
+          {displaySuppliers.length > 0 ? (
+            displaySuppliers.map(supplier => (
               <SupplierListItem
                 key={supplier.id}
                 supplier={supplier}
