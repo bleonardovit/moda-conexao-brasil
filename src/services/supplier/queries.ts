@@ -70,15 +70,21 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
   // Check trial status if user is provided (and not admin)
   let allowedSupplierIds: string[] = [];
   let isInActiveTrial = false;
+  let hasExpiredTrial = false;
   
   if (userId && !isAdmin) {
     try {
       const trialInfo = await getUserTrialInfo(userId);
       
-      if (trialInfo && trialInfo.trial_status === 'active') {
-        isInActiveTrial = true;
-        allowedSupplierIds = await getAllowedSuppliersForTrial(userId);
-        console.log('supplierService: User in active trial, allowed suppliers:', allowedSupplierIds);
+      if (trialInfo) {
+        if (trialInfo.trial_status === 'active') {
+          isInActiveTrial = true;
+          allowedSupplierIds = await getAllowedSuppliersForTrial(userId);
+          console.log('supplierService: User in active trial, allowed suppliers:', allowedSupplierIds);
+        } else if (trialInfo.trial_status === 'expired') {
+          hasExpiredTrial = true;
+          console.log('supplierService: User has expired trial, blocking all suppliers');
+        }
       }
     } catch (error) {
       console.error('Error checking trial status:', error);
@@ -91,9 +97,14 @@ export const getSuppliers = async (userId?: string): Promise<Supplier[]> => {
     
     // Determine if supplier should be locked for trial users (admins never see locked suppliers)
     let isLocked = false;
-    if (userId && !isAdmin && isInActiveTrial) {
-      // For active trial users, lock suppliers not in the allowed list
-      isLocked = !allowedSupplierIds.includes(supplier.id);
+    if (userId && !isAdmin) {
+      if (hasExpiredTrial) {
+        // For expired trial users, lock ALL suppliers
+        isLocked = true;
+      } else if (isInActiveTrial) {
+        // For active trial users, lock suppliers not in the allowed list
+        isLocked = !allowedSupplierIds.includes(supplier.id);
+      }
     }
     
     return mapRawSupplierToDisplaySupplier(supplier, isLocked, averageRating);
@@ -196,14 +207,19 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
   // Check trial status if user is provided (and not admin)
   let allowedSupplierIds: string[] = [];
   let isInActiveTrial = false;
+  let hasExpiredTrial = false;
   
   if (userId && !isAdmin) {
     try {
       const trialInfo = await getUserTrialInfo(userId);
       
-      if (trialInfo && trialInfo.trial_status === 'active') {
-        isInActiveTrial = true;
-        allowedSupplierIds = await getAllowedSuppliersForTrial(userId);
+      if (trialInfo) {
+        if (trialInfo.trial_status === 'active') {
+          isInActiveTrial = true;
+          allowedSupplierIds = await getAllowedSuppliersForTrial(userId);
+        } else if (trialInfo.trial_status === 'expired') {
+          hasExpiredTrial = true;
+        }
       }
     } catch (error) {
       console.error('Error checking trial status in search:', error);
@@ -216,9 +232,14 @@ export const searchSuppliers = async (filters: SearchFilters, userId?: string): 
     
     // Determine if supplier should be locked for trial users (admins never see locked suppliers)
     let isLocked = false;
-    if (userId && !isAdmin && isInActiveTrial) {
-      // For active trial users, lock suppliers not in the allowed list
-      isLocked = !allowedSupplierIds.includes(supplier.id);
+    if (userId && !isAdmin) {
+      if (hasExpiredTrial) {
+        // For expired trial users, lock ALL suppliers
+        isLocked = true;
+      } else if (isInActiveTrial) {
+        // For active trial users, lock suppliers not in the allowed list
+        isLocked = !allowedSupplierIds.includes(supplier.id);
+      }
     }
     
     return mapRawSupplierToDisplaySupplier(supplier, isLocked, averageRating);

@@ -31,9 +31,8 @@ export function SupplierListItem({
   formatAvgPrice,
 }: SupplierListItemProps) {
   // ===== Move ALL hooks here, before any return =====
-  const { hasExpired, isLoading, isVerified } = useTrialStatus();
+  const { isLoading, isVerified } = useTrialStatus();
   const isMobile = useIsMobile();
-  const isBlurred = hasExpired && isVerified;
 
   // Imagens
   const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
@@ -45,6 +44,7 @@ export function SupplierListItem({
     setLoadedImages(prev => ({ ...prev, [index]: true }));
   };
 
+  // Use LockedSupplierCard for any supplier marked as locked for trial
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
   }
@@ -84,7 +84,7 @@ export function SupplierListItem({
     );
   }
 
-  // Main render
+  // Main render - normal supplier card
   return (
     <Card key={supplier.id} className="overflow-hidden card-hover">
       <div className={isMobile ? "flex flex-col" : "sm:flex"}>
@@ -126,116 +126,100 @@ export function SupplierListItem({
             )}
           </Carousel>
         </div>
-        <div className={`relative ${isMobile ? 'w-full' : 'sm:w-2/3 md:w-3/4'}`}>
-          <CardContent className={`p-4 w-full h-full ${isBlurred ? 'blur-sm pointer-events-none' : ''}`}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="text-lg font-bold flex items-center">
-                  {supplier.name}
-                  {supplier.featured && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" />
-                        </TooltipTrigger>
-                        <TooltipContent>Fornecedor em destaque</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-1">
-                  {supplier.city}, {supplier.state}
-                </p>
-                <p className="text-xs text-muted-foreground mb-2">Código: {supplier.code}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 flex-shrink-0"
-                onClick={(e) => onToggleFavorite(supplier, e)}
-                title={isFavorite(supplier.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-              >
-                <Heart
-                  className={`h-5 w-5 ${
-                    isFavorite(supplier.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
-                  }`}
-                />
-                <span className="sr-only">
-                  {isFavorite(supplier.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-                </span>
-              </Button>
+        <CardContent className={`p-4 w-full h-full ${isMobile ? 'w-full' : 'sm:w-2/3 md:w-3/4'}`}>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h3 className="text-lg font-bold flex items-center">
+                {supplier.name}
+                {supplier.featured && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Star className="ml-1 h-4 w-4 text-yellow-400 fill-yellow-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>Fornecedor em destaque</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </h3>
+              <p className="text-sm text-muted-foreground mb-1">
+                {supplier.city}, {supplier.state}
+              </p>
+              <p className="text-xs text-muted-foreground mb-2">Código: {supplier.code}</p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 flex-shrink-0"
+              onClick={(e) => onToggleFavorite(supplier, e)}
+              title={isFavorite(supplier.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            >
+              <Heart
+                className={`h-5 w-5 ${
+                  isFavorite(supplier.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
+                }`}
+              />
+              <span className="sr-only">
+                {isFavorite(supplier.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+              </span>
+            </Button>
+          </div>
 
-            <p className={`text-sm line-clamp-2 ${isMobile ? 'mb-3' : 'mb-4'}`}>{supplier.description}</p>
+          <p className={`text-sm line-clamp-2 ${isMobile ? 'mb-3' : 'mb-4'}`}>{supplier.description}</p>
 
-            <div className={`flex flex-wrap gap-2 ${isMobile ? 'mb-2' : 'mb-3'}`}>
-              {supplier.categories && supplier.categories.length > 0 ? (
-                supplier.categories.map((categoryId) => {
-                  const categoryName = getCategoryName(categoryId);
-                  const categoryStyle = getCategoryStyle(categoryName);
-                  return categoryName ? (
-                    <Badge key={categoryId} variant="outline" className={categoryStyle || ''}>
-                      {categoryName}
-                    </Badge>
-                  ) : null;
-                })
-              ) : (
-                <span className="text-xs text-muted-foreground">Sem categorias</span>
+          <div className={`flex flex-wrap gap-2 ${isMobile ? 'mb-2' : 'mb-3'}`}>
+            {supplier.categories && supplier.categories.length > 0 ? (
+              supplier.categories.map((categoryId) => {
+                const categoryName = getCategoryName(categoryId);
+                const categoryStyle = getCategoryStyle(categoryName);
+                return categoryName ? (
+                  <Badge key={categoryId} variant="outline" className={categoryStyle || ''}>
+                    {categoryName}
+                  </Badge>
+                ) : null;
+              })
+            ) : (
+              <span className="text-xs text-muted-foreground">Sem categorias</span>
+            )}
+          </div>
+
+          <div className={`grid grid-cols-2 gap-2 text-sm ${isMobile ? 'mb-3' : 'mb-4'}`}>
+            <div>
+              <span className="font-medium">Pedido mínimo:</span> {supplier.min_order || 'Não informado'}
+            </div>
+            <div>
+              <span className="font-medium">Preço médio:</span> {formatAvgPrice(supplier.avg_price || '')}
+            </div>
+          </div>
+
+          <div className={`flex flex-wrap gap-2 ${isMobile ? 'flex-col' : ''}`}>
+            <div className={`flex gap-2 ${isMobile ? 'mb-2' : ''}`}>
+              {supplier.instagram && (
+                <Button size="sm" variant="outline" asChild className={isMobile ? 'flex-1' : ''}>
+                  <a
+                    href={`https://instagram.com/${supplier.instagram.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Instagram className="mr-1 h-4 w-4" />
+                    Instagram
+                  </a>
+                </Button>
+              )}
+              {supplier.website && (
+                <Button size="sm" variant="outline" asChild className={isMobile ? 'flex-1' : ''}>
+                  <a href={supplier.website} target="_blank" rel="noopener noreferrer">
+                    <LinkIcon className="mr-1 h-4 w-4" />
+                    Site
+                  </a>
+                </Button>
               )}
             </div>
-
-            <div className={`grid grid-cols-2 gap-2 text-sm ${isMobile ? 'mb-3' : 'mb-4'}`}>
-              <div>
-                <span className="font-medium">Pedido mínimo:</span> {supplier.min_order || 'Não informado'}
-              </div>
-              <div>
-                <span className="font-medium">Preço médio:</span> {formatAvgPrice(supplier.avg_price || '')}
-              </div>
-            </div>
-
-            <div className={`flex flex-wrap gap-2 ${isMobile ? 'flex-col' : ''}`}>
-              <div className={`flex gap-2 ${isMobile ? 'mb-2' : ''}`}>
-                {supplier.instagram && (
-                  <Button size="sm" variant="outline" asChild className={isMobile ? 'flex-1' : ''}>
-                    <a
-                      href={`https://instagram.com/${supplier.instagram.replace('@', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Instagram className="mr-1 h-4 w-4" />
-                      Instagram
-                    </a>
-                  </Button>
-                )}
-                {supplier.website && (
-                  <Button size="sm" variant="outline" asChild className={isMobile ? 'flex-1' : ''}>
-                    <a href={supplier.website} target="_blank" rel="noopener noreferrer">
-                      <LinkIcon className="mr-1 h-4 w-4" />
-                      Site
-                    </a>
-                  </Button>
-                )}
-              </div>
-              <Button size="sm" asChild className={isMobile ? 'w-full' : ''}>
-                <Link to={`/suppliers/${supplier.id}`}>Ver detalhes</Link>
-              </Button>
-            </div>
-          </CardContent>
-
-          {isBlurred && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4">
-              <div className="bg-background/80 dark:bg-black/80 backdrop-blur-sm p-6 rounded-lg text-center shadow-lg">
-                <h3 className="text-lg font-bold mb-2">Conteúdo Bloqueado</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Seu período gratuito expirou. Assine para ver todos os detalhes.
-                </p>
-                <Button asChild>
-                  <Link to="/auth/payment">Assinar agora</Link>
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+            <Button size="sm" asChild className={isMobile ? 'w-full' : ''}>
+              <Link to={`/suppliers/${supplier.id}`}>Ver detalhes</Link>
+            </Button>
+          </div>
+        </CardContent>
       </div>
     </Card>
   );
