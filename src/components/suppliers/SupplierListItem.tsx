@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,23 +34,15 @@ export function SupplierListItem({
   const { hasExpired, isLoading, isVerified } = useTrialStatus();
   const isMobile = useIsMobile();
 
-  // Correção/novos hooks de lazy loading:
   // Imagens
   const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
   const hasMultipleImages = images.length > 1;
 
-  // Primeira imagem (NÃO lazy)
-  const { ref: firstImgRef, src: firstImgSrc, loaded: firstImgLoaded, setLoaded: setFirstImgLoaded } = useLazyImage(
-    images[0],
-    '/placeholder.svg',
-    { loadImmediately: true }
-  );
-
-  // =========== LAZY LOADING DAS DEMAIS IMAGENS =============
-  // Prepare hooks for all secondary images (images[1..])
-  const lazyImages = hasMultipleImages
-    ? images.slice(1).map((img) => useLazyImage(img, '/placeholder.svg'))
-    : [];
+  // State to track loaded images
+  const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
+  const handleImageLoad = (index: number) => {
+    setLoadedImages(prev => ({ ...prev, [index]: true }));
+  };
 
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
@@ -125,50 +117,23 @@ export function SupplierListItem({
         <div className={isMobile ? "w-full relative" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent relative"} style={isMobile ? { width: '336px', height: '400px', overflow: 'hidden' } : {}}>
           <Carousel className={isMobile ? "h-full" : "w-full h-full"} style={isMobile ? { width: '336px', height: '400px' } : {}}>
             <CarouselContent>
-              {/* Primeira imagem - preload sem lazy */}
-              <CarouselItem key={0}>
-                <div className="w-full h-full relative flex items-center justify-center bg-muted">
-                  {!firstImgLoaded && (
-                    <Skeleton className="absolute w-full h-full" />
-                  )}
-                  <img
-                    ref={firstImgRef}
-                    src={firstImgSrc}
-                    alt={`${supplier.name} - Imagem 1`}
-                    className={`w-full h-full object-cover transition-opacity duration-300 ${firstImgLoaded ? "opacity-100" : "opacity-0"}`}
-                    onLoad={() => setFirstImgLoaded(true)}
-                    onError={() => setFirstImgLoaded(true)}
-                    loading="eager"
-                  />
-                </div>
-              </CarouselItem>
-              {/* Demais imagens - lazy loading! */}
-              {hasMultipleImages && (
-                <>
-                  {images.slice(1).map((image, index) => {
-                    // Use the pre-created hook object for each image
-                    const { ref, src, loaded, setLoaded } = lazyImages[index];
-                    return (
-                      <CarouselItem key={index + 1}>
-                        <div className="w-full h-full relative flex items-center justify-center bg-muted">
-                          {!loaded && (
-                            <Skeleton className="absolute w-full h-full" />
-                          )}
-                          <img
-                            ref={ref}
-                            src={src}
-                            alt={`${supplier.name} - Imagem ${index + 2}`}
-                            className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
-                            onLoad={() => setLoaded(true)}
-                            onError={() => setLoaded(true)}
-                            loading="lazy"
-                          />
-                        </div>
-                      </CarouselItem>
-                    );
-                  })}
-                </>
-              )}
+              {images.map((image, index) => (
+                <CarouselItem key={index}>
+                  <div className="w-full h-full relative flex items-center justify-center bg-muted">
+                    {!loadedImages[index] && (
+                      <Skeleton className="absolute w-full h-full" />
+                    )}
+                    <img
+                      src={image}
+                      alt={`${supplier.name} - Imagem ${index + 1}`}
+                      className={`w-full h-full object-cover transition-opacity duration-300 ${loadedImages[index] ? "opacity-100" : "opacity-0"}`}
+                      onLoad={() => handleImageLoad(index)}
+                      onError={() => handleImageLoad(index)}
+                      loading={index === 0 ? "eager" : "lazy"}
+                    />
+                  </div>
+                </CarouselItem>
+              ))}
             </CarouselContent>
             {hasMultipleImages && (
               <>
