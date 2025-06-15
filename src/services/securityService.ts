@@ -1,42 +1,60 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ActiveSession, BlockedIP, DailyLoginStat, LoginLog, LoginStats, SecuritySetting } from '@/types';
+import { executeAdminQuery, isCurrentUserAdmin } from './adminSecurityService';
 
 // Get active sessions with user details
 export const getActiveSessions = async (): Promise<ActiveSession[]> => {
-  try {
-    // Fetch active sessions
-    const { data: sessions, error } = await supabase
-      .from('active_sessions')
-      .select('*')
-      .order('last_active', { ascending: false });
-    
-    if (error) throw error;
-    if (!sessions) return [];
-    
-    // Fetch user details for each session
-    const sessionsWithUserData = await Promise.all(
-      sessions.map(async (session) => {
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', session.user_id)
-          .single();
-          
-        // We need to get the email but it's not in the profiles table
-        // Let's use a default value with the user ID instead
-        return {
-          ...session,
-          full_name: userData?.full_name || 'Unknown',
-          user_email: `user-${session.user_id}@example.com` // Default placeholder email since we can't access auth.users
-        };
-      })
-    );
-    
-    return sessionsWithUserData;
-  } catch (error) {
-    console.error('Error fetching active sessions:', error);
-    return [];
-  }
+  console.log('🔍 Fetching active sessions...');
+  
+  return executeAdminQuery(
+    async () => {
+      const { data: sessions, error } = await supabase
+        .from('active_sessions')
+        .select('*')
+        .order('last_active', { ascending: false });
+      
+      if (error) {
+        console.error('❌ Error fetching active sessions:', error);
+        throw error;
+      }
+      
+      if (!sessions) {
+        console.warn('⚠️ No sessions data returned');
+        return { data: [], error: null };
+      }
+      
+      console.log(`✅ Found ${sessions.length} active sessions`);
+      
+      // Fetch user details for each session
+      const sessionsWithUserData = await Promise.all(
+        sessions.map(async (session) => {
+          try {
+            const { data: userData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', session.user_id)
+              .single();
+              
+            return {
+              ...session,
+              full_name: userData?.full_name || 'Unknown',
+              user_email: `user-${session.user_id.substring(0, 8)}@system.local`
+            };
+          } catch (err) {
+            console.warn('⚠️ Error fetching user data for session:', session.user_id, err);
+            return {
+              ...session,
+              full_name: 'Unknown',
+              user_email: `user-${session.user_id.substring(0, 8)}@system.local`
+            };
+          }
+        })
+      );
+      
+      return { data: sessionsWithUserData, error: null };
+    },
+    []
+  );
 };
 
 // Get login logs with filtering options
@@ -51,6 +69,14 @@ export const getLoginLogs = async (
     endDate?: string 
   } = {}
 ): Promise<{ data: LoginLog[], count: number }> => {
+  console.log('🔍 Fetching login logs...', { page, pageSize, filters });
+  
+  const isAdmin = await isCurrentUserAdmin();
+  if (!isAdmin) {
+    console.warn('⚠️ User is not admin, returning empty login logs');
+    return { data: [], count: 0 };
+  }
+
   try {
     let query = supabase
       .from('login_logs')
@@ -85,33 +111,44 @@ export const getLoginLogs = async (
       .order('attempted_at', { ascending: false })
       .range(from, to);
       
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error fetching login logs:', error);
+      return { data: [], count: 0 };
+    }
+    
+    console.log(`✅ Found ${data?.length || 0} login logs (total: ${count})`);
     
     return {
       data: data || [],
       count: count || 0
     };
   } catch (error) {
-    console.error('Error fetching login logs:', error);
+    console.error('❌ Error in getLoginLogs:', error);
     return { data: [], count: 0 };
   }
 };
 
 // Get blocked IPs
 export const getBlockedIPs = async (): Promise<BlockedIP[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('blocked_ips')
-      .select('*')
-      .order('blocked_at', { ascending: false });
+  console.log('🔍 Fetching blocked IPs...');
+  
+  return executeAdminQuery(
+    async () => {
+      const { data, error } = await supabase
+        .from('blocked_ips')
+        .select('*')
+        .order('blocked_at', { ascending: false });
+        
+      if (error) {
+        console.error('❌ Error fetching blocked IPs:', error);
+        throw error;
+      }
       
-    if (error) throw error;
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching blocked IPs:', error);
-    return [];
-  }
+      console.log(`✅ Found ${data?.length || 0} blocked IPs`);
+      return { data: data || [], error: null };
+    },
+    []
+  );
 };
 
 // Manually block an IP
@@ -160,18 +197,24 @@ export const unblockIP = async (id: number): Promise<boolean> => {
 
 // Get security settings
 export const getSecuritySettings = async (): Promise<SecuritySetting[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('security_settings')
-      .select('*');
+  console.log('🔍 Fetching security settings...');
+  
+  return executeAdminQuery(
+    async () => {
+      const { data, error } = await supabase
+        .from('security_settings')
+        .select('*');
+        
+      if (error) {
+        console.error('❌ Error fetching security settings:', error);
+        throw error;
+      }
       
-    if (error) throw error;
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching security settings:', error);
-    return [];
-  }
+      console.log(`✅ Found ${data?.length || 0} security settings`);
+      return { data: data || [], error: null };
+    },
+    []
+  );
 };
 
 // Update security setting
@@ -201,6 +244,20 @@ export const updateSecuritySetting = async (
 
 // Get login statistics
 export const getLoginStats = async (days = 7): Promise<LoginStats> => {
+  console.log('🔍 Fetching login stats for', days, 'days...');
+  
+  const isAdmin = await isCurrentUserAdmin();
+  if (!isAdmin) {
+    console.warn('⚠️ User is not admin, returning empty stats');
+    return {
+      totalLogins: 0,
+      successfulLogins: 0,
+      failedLogins: 0,
+      uniqueIPs: 0,
+      blockedIPs: 0
+    };
+  }
+
   try {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -211,7 +268,10 @@ export const getLoginStats = async (days = 7): Promise<LoginStats> => {
       .select('id', { count: 'exact' })
       .gte('attempted_at', startDate.toISOString());
       
-    if (totalError) throw totalError;
+    if (totalError) {
+      console.error('❌ Error fetching total logins:', totalError);
+      throw totalError;
+    }
     
     // Get successful logins in period
     const { data: successfulLoginsData, error: successError } = await supabase
@@ -220,7 +280,10 @@ export const getLoginStats = async (days = 7): Promise<LoginStats> => {
       .eq('success', true)
       .gte('attempted_at', startDate.toISOString());
       
-    if (successError) throw successError;
+    if (successError) {
+      console.error('❌ Error fetching successful logins:', successError);
+      throw successError;
+    }
     
     // Get failed logins in period
     const { data: failedLoginsData, error: failedError } = await supabase
@@ -229,7 +292,10 @@ export const getLoginStats = async (days = 7): Promise<LoginStats> => {
       .eq('success', false)
       .gte('attempted_at', startDate.toISOString());
       
-    if (failedError) throw failedError;
+    if (failedError) {
+      console.error('❌ Error fetching failed logins:', failedError);
+      throw failedError;
+    }
     
     // Get unique IPs
     const { data: uniqueIPsData, error: uniqueIPsError } = await supabase
@@ -237,7 +303,10 @@ export const getLoginStats = async (days = 7): Promise<LoginStats> => {
       .select('ip_address')
       .gte('attempted_at', startDate.toISOString());
       
-    if (uniqueIPsError) throw uniqueIPsError;
+    if (uniqueIPsError) {
+      console.error('❌ Error fetching unique IPs:', uniqueIPsError);
+      throw uniqueIPsError;
+    }
     
     const uniqueIPs = new Set(uniqueIPsData?.map(log => log.ip_address)).size;
     
@@ -246,17 +315,23 @@ export const getLoginStats = async (days = 7): Promise<LoginStats> => {
       .from('blocked_ips')
       .select('id', { count: 'exact' });
       
-    if (blockedError) throw blockedError;
+    if (blockedError) {
+      console.error('❌ Error fetching blocked IPs count:', blockedError);
+      throw blockedError;
+    }
     
-    return {
+    const stats = {
       totalLogins: totalLoginsData?.length || 0,
       successfulLogins: successfulLoginsData?.length || 0,
       failedLogins: failedLoginsData?.length || 0,
       uniqueIPs: uniqueIPs,
       blockedIPs: blockedIPsData?.length || 0
     };
+    
+    console.log('✅ Login stats:', stats);
+    return stats;
   } catch (error) {
-    console.error('Error getting login stats:', error);
+    console.error('❌ Error getting login stats:', error);
     return {
       totalLogins: 0,
       successfulLogins: 0,
@@ -269,6 +344,14 @@ export const getLoginStats = async (days = 7): Promise<LoginStats> => {
 
 // Get daily login stats for a chart
 export const getDailyLoginStats = async (days = 7): Promise<DailyLoginStat[]> => {
+  console.log('🔍 Fetching daily login stats for', days, 'days...');
+  
+  const isAdmin = await isCurrentUserAdmin();
+  if (!isAdmin) {
+    console.warn('⚠️ User is not admin, returning empty daily stats');
+    return [];
+  }
+
   try {
     const result: DailyLoginStat[] = [];
     const today = new Date();
@@ -283,46 +366,57 @@ export const getDailyLoginStats = async (days = 7): Promise<DailyLoginStat[]> =>
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
       
-      // Get total logs for this day
-      const { data: totalLogs, error: totalError } = await supabase
-        .from('login_logs')
-        .select('id', { count: 'exact' })
-        .gte('attempted_at', startOfDay.toISOString())
-        .lte('attempted_at', endOfDay.toISOString());
+      try {
+        // Get total logs for this day
+        const { data: totalLogs, error: totalError } = await supabase
+          .from('login_logs')
+          .select('id', { count: 'exact' })
+          .gte('attempted_at', startOfDay.toISOString())
+          .lte('attempted_at', endOfDay.toISOString());
+          
+        if (totalError) throw totalError;
         
-      if (totalError) throw totalError;
-      
-      // Get successful logs for this day
-      const { data: successLogs, error: successError } = await supabase
-        .from('login_logs')
-        .select('id', { count: 'exact' })
-        .eq('success', true)
-        .gte('attempted_at', startOfDay.toISOString())
-        .lte('attempted_at', endOfDay.toISOString());
+        // Get successful logs for this day
+        const { data: successLogs, error: successError } = await supabase
+          .from('login_logs')
+          .select('id', { count: 'exact' })
+          .eq('success', true)
+          .gte('attempted_at', startOfDay.toISOString())
+          .lte('attempted_at', endOfDay.toISOString());
+          
+        if (successError) throw successError;
         
-      if (successError) throw successError;
-      
-      // Get failed logs for this day
-      const { data: failedLogs, error: failedError } = await supabase
-        .from('login_logs')
-        .select('id', { count: 'exact' })
-        .eq('success', false)
-        .gte('attempted_at', startOfDay.toISOString())
-        .lte('attempted_at', endOfDay.toISOString());
+        // Get failed logs for this day
+        const { data: failedLogs, error: failedError } = await supabase
+          .from('login_logs')
+          .select('id', { count: 'exact' })
+          .eq('success', false)
+          .gte('attempted_at', startOfDay.toISOString())
+          .lte('attempted_at', endOfDay.toISOString());
+          
+        if (failedError) throw failedError;
         
-      if (failedError) throw failedError;
-      
-      result.push({
-        date: date.toISOString().split('T')[0],
-        total: totalLogs?.length || 0,
-        successful: successLogs?.length || 0,
-        failed: failedLogs?.length || 0
-      });
+        result.push({
+          date: date.toISOString().split('T')[0],
+          total: totalLogs?.length || 0,
+          successful: successLogs?.length || 0,
+          failed: failedLogs?.length || 0
+        });
+      } catch (dayError) {
+        console.warn(`⚠️ Error getting stats for ${date.toDateString()}:`, dayError);
+        result.push({
+          date: date.toISOString().split('T')[0],
+          total: 0,
+          successful: 0,
+          failed: 0
+        });
+      }
     }
     
+    console.log('✅ Daily login stats:', result);
     return result;
   } catch (error) {
-    console.error('Error getting daily login stats:', error);
+    console.error('❌ Error getting daily login stats:', error);
     return [];
   }
 };
