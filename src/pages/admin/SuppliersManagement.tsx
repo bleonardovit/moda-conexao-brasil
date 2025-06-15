@@ -9,14 +9,16 @@ import { AdminSupplierFilters } from '@/components/admin/AdminSupplierFilters';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { AdminBulkOperations } from '@/components/admin/AdminBulkOperations';
 import { SuppliersTable } from '@/components/admin/SuppliersTable';
+import { SupplierFormModal } from '@/components/admin/SupplierFormModal';
 import { ConfirmDeleteDialog } from '@/components/admin/ConfirmDeleteDialog';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import type { Supplier } from '@/types';
 
 export default function SuppliersManagement() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<Supplier[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const {
     suppliers,
@@ -71,6 +73,11 @@ export default function SuppliersManagement() {
     }
   };
 
+  const handleAddSuccess = () => {
+    refetch();
+    setIsAddModalOpen(false);
+  };
+
   return (
     <AdminLayout>
       <Helmet>
@@ -80,9 +87,15 @@ export default function SuppliersManagement() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Gerenciar Fornecedores</h1>
-          <Link to="/admin/suppliers/bulk-upload">
-            <Button>Importar Fornecedores</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsAddModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Fornecedor
+            </Button>
+            <Link to="/admin/suppliers/bulk-upload">
+              <Button variant="outline">Importar Fornecedores</Button>
+            </Link>
+          </div>
         </div>
 
         <AdminSupplierFilters
@@ -135,6 +148,7 @@ export default function SuppliersManagement() {
                   onToggleVisibility={handleToggleVisibility}
                   onToggleFeatured={handleToggleFeatured}
                   onDeleteSupplier={handleDeleteClick}
+                  onRefresh={refetch}
                 />
 
                 <AdminPagination
@@ -151,6 +165,13 @@ export default function SuppliersManagement() {
           </CardContent>
         </Card>
       </div>
+
+      <SupplierFormModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        supplier={null}
+        onSuccess={handleAddSuccess}
+      />
 
       <ConfirmDeleteDialog
         open={!!supplierToDelete}

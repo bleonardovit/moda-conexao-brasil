@@ -13,6 +13,7 @@ interface SuppliersTableProps {
   onToggleVisibility: (supplier: Supplier) => void;
   onToggleFeatured: (supplier: Supplier) => void;
   onDeleteSupplier: (supplier: Supplier) => void;
+  onRefresh: () => void;
 }
 
 export function SuppliersTable({
@@ -22,7 +23,8 @@ export function SuppliersTable({
   onSelectSupplier,
   onToggleVisibility,
   onToggleFeatured,
-  onDeleteSupplier
+  onDeleteSupplier,
+  onRefresh
 }: SuppliersTableProps) {
   const selectAllCheckboxRef = useRef<HTMLButtonElement>(null);
 
@@ -72,6 +74,7 @@ export function SuppliersTable({
             onToggleVisibility={onToggleVisibility}
             onToggleFeatured={onToggleFeatured}
             onDelete={onDeleteSupplier}
+            onRefresh={onRefresh}
           />
         ))}
       </TableBody>
