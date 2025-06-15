@@ -1,6 +1,6 @@
-
 import React, { useRef, useEffect, useCallback } from "react";
-import { SupplierCard } from "@/components/suppliers/SupplierCard";
+import { OptimizedSupplierCard } from "./OptimizedSupplierCard";
+import { SupplierErrorBoundary } from "@/components/error-boundaries";
 import type { Supplier } from "@/types";
 
 interface SupplierListVirtualizedProps {
@@ -57,15 +57,16 @@ export const SupplierListVirtualized: React.FC<SupplierListVirtualizedProps> = (
   return (
     <div className="space-y-4">
       {suppliers.map(supplier => (
-        <SupplierCard
-          key={supplier.id}
-          supplier={supplier}
-          isFavorite={isFavorite}
-          onToggleFavorite={onToggleFavorite}
-          getCategoryName={getCategoryName}
-          getCategoryStyle={getCategoryStyle}
-          formatAvgPrice={formatAvgPrice}
-        />
+        <SupplierErrorBoundary key={supplier.id}>
+          <OptimizedSupplierCard
+            supplier={supplier}
+            isFavorite={isFavorite}
+            onToggleFavorite={onToggleFavorite}
+            getCategoryName={getCategoryName}
+            getCategoryStyle={getCategoryStyle}
+            formatAvgPrice={formatAvgPrice}
+          />
+        </SupplierErrorBoundary>
       ))}
       <div ref={loaderRef} className="h-4" />
       {isLoading && (

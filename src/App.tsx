@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +9,8 @@ import { TrackingScripts } from "@/components/tracking/TrackingScripts";
 import { SitemapGenerator } from "./components/sitemap/SitemapGenerator";
 import { AdminRouteGuard } from "./components/auth/AdminRouteGuard";
 import { AuthProvider } from "./hooks/useAuth";
+import { GlobalErrorBoundary, QueryErrorBoundary } from "@/components/error-boundaries";
+import { logger } from "@/utils/logger";
 
 // Import pages
 import Index from "./pages/Index";
@@ -56,93 +57,122 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 // Import performance page
 import PerformanceMonitor from "./pages/performance/PerformanceMonitor";
 
-const queryClient = new QueryClient();
+// Optimized QueryClient configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes
+      retry: (failureCount, error) => {
+        // Don't retry on UUID errors
+        if (error?.message?.includes('invalid input syntax for type uuid')) {
+          logger.error('UUID error detected, not retrying:', error);
+          return false;
+        }
+        return failureCount < 3;
+      },
+    },
+  },
+});
+
+// Global error handler for unhandled errors
+const handleGlobalError = (error: Error, errorInfo: React.ErrorInfo) => {
+  logger.error('Global unhandled error:', {
+    error: error.message,
+    stack: error.stack,
+    errorInfo
+  });
+};
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <TooltipProvider>
-        <GlobalSEO />
-        <TrackingScripts />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              {/* Main routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/landing" element={<LandingPage />} />
-              <Route path="/landing-test" element={<LandingPageTest />} />
-              
-              {/* Sitemap route */}
-              <Route path="/sitemap.xml" element={<SitemapGenerator />} />
-              
-              {/* Pricing Route */}
-              <Route path="/pricing" element={<SelectPlan />} />
-              
-              {/* Auth routes */}
-              <Route path="/auth/login" element={<Login />} />
-              <Route path="/auth/register" element={<Register />} />
-              <Route path="/auth/select-plan" element={<SelectPlan />} />
-              <Route path="/auth/payment" element={<Payment />} />
-              <Route path="/auth/reset-password" element={<ResetPassword />} />
-              <Route path="/auth/reset-confirmation" element={<ResetConfirmation />} />
-              
-              {/* Profile routes */}
-              <Route path="/profile" element={<Profile />} />
-              
-              {/* Suppliers routes */}
-              <Route path="/suppliers" element={<SuppliersList />} />
-              <Route path="/suppliers/:id" element={<SupplierDetail />} />
-              
-              {/* Favorites routes */}
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/favorites/list" element={<FavoritesList />} />
-              
-              {/* Articles routes */}
-              <Route path="/articles" element={<ArticlesPage />} />
-              <Route path="/articles/:id" element={<ArticleDetailPage />} />
-              
-              {/* Search routes */}
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/search/limited" element={<LimitedSearch />} />
-              
-              {/* Notifications routes */}
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/notifications/:id" element={<NotificationDetailPage />} />
-              
-              {/* Legal routes */}
-              <Route path="/legal/terms" element={<TermsOfService />} />
-              <Route path="/legal/privacy" element={<PrivacyPolicy />} />
-              <Route path="/legal/cookies" element={<CookiePolicy />} />
-              
-              {/* Admin routes */}
-              <Route element={<AdminRouteGuard />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/users" element={<UsersManagement />} />
-                <Route path="/admin/suppliers" element={<SuppliersManagement />} />
-                <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
-                <Route path="/admin/articles" element={<ArticlesManagement />} />
-                <Route path="/admin/reviews-moderation" element={<ReviewsModeration />} />
-                <Route path="/admin/notifications" element={<NotificationsManagement />} />
-                <Route path="/admin/seo" element={<SEOManagement />} />
-                <Route path="/admin/tracking-settings" element={<TrackingSettings />} />
-                <Route path="/admin/security-monitoring" element={<SecurityMonitoring />} />
-                <Route path="/admin/reports" element={<Reports />} />
-              </Route>
-              
-              {/* Performance route */}
-              <Route path="/performance" element={<PerformanceMonitor />} />
-              
-              {/* 404 route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <GlobalErrorBoundary onError={handleGlobalError}>
+    <QueryClientProvider client={queryClient}>
+      <QueryErrorBoundary>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <TooltipProvider>
+            <GlobalSEO />
+            <TrackingScripts />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AuthProvider>
+                <Routes>
+                  {/* Main routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/home" element={<Home />} />
+                  <Route path="/landing" element={<LandingPage />} />
+                  <Route path="/landing-test" element={<LandingPageTest />} />
+                  
+                  {/* Sitemap route */}
+                  <Route path="/sitemap.xml" element={<SitemapGenerator />} />
+                  
+                  {/* Pricing Route */}
+                  <Route path="/pricing" element={<SelectPlan />} />
+                  
+                  {/* Auth routes */}
+                  <Route path="/auth/login" element={<Login />} />
+                  <Route path="/auth/register" element={<Register />} />
+                  <Route path="/auth/select-plan" element={<SelectPlan />} />
+                  <Route path="/auth/payment" element={<Payment />} />
+                  <Route path="/auth/reset-password" element={<ResetPassword />} />
+                  <Route path="/auth/reset-confirmation" element={<ResetConfirmation />} />
+                  
+                  {/* Profile routes */}
+                  <Route path="/profile" element={<Profile />} />
+                  
+                  {/* Suppliers routes */}
+                  <Route path="/suppliers" element={<SuppliersList />} />
+                  <Route path="/suppliers/:id" element={<SupplierDetail />} />
+                  
+                  {/* Favorites routes */}
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="/favorites/list" element={<FavoritesList />} />
+                  
+                  {/* Articles routes */}
+                  <Route path="/articles" element={<ArticlesPage />} />
+                  <Route path="/articles/:id" element={<ArticleDetailPage />} />
+                  
+                  {/* Search routes */}
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/search/limited" element={<LimitedSearch />} />
+                  
+                  {/* Notifications routes */}
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/notifications/:id" element={<NotificationDetailPage />} />
+                  
+                  {/* Legal routes */}
+                  <Route path="/legal/terms" element={<TermsOfService />} />
+                  <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/legal/cookies" element={<CookiePolicy />} />
+                  
+                  {/* Admin routes */}
+                  <Route element={<AdminRouteGuard />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/users" element={<UsersManagement />} />
+                    <Route path="/admin/suppliers" element={<SuppliersManagement />} />
+                    <Route path="/admin/suppliers/bulk-upload" element={<SuppliersBulkUpload />} />
+                    <Route path="/admin/articles" element={<ArticlesManagement />} />
+                    <Route path="/admin/reviews-moderation" element={<ReviewsModeration />} />
+                    <Route path="/admin/notifications" element={<NotificationsManagement />} />
+                    <Route path="/admin/seo" element={<SEOManagement />} />
+                    <Route path="/admin/tracking-settings" element={<TrackingSettings />} />
+                    <Route path="/admin/security-monitoring" element={<SecurityMonitoring />} />
+                    <Route path="/admin/reports" element={<Reports />} />
+                  </Route>
+                  
+                  {/* Performance route */}
+                  <Route path="/performance" element={<PerformanceMonitor />} />
+                  
+                  {/* 404 route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AuthProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryErrorBoundary>
+    </QueryClientProvider>
+  </GlobalErrorBoundary>
 );
 
 export default App;
