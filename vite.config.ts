@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => ({
       open: true,
       gzipSize: true,
       brotliSize: true,
+      template: 'treemap', // Use treemap for better visualization
     }),
   ].filter(Boolean),
   resolve: {
@@ -32,26 +33,41 @@ export default defineConfig(({ mode }) => ({
     // Optimize build performance
     target: 'esnext',
     minify: 'esbuild',
+    sourcemap: mode === 'development', // Only in dev
     rollupOptions: {
       output: {
         manualChunks: {
-          // Vendor chunk for React and related libraries
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          // Core vendor chunk
+          vendor: ['react', 'react-dom'],
+          // Router chunk
+          router: ['react-router-dom'],
           // UI components chunk
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-toast'],
+          ui: [
+            '@radix-ui/react-dialog', 
+            '@radix-ui/react-dropdown-menu', 
+            '@radix-ui/react-toast',
+            '@radix-ui/react-select',
+            '@radix-ui/react-checkbox'
+          ],
           // Query and state management
           query: ['@tanstack/react-query'],
+          // Admin pages chunk (lazy loaded)
+          'admin-pages': [
+            // These will be in separate chunks due to lazy loading
+          ],
           // Utilities
           utils: ['clsx', 'tailwind-merge', 'date-fns'],
-          // Charts and visualization
+          // Charts and visualization (only loaded when needed)
           charts: ['recharts'],
           // Supabase
           supabase: ['@supabase/supabase-js'],
+          // Icons
+          icons: ['lucide-react'],
         },
       },
     },
     // Performance budgets
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500, // Reduced for better performance
   },
   // Optimize dependencies
   optimizeDeps: {
@@ -63,5 +79,14 @@ export default defineConfig(({ mode }) => ({
       '@supabase/supabase-js',
       'lucide-react',
     ],
+    exclude: [
+      // Exclude heavy dependencies that should be lazy loaded
+      'recharts'
+    ]
+  },
+  // Performance optimizations
+  esbuild: {
+    // Drop console logs in production
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
   },
 }));
