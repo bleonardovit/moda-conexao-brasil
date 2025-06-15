@@ -5,41 +5,28 @@ import { useFavorites } from '@/hooks/use-favorites';
 import { TrialBanner } from '@/components/trial/TrialBanner';
 import { useToast } from "@/hooks/use-toast";
 import type { Supplier, Category } from '@/types';
-import { getSuppliers } from '@/services/supplierService';
 import { getCategories } from '@/services/categoryService';
 import { useAuth } from '@/hooks/useAuth';
 import { useTrialStatus } from '@/hooks/use-trial-status';
+import { getDistinctCitiesOptimized, getDistinctStatesOptimized } from '@/services/supplier/optimizedFilters';
 
 import { SupplierSearchAndActions } from '@/components/suppliers/SupplierSearchAndActions';
 import { SupplierFilters } from '@/components/suppliers/SupplierFilters';
-import { NoSuppliersFound } from '@/components/suppliers/NoSuppliersFound';
 import { useInfiniteSuppliers } from '@/hooks/useInfiniteSuppliers';
 import { SupplierListVirtualized } from '@/components/suppliers/SupplierListVirtualized';
 
-const PRICE_RANGES = [{
-  label: 'Todos',
-  value: 'all'
-}, {
-  label: 'Baixo',
-  value: 'low'
-}, {
-  label: 'Médio',
-  value: 'medium'
-}, {
-  label: 'Alto',
-  value: 'high'
-}];
+const PRICE_RANGES = [
+  { label: 'Todos', value: 'all' },
+  { label: 'Baixo', value: 'low' },
+  { label: 'Médio', value: 'medium' },
+  { label: 'Alto', value: 'high' }
+];
 
-const CNPJ_OPTIONS = [{
-  label: 'Todos',
-  value: 'all'
-}, {
-  label: 'Exige CNPJ',
-  value: 'true'
-}, {
-  label: 'Não exige CNPJ',
-  value: 'false'
-}];
+const CNPJ_OPTIONS = [
+  { label: 'Todos', value: 'all' },
+  { label: 'Exige CNPJ', value: 'true' },
+  { label: 'Não exige CNPJ', value: 'false' }
+];
 
 export default function SuppliersList() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,112 +37,80 @@ export default function SuppliersList() {
   const [cnpjFilter, setCnpjFilter] = useState('all');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const {
-    favorites,
-    toggleFavorite,
-    isFavorite
-  } = useFavorites();
-  const {
-    toast
-  } = useToast();
+  
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const { toast } = useToast();
   const { user } = useAuth();
   const { isInTrial, allowedSupplierIds } = useTrialStatus();
 
-  // Corrigido: variáveis para loading só dos filtros
+  // Estados para opções de filtro
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryOptions, setCategoryOptions] = useState<{
-    label: string;
-    value: string;
-  }[]>([{
-    label: 'Todas as Categorias',
-    value: 'all'
-  }]);
-  const [stateOptions, setStateOptions] = useState<{
-    label: string;
-    value: string;
-  }[]>([{
-    label: 'Todos os Estados',
-    value: 'all'
-  }]);
-  const [cityOptions, setCityOptions] = useState<{
-    label: string;
-    value: string;
-  }[]>([{
-    label: 'Todas as Cidades',
-    value: 'all'
-  }]);
+  const [categoryOptions, setCategoryOptions] = useState<{ label: string; value: string; }[]>([
+    { label: 'Todas as Categorias', value: 'all' }
+  ]);
+  const [stateOptions, setStateOptions] = useState<{ label: string; value: string; }[]>([
+    { label: 'Todos os Estados', value: 'all' }
+  ]);
+  const [cityOptions, setCityOptions] = useState<{ label: string; value: string; }[]>([
+    { label: 'Todas as Cidades', value: 'all' }
+  ]);
 
-  // Correção do carregamento dos filtros
+  // Carregar opções de filtro usando as funções otimizadas
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchFilterOptions = async () => {
       try {
         setFiltersLoading(true);
-        const [suppliersData, categoriesData] = await Promise.all([
-          getSuppliers(user?.id), // getSuppliers já filtra fornecedores ocultos
-          getCategories()
+        const [categoriesData, statesData, citiesData] = await Promise.all([
+          getCategories(),
+          getDistinctStatesOptimized(),
+          getDistinctCitiesOptimized()
         ]);
 
         setCategories(categoriesData);
-        setCategoryOptions([{
-          label: 'Todas as Categorias',
-          value: 'all'
-        },
-        ...categoriesData.map(cat => ({
-          label: cat.name,
-          value: cat.id
-        }))]);
+        setCategoryOptions([
+          { label: 'Todas as Categorias', value: 'all' },
+          ...categoriesData.map(cat => ({ label: cat.name, value: cat.id }))
+        ]);
 
-        const uniqueStates = Array.from(new Set(suppliersData.map(s => s.state))).filter(Boolean);
-        setStateOptions([{
-          label: 'Todos os Estados',
-          value: 'all'
-        }, ...uniqueStates.map(st => ({
-          label: st,
-          value: st
-        }))]);
+        setStateOptions([
+          { label: 'Todos os Estados', value: 'all' },
+          ...statesData.map(state => ({ label: state, value: state }))
+        ]);
 
-        const uniqueCities = Array.from(new Set(suppliersData.map(s => s.city))).filter(Boolean);
-        setCityOptions([{
-          label: 'Todas as Cidades',
-          value: 'all'
-        }, ...uniqueCities.map(city => ({
-          label: city,
-          value: city
-        }))]);
+        setCityOptions([
+          { label: 'Todas as Cidades', value: 'all' },
+          ...citiesData.map(city => ({ label: city, value: city }))
+        ]);
       } catch (error) {
-        console.error('Error fetching suppliers:', error);
+        console.error('Error fetching filter options:', error);
         toast({
-          title: "Erro ao carregar fornecedores",
-          description: "Não foi possível carregar a lista de fornecedores. Por favor, tente novamente mais tarde.",
+          title: "Erro ao carregar filtros",
+          description: "Não foi possível carregar as opções de filtros. Por favor, tente novamente mais tarde.",
           variant: "destructive"
         });
       } finally {
         setFiltersLoading(false);
       }
     };
-    fetchData();
-  }, [toast, user?.id]);
+
+    fetchFilterOptions();
+  }, [toast]);
 
   const formatAvgPrice = (price: string) => {
     switch (price) {
-      case 'low':
-        return 'Baixo';
-      case 'medium':
-        return 'Médio';
-      case 'high':
-        return 'Alto';
-      default:
-        return 'Não informado';
+      case 'low': return 'Baixo';
+      case 'medium': return 'Médio';
+      case 'high': return 'Alto';
+      default: return 'Não informado';
     }
   };
 
   const handleToggleFavorite = (supplier: Supplier, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // We need to check the state *before* toggling to determine the correct message
     const currentlyFavorite = isFavorite(supplier.id);
-    toggleFavorite(supplier.id); // This will change the favorite state
+    toggleFavorite(supplier.id);
     const action = currentlyFavorite ? 'removido dos' : 'adicionado aos';
     toast({
       title: currentlyFavorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
@@ -190,7 +145,7 @@ export default function SuppliersList() {
     setShowOnlyFavorites(false);
   };
 
-  // Novo hook de paginação virtualizada
+  // Hook otimizado de paginação
   const {
     data,
     isLoading,
@@ -210,15 +165,14 @@ export default function SuppliersList() {
     }
   });
 
-  // Flat suppliers list for display
-  // data.pages será do tipo { items: Supplier[]; hasMore: boolean }[]
+  // Suppliers paginados vindos do backend
   const paginatedSuppliers = data ? data.pages.flatMap((page) => page.items) : [];
 
-  if (filtersLoading || isLoading) {
+  if (filtersLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando fornecedores...</p>
+          <p className="text-muted-foreground">Carregando filtros...</p>
         </div>
       </AppLayout>
     );
