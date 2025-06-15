@@ -2,35 +2,43 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * useLazyImage carrega a imagem apenas quando aparece na tela.
- * Retorna o ref, src (ou undefined até carregar), e estado loaded.
+ * useLazyImage - para lazy loading de imagens secundárias (NÃO para a primeira imagem visual do carousel)
+ * Retorna { ref, src, loaded, setLoaded }
  */
-export function useLazyImage(actualSrc: string | undefined, placeholder = '/placeholder.svg') {
+export function useLazyImage(actualSrc: string | undefined, placeholder = '/placeholder.svg', options?: { loadImmediately?: boolean }) {
   const ref = useRef<HTMLImageElement | null>(null);
-  const [src, setSrc] = useState<string | undefined>(undefined);
+  const [src, setSrc] = useState<string | undefined>(
+    options?.loadImmediately ? (actualSrc || placeholder) : undefined
+  );
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let observer: IntersectionObserver | null = null;
     let didCancel = false;
+
+    // Se for loadImmediately (primeira imagem), já força src e fim
+    if (options?.loadImmediately) {
+      setSrc(actualSrc || placeholder);
+      return () => {};
+    }
+
     const img = ref.current;
 
     if (!img) return;
 
-    // Reset to placeholder always at start
-    setSrc(undefined);
     setLoaded(false);
 
     if ("IntersectionObserver" in window) {
-      observer = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting && !didCancel) {
-          setSrc(actualSrc || placeholder);
-        }
-      }, { threshold: 0.1 });
-
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting && !didCancel) {
+            setSrc(actualSrc || placeholder);
+          }
+        },
+        { threshold: 0.15 }
+      );
       observer.observe(img);
     } else {
-      // fallback sem IntersectionObserver
       setSrc(actualSrc || placeholder);
       setLoaded(true);
     }
@@ -39,7 +47,7 @@ export function useLazyImage(actualSrc: string | undefined, placeholder = '/plac
       didCancel = true;
       observer && observer.disconnect();
     };
-  }, [actualSrc, placeholder]);
+  }, [actualSrc, placeholder, options?.loadImmediately]);
 
   return { ref, src: src ?? placeholder, loaded, setLoaded };
 }

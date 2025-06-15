@@ -34,12 +34,16 @@ export function SupplierListItem({
   const { hasExpired, isLoading, isVerified } = useTrialStatus();
   const isMobile = useIsMobile();
 
-  // For lazy loading images
+  // Correção/novos hooks de lazy loading:
   const images = supplier.images && supplier.images.length > 0 ? supplier.images : ['/placeholder.svg'];
   const hasMultipleImages = images.length > 1;
 
-  // Lazy loading para primeira imagem
-  const { ref: imgLazyRef, src: imgLazySrc, loaded: imgLoaded, setLoaded: setImgLoaded } = useLazyImage(images[0]);
+  // Para a primeira imagem: sempre carrega imediatamente (sem lazy loading)
+  const { ref: firstImgRef, src: firstImgSrc, loaded: firstImgLoaded, setLoaded: setFirstImgLoaded } = useLazyImage(
+    images[0],
+    '/placeholder.svg',
+    { loadImmediately: true }
+  );
 
   if (supplier.isLockedForTrial) {
     return <LockedSupplierCard key={supplier.id} />;
@@ -107,38 +111,54 @@ export function SupplierListItem({
     );
   }
 
-  // Main render (fornecedor normal, não-locked e não-expirado)
+  // Main render
   return (
     <Card key={supplier.id} className="overflow-hidden card-hover">
       <div className={isMobile ? "flex flex-col" : "sm:flex"}>
         <div className={isMobile ? "w-full relative" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent relative"} style={isMobile ? { width: '336px', height: '400px', overflow: 'hidden' } : {}}>
           <Carousel className={isMobile ? "h-full" : "w-full h-full"} style={isMobile ? { width: '336px', height: '400px' } : {}}>
             <CarouselContent>
+              {/* Primeira imagem - preload sem lazy */}
               <CarouselItem key={0}>
                 <div className="w-full h-full relative flex items-center justify-center bg-muted">
-                  {!imgLoaded && (
+                  {!firstImgLoaded && (
                     <Skeleton className="absolute w-full h-full" />
                   )}
                   <img
-                    ref={imgLazyRef}
-                    src={imgLazySrc}
+                    ref={firstImgRef}
+                    src={firstImgSrc}
                     alt={`${supplier.name} - Imagem 1`}
-                    className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-                    onLoad={() => setImgLoaded(true)}
+                    className={`w-full h-full object-cover transition-opacity duration-300 ${firstImgLoaded ? "opacity-100" : "opacity-0"}`}
+                    onLoad={() => setFirstImgLoaded(true)}
+                    onError={() => setFirstImgLoaded(true)}
+                    loading="eager"
                   />
                 </div>
               </CarouselItem>
+              {/* Demais imagens - lazy loading! */}
               {hasMultipleImages && (
                 <>
-                  {images.slice(1).map((image, index) => (
-                    <CarouselItem key={index + 1}>
-                      <img
-                        src={image}
-                        alt={`${supplier.name} - Imagem ${index + 2}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </CarouselItem>
-                  ))}
+                  {images.slice(1).map((image, index) => {
+                    const { ref, src, loaded, setLoaded } = useLazyImage(image, '/placeholder.svg');
+                    return (
+                      <CarouselItem key={index + 1}>
+                        <div className="w-full h-full relative flex items-center justify-center bg-muted">
+                          {!loaded && (
+                            <Skeleton className="absolute w-full h-full" />
+                          )}
+                          <img
+                            ref={ref}
+                            src={src}
+                            alt={`${supplier.name} - Imagem ${index + 2}`}
+                            className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+                            onLoad={() => setLoaded(true)}
+                            onError={() => setLoaded(true)}
+                            loading="lazy"
+                          />
+                        </div>
+                      </CarouselItem>
+                    );
+                  })}
                 </>
               )}
             </CarouselContent>
