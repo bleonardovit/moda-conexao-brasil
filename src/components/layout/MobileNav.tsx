@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Heart, User, LayoutDashboard, Users, FileText, Book, LogOut } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -6,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export function MobileNav() {
   const location = useLocation();
@@ -13,9 +13,33 @@ export function MobileNav() {
   const { logout } = useAuth();
   
   useEffect(() => {
-    // Check user role from session storage
-    const userRole = sessionStorage.getItem('user_role');
-    setIsAdmin(userRole === 'admin');
+    // SECURITY: Use standardized admin role checking function
+    const checkAdminRole = async () => {
+      try {
+        const { data, error } = await supabase.rpc('is_current_user_admin');
+        if (error) {
+          console.error('Error checking admin role:', error);
+          setIsAdmin(false);
+          return;
+        }
+        setIsAdmin(data === true);
+      } catch (error) {
+        console.error('Error in admin role check:', error);
+        setIsAdmin(false);
+      }
+    };
+
+    // Check on component mount
+    checkAdminRole();
+
+    // Setup listener for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAdminRole();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Define menu items for regular users
