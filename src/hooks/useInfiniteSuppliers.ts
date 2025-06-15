@@ -69,6 +69,16 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
         filtered = filtered.filter(s => s.requires_cnpj === (filters.cnpj === "true"));
       }
 
+      // Priorizar fornecedores desbloqueados (não locked) primeiro
+      filtered.sort((a, b) => {
+        // Se um está bloqueado e o outro não, o desbloqueado vem primeiro
+        if (a.isLockedForTrial && !b.isLockedForTrial) return 1;
+        if (!a.isLockedForTrial && b.isLockedForTrial) return -1;
+        
+        // Se ambos têm o mesmo status de bloqueio, manter ordem original (por created_at)
+        return 0;
+      });
+
       const start = Number(pageParam) * PAGE_SIZE;
       const end = start + PAGE_SIZE;
       const currentPage = filtered.slice(start, end);
@@ -85,6 +95,6 @@ export function useInfiniteSuppliers({ userId, filters }: UseInfiniteSuppliersPr
       return undefined;
     },
     staleTime: 1000 * 60 * 5,
-    initialPageParam: 0, // ADICIONADO conforme necessário pelo React Query v5+
+    initialPageParam: 0,
   });
 }
