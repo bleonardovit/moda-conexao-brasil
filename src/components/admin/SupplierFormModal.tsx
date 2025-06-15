@@ -17,7 +17,7 @@ import { Loader2, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { brazilianStates } from '@/data/brazilian-states';
-import type { Supplier } from '@/types';
+import type { Supplier, PaymentMethod, ShippingMethod } from '@/types';
 
 interface SupplierFormModalProps {
   open: boolean;
@@ -152,26 +152,26 @@ export function SupplierFormModal({ open, onClose, supplier, onSuccess }: Suppli
     }
   };
 
-  const addPaymentMethod = (method: string) => {
+  const addPaymentMethod = (method: PaymentMethod) => {
     const current = form.getValues('payment_methods') || [];
     if (!current.includes(method)) {
       form.setValue('payment_methods', [...current, method]);
     }
   };
 
-  const removePaymentMethod = (method: string) => {
+  const removePaymentMethod = (method: PaymentMethod) => {
     const current = form.getValues('payment_methods') || [];
     form.setValue('payment_methods', current.filter(m => m !== method));
   };
 
-  const addShippingMethod = (method: string) => {
+  const addShippingMethod = (method: ShippingMethod) => {
     const current = form.getValues('shipping_methods') || [];
     if (!current.includes(method)) {
       form.setValue('shipping_methods', [...current, method]);
     }
   };
 
-  const removeShippingMethod = (method: string) => {
+  const removeShippingMethod = (method: ShippingMethod) => {
     const current = form.getValues('shipping_methods') || [];
     form.setValue('shipping_methods', current.filter(m => m !== method));
   };
