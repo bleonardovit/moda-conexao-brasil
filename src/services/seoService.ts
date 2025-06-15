@@ -34,7 +34,6 @@ export const updateSEOSettings = async (
       .update({
         ...updates,
         updated_by: userId,
-        updated_at: new Date().toISOString()
       })
       .eq('id', id);
 
