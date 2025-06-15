@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SupplierImageProps {
   images: string[];
@@ -9,6 +10,7 @@ interface SupplierImageProps {
 }
 
 export const SupplierImage = memo(function SupplierImage({ images, supplierName }: SupplierImageProps) {
+  const isMobile = useIsMobile();
   const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,12 +44,17 @@ export const SupplierImage = memo(function SupplierImage({ images, supplierName 
     setLoadedImages(prev => ({ ...prev, [index]: true }));
   };
 
+  const containerStyle = isMobile 
+    ? { width: '336px', height: '400px' } 
+    : {};
+
   return (
     <div 
       ref={containerRef}
-      className="w-full h-48 bg-accent relative"
+      className={isMobile ? "w-full relative" : "sm:w-1/3 md:w-1/4 h-48 sm:h-auto bg-accent relative"} 
+      style={containerStyle}
     >
-      <Carousel className="w-full h-full">
+      <Carousel className={isMobile ? "h-full" : "w-full h-full"} style={containerStyle}>
         <CarouselContent>
           {displayImages.map((image, index) => (
             <CarouselItem key={index}>
@@ -73,13 +80,13 @@ export const SupplierImage = memo(function SupplierImage({ images, supplierName 
         </CarouselContent>
         {hasMultipleImages && (
           <>
-            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-8 w-8" />
-            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-8 w-8" />
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            <CarouselPrevious className="absolute left-0.5 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-5 w-5" />
+            <CarouselNext className="absolute right-0.5 top-1/2 -translate-y-1/2 bg-black/50 text-white border-none hover:bg-black/70 h-5 w-5" />
+            <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
               {displayImages.map((_, index) => (
                 <div
                   key={index}
-                  className="w-2 h-2 rounded-full bg-white/60"
+                  className="w-1 h-1 rounded-full bg-white/60"
                 />
               ))}
             </div>

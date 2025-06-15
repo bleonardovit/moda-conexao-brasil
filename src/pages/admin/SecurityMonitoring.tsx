@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ActiveSessionsTable } from '@/components/admin/security/ActiveSessionsTable';
@@ -9,9 +8,9 @@ import { SecuritySettings } from '@/components/admin/security/SecuritySettings';
 import { LoginStatsCards } from '@/components/admin/security/LoginStatsCards';
 import { LoginActivityChart } from '@/components/admin/security/LoginActivityChart';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, AlertCircle } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Shield } from 'lucide-react';
 import { Helmet } from 'react-helmet';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function SecurityMonitoring() {
   return (
