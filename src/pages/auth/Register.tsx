@@ -102,6 +102,7 @@ const Register = () => {
         email: values.email,
         password: values.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/select-plan`,
           data: {
             full_name: values.name,
             phone: values.phone,
@@ -115,9 +116,9 @@ const Register = () => {
         // Trial será iniciado automaticamente pelo trigger do banco
         toast({
           title: "Conta criada com sucesso!",
-          description: "Você receberá um email para confirmar seu cadastro."
+          description: "Enviamos um link de confirmação para o seu e-mail. Por favor, verifique sua caixa de entrada e spam."
         });
-        navigate("/auth/select-plan"); // Navigate to plan selection
+        navigate("/auth/login"); // Redireciona para o login para aguardar a confirmação
       } else {
         throw new Error("Não foi possível criar a conta. Verifique os dados ou tente novamente.");
       }
