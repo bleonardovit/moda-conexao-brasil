@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +35,7 @@ const getClientIP = async (): Promise<string> => {
 const checkIPBlocked = async (ip: string): Promise<boolean> => {
   try {
     // SECURITY: Check if IP is allowlisted first
-    if (isIPAllowlisted(ip)) {
+    if (await isIPAllowlisted(ip)) {
       return false;
     }
     

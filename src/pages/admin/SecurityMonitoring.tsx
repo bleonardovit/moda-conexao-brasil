@@ -1,9 +1,9 @@
-
 import React from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ActiveSessionsTable } from '@/components/admin/security/ActiveSessionsTable';
 import { LoginLogsTable } from '@/components/admin/security/LoginLogsTable';
 import { BlockedIPsTable } from '@/components/admin/security/BlockedIPsTable';
+import { AllowlistedIPsTable } from '@/components/admin/security/AllowlistedIPsTable';
 import { SecuritySettings } from '@/components/admin/security/SecuritySettings';
 import { LoginStatsCards } from '@/components/admin/security/LoginStatsCards';
 import { LoginActivityChart } from '@/components/admin/security/LoginActivityChart';
@@ -33,10 +33,11 @@ export default function SecurityMonitoring() {
       </div>
       
       <Tabs defaultValue="sessions" className="w-full">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
           <TabsTrigger value="sessions">Sessões Ativas</TabsTrigger>
           <TabsTrigger value="logs">Logs de Acesso</TabsTrigger>
           <TabsTrigger value="blocked">IPs Bloqueados</TabsTrigger>
+          <TabsTrigger value="allowlist">IPs Permitidos</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
         
@@ -52,6 +53,10 @@ export default function SecurityMonitoring() {
           <BlockedIPsTable />
         </TabsContent>
         
+        <TabsContent value="allowlist">
+          <AllowlistedIPsTable />
+        </TabsContent>
+
         <TabsContent value="settings">
           <SecuritySettings />
         </TabsContent>

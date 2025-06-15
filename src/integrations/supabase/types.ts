@@ -33,6 +33,41 @@ export type Database = {
         }
         Relationships: []
       }
+      allowlisted_ips: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          ip_address_or_cidr: string
+          is_active: boolean
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          ip_address_or_cidr: string
+          is_active?: boolean
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          ip_address_or_cidr?: string
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allowlisted_ips_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       article_categories: {
         Row: {
           color: string
@@ -728,6 +763,10 @@ export type Database = {
         Returns: boolean
       }
       is_ip_blocked: {
+        Args: { check_ip: string }
+        Returns: boolean
+      }
+      is_ip_in_allowlist: {
         Args: { check_ip: string }
         Returns: boolean
       }

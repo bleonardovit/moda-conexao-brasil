@@ -1,4 +1,3 @@
-
 // SECURITY: Enhanced IP Security Service
 // Provides secure IP detection with fallback methods and validation
 
@@ -122,18 +121,31 @@ const isValidIP = (ip: string): boolean => {
 };
 
 /**
- * SECURITY: Check if IP should be exempt from blocking (admin allowlist)
+ * SECURITY: Check if IP should be exempt from blocking by checking the database allowlist.
  */
-export const isIPAllowlisted = (ip: string): boolean => {
-  // Define trusted IP ranges for admin access
-  const allowlistedIPs = [
-    // Add your admin IP ranges here
-    // Example: '192.168.1.0/24', '10.0.0.0/8'
-  ];
+export const isIPAllowlisted = async (ip: string): Promise<boolean> => {
+  if (!ip || ip === 'unknown' || ip === '127.0.0.1') {
+    return false;
+  }
   
-  // For now, return false to maintain existing security
-  // This can be configured later by admins
-  return false;
+  try {
+    const { data, error } = await supabase.rpc('is_ip_in_allowlist', { check_ip: ip });
+    
+    if (error) {
+      console.error('Error checking IP allowlist:', error);
+      // Fail safe: if check fails, don't treat as allowlisted.
+      return false; 
+    }
+    
+    if (data === true) {
+        console.log(`SECURITY: IP ${ip} is on the allowlist.`);
+    }
+
+    return data === true;
+  } catch (error) {
+    console.error('Exception checking IP allowlist:', error);
+    return false;
+  }
 };
 
 /**

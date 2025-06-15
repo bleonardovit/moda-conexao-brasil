@@ -36,6 +36,16 @@ export interface SecuritySetting {
   updated_by: string | null;
 }
 
+export interface AllowlistedIP {
+  id: string;
+  ip_address_or_cidr: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  created_by: string | null;
+  created_by_email?: string;
+}
+
 export interface LoginStats {
   totalLogins: number;
   successfulLogins: number;
