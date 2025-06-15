@@ -9,6 +9,7 @@ import { useSuppliersListLogic } from '@/hooks/useSuppliersListLogic';
 import { useUnifiedPerformanceMonitor } from '@/hooks/useUnifiedPerformanceMonitor';
 import { useOptimizedCache } from '@/hooks/useOptimizedCache';
 import { useEffect } from 'react';
+import type { Supplier } from '@/types';
 
 // Componente de indicador de performance otimizado
 function OptimizedPerformanceIndicator() {
@@ -95,21 +96,21 @@ export function SuppliersListView() {
     
     return () => {
       const duration = performance.now() - startTime;
-      recordQuery('suppliers-filters-render', duration);
+      recordQuery('suppliers-filters-render', duration, true);
     };
-  }, [searchTerm, categoryFilter, stateFilter, cityFilter, priceFilter, cnpjFilter]);
+  }, [searchTerm, categoryFilter, stateFilter, cityFilter, priceFilter, cnpjFilter, recordQuery]);
 
   // Invalidar cache quando favoritos mudam
-  const handleToggleFavoriteOptimized = async (supplierId: string) => {
+  const handleToggleFavoriteOptimized = async (supplier: Supplier, e: React.MouseEvent) => {
     const startTime = performance.now();
     
     try {
-      await handleToggleFavorite(supplierId);
+      await handleToggleFavorite(supplier.id);
       invalidate('favorites');
       invalidate('suppliers');
       
       const duration = performance.now() - startTime;
-      recordQuery('toggle-favorite', duration);
+      recordQuery('toggle-favorite', duration, true);
     } catch (error) {
       const duration = performance.now() - startTime;
       recordQuery('toggle-favorite', duration, false, (error as Error).message);
@@ -125,7 +126,7 @@ export function SuppliersListView() {
     invalidate('suppliers');
     
     const duration = performance.now() - startTime;
-    recordQuery('clear-filters', duration);
+    recordQuery('clear-filters', duration, true);
   };
 
   if (filtersLoading) {
