@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,6 +26,75 @@ export function useFavorites() {
       : "A funcionalidade de favoritos não está disponível no seu plano atual. Considere fazer um upgrade.";
   }, [hasExpired]);
 
+  // Verificar se usuário atingiu o limite de favoritos
+  const checkFavoritesLimit = useCallback(async (): Promise<{ canAdd: boolean; message?: string }> => {
+    if (!isAuthenticated) {
+      // Para usuários não logados, usar limite local
+      if (favorites.length >= 5) {
+        return { 
+          canAdd: false, 
+          message: "Você atingiu o limite de 5 favoritos. Faça login ou assine para favoritos ilimitados." 
+        };
+      }
+      return { canAdd: true };
+    }
+
+    // Para usuários logados, verificar regras de acesso
+    try {
+      const { data: accessRules } = await supabase
+        .from('feature_access_rules')
+        .select('*')
+        .eq('feature_key', 'favorites')
+        .single();
+
+      if (!accessRules) {
+        return { canAdd: true }; // Se não há regras, permitir
+      }
+
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('subscription_status, trial_status')
+        .eq('id', user.id)
+        .single();
+
+      // Usuários com assinatura ativa têm acesso ilimitado
+      if (userProfile?.subscription_status === 'active') {
+        return { canAdd: true };
+      }
+
+      // Usuários em trial: verificar se há limite
+      if (userProfile?.trial_status === 'active') {
+        if (accessRules.trial_access_level === 'full') {
+          return { canAdd: true };
+        }
+        if (accessRules.trial_access_level === 'limited_count' && accessRules.trial_limit_value) {
+          if (favorites.length >= accessRules.trial_limit_value) {
+            return { 
+              canAdd: false, 
+              message: accessRules.trial_message_locked || "Você atingiu o limite de favoritos do seu trial." 
+            };
+          }
+        }
+        return { canAdd: true };
+      }
+
+      // Usuários não-assinantes
+      if (accessRules.non_subscriber_access_level === 'limited_count' && accessRules.non_subscriber_limit_value) {
+        if (favorites.length >= accessRules.non_subscriber_limit_value) {
+          return { 
+            canAdd: false, 
+            message: accessRules.non_subscriber_message_locked || "Você atingiu o limite de favoritos." 
+          };
+        }
+      }
+
+      return { canAdd: true };
+    } catch (error) {
+      console.error('Erro ao verificar limite de favoritos:', error);
+      return { canAdd: true }; // Em caso de erro, permitir para não bloquear
+    }
+  }, [favorites.length, isAuthenticated, user?.id]);
+
   // Carregar favoritos do banco de dados ou localStorage
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -32,8 +102,6 @@ export function useFavorites() {
 
       const canAccessFavorites = await isFeatureAllowed('favorites');
       if (!canAccessFavorites) {
-        // Se o usuário não pode acessar, limpa os favoritos locais e do estado.
-        // Não mostra toast aqui, pois a UI (FavoritesList) cuidará da mensagem.
         setFavorites([]);
         localStorage.removeItem('supplier-favorites');
         setIsLoading(false);
@@ -75,13 +143,13 @@ export function useFavorites() {
     };
     
     fetchFavorites();
-  }, [isAuthenticated, user?.id, toast, isFeatureAllowed, getAccessDeniedMessage]); // Removed getAccessDeniedMessage as it's not used here directly for toast
+  }, [isAuthenticated, user?.id, toast, isFeatureAllowed]);
 
   const addFavorite = async (supplierId: string) => {
     const canAccessFavorites = await isFeatureAllowed('favorites');
     if (!canAccessFavorites) {
       toast({
-        variant: "default", // Changed from "warning"
+        variant: "default",
         title: "Acesso Negado",
         description: getAccessDeniedMessage()
       });
@@ -89,6 +157,17 @@ export function useFavorites() {
     }
 
     if (favorites.includes(supplierId)) return;
+
+    // Verificar limite antes de adicionar
+    const limitCheck = await checkFavoritesLimit();
+    if (!limitCheck.canAdd) {
+      toast({
+        variant: "default",
+        title: "Limite Atingido",
+        description: limitCheck.message
+      });
+      return;
+    }
     
     setFavorites(prev => [...prev, supplierId]);
     localStorage.setItem('supplier-favorites', JSON.stringify([...favorites, supplierId]));
@@ -123,7 +202,7 @@ export function useFavorites() {
     const canAccessFavorites = await isFeatureAllowed('favorites');
     if (!canAccessFavorites) {
       toast({
-        variant: "default", // Changed from "warning"
+        variant: "default",
         title: "Acesso Negado",
         description: getAccessDeniedMessage()
       });
@@ -147,8 +226,8 @@ export function useFavorites() {
         }
       } catch (error) {
         console.error('Erro ao remover favorito:', error);
-        setFavorites([...favorites]); // Revert to original favorites before this attempt
-        localStorage.setItem('supplier-favorites', JSON.stringify(favorites)); // Revert localStorage
+        setFavorites([...favorites]);
+        localStorage.setItem('supplier-favorites', JSON.stringify(favorites));
         toast({
           variant: "destructive",
           title: "Erro ao remover favorito",
@@ -162,7 +241,7 @@ export function useFavorites() {
     const canAccessFavorites = await isFeatureAllowed('favorites');
     if (!canAccessFavorites) {
       toast({
-        variant: "default", // Changed from "warning"
+        variant: "default",
         title: "Acesso Negado",
         description: getAccessDeniedMessage()
       });

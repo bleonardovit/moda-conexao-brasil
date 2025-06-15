@@ -225,6 +225,7 @@ export type Database = {
           feature_key: string
           id: string
           non_subscriber_access_level: Database["public"]["Enums"]["feature_access_level_enum"]
+          non_subscriber_limit_value: number | null
           non_subscriber_message_locked: string | null
           trial_access_level: Database["public"]["Enums"]["feature_access_level_enum"]
           trial_limit_value: number | null
@@ -236,6 +237,7 @@ export type Database = {
           feature_key: string
           id?: string
           non_subscriber_access_level?: Database["public"]["Enums"]["feature_access_level_enum"]
+          non_subscriber_limit_value?: number | null
           non_subscriber_message_locked?: string | null
           trial_access_level?: Database["public"]["Enums"]["feature_access_level_enum"]
           trial_limit_value?: number | null
@@ -247,6 +249,7 @@ export type Database = {
           feature_key?: string
           id?: string
           non_subscriber_access_level?: Database["public"]["Enums"]["feature_access_level_enum"]
+          non_subscriber_limit_value?: number | null
           non_subscriber_message_locked?: string | null
           trial_access_level?: Database["public"]["Enums"]["feature_access_level_enum"]
           trial_limit_value?: number | null
