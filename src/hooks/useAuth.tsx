@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -548,7 +549,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/select-plan`,
           data: {
             full_name: fullName,
             phone: phone,
@@ -579,7 +579,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       toast({
         title: "Registro realizado com sucesso!",
-        description: "Seja bem-vindo(a)! Verifique seu e-mail para confirmar sua conta.",
+        description: "Seja bem-vindo(a) à Conexão Brasil! Verifique seu email para confirmar sua conta.",
       });
       
       return true;
