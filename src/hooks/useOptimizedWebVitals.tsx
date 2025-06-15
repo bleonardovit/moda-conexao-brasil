@@ -41,12 +41,12 @@ export function useOptimizedWebVitals() {
 
     let cleanup: (() => void) | undefined;
 
-    // Dynamically import web-vitals with corrected API
+    // Dynamically import web-vitals with correct API
     import('web-vitals')
-      .then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
+      .then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
         try {
           onCLS(reportMetric);
-          onFID(reportMetric);
+          onINP(reportMetric); // Updated from onFID to onINP
           onFCP(reportMetric);
           onLCP(reportMetric);
           onTTFB(reportMetric);
