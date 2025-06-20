@@ -17,7 +17,7 @@ export interface Supplier {
   min_order?: string; // This is text, e.g., "100" or "R$ 100"
   payment_methods: PaymentMethod[];
   requires_cnpj: boolean;
-  avg_price: AvgPrice; 
+  avg_price?: AvgPrice; // Made optional to match form validation
   shipping_methods: ShippingMethod[];
   custom_shipping_method?: string;
   city: string;

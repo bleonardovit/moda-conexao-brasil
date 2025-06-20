@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -33,6 +32,13 @@ export function SupplierFormModal({ open, onClose, supplier, onSuccess }: Suppli
   const [activeTab, setActiveTab] = useState('basic');
   const { toast } = useToast();
   const isEditing = !!supplier;
+
+  console.log('SupplierFormModal: Rendering with props:', { 
+    open, 
+    isEditing, 
+    supplierId: supplier?.id,
+    supplierName: supplier?.name 
+  });
 
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierFormSchema),
@@ -74,7 +80,17 @@ export function SupplierFormModal({ open, onClose, supplier, onSuccess }: Suppli
 
   // Reset form when supplier changes
   useEffect(() => {
+    console.log('SupplierFormModal: useEffect triggered', { supplier, open });
+    
     if (supplier && open) {
+      console.log('SupplierFormModal: Setting form values for editing:', {
+        id: supplier.id,
+        code: supplier.code,
+        name: supplier.name,
+        categories: supplier.categories,
+        avg_price: supplier.avg_price
+      });
+      
       form.reset({
         code: supplier.code || '',
         name: supplier.name || '',
@@ -96,6 +112,7 @@ export function SupplierFormModal({ open, onClose, supplier, onSuccess }: Suppli
         hidden: supplier.hidden || false,
       });
     } else if (!supplier && open) {
+      console.log('SupplierFormModal: Resetting form for new supplier');
       form.reset({
         code: '',
         name: '',
@@ -124,28 +141,64 @@ export function SupplierFormModal({ open, onClose, supplier, onSuccess }: Suppli
   }, [supplier, open, form]);
 
   const onSubmit = async (data: SupplierFormValues) => {
+    console.log('SupplierFormModal: onSubmit called', { 
+      isEditing, 
+      supplierId: supplier?.id,
+      formData: data 
+    });
+    
     setIsSubmitting(true);
+    
     try {
+      // Validação prévia para edição
+      if (isEditing && !supplier?.id) {
+        throw new Error('ID do fornecedor não encontrado para edição');
+      }
+
+      console.log('SupplierFormModal: Form validation passed, proceeding with submission');
+
       if (isEditing && supplier) {
-        await updateSupplierMutation(supplier.id, data);
+        console.log('SupplierFormModal: Calling updateSupplierMutation with:', {
+          id: supplier.id,
+          data: data
+        });
+        
+        const result = await updateSupplierMutation(supplier.id, data);
+        console.log('SupplierFormModal: Update result:', result);
+        
         toast({
           title: "Fornecedor atualizado",
           description: "Os dados do fornecedor foram atualizados com sucesso.",
         });
       } else {
-        await createSupplierMutation(data);
+        console.log('SupplierFormModal: Calling createSupplierMutation with:', data);
+        
+        const result = await createSupplierMutation(data);
+        console.log('SupplierFormModal: Create result:', result);
+        
         toast({
           title: "Fornecedor criado",
           description: "O fornecedor foi criado com sucesso.",
         });
       }
+      
+      console.log('SupplierFormModal: Operation completed successfully, calling onSuccess and onClose');
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Error saving supplier:', error);
+      console.error('SupplierFormModal: Error during submission:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        isEditing,
+        supplierId: supplier?.id,
+        formData: data
+      });
+      
       toast({
         title: "Erro",
-        description: `Erro ao ${isEditing ? 'atualizar' : 'criar'} fornecedor. Tente novamente.`,
+        description: `Erro ao ${isEditing ? 'atualizar' : 'criar'} fornecedor: ${
+          error instanceof Error ? error.message : 'Erro desconhecido'
+        }`,
         variant: "destructive",
       });
     } finally {
