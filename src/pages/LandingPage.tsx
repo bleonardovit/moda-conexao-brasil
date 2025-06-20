@@ -1,8 +1,9 @@
+
 import React, { useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Facebook, Instagram, Linkedin, Check } from "lucide-react";
+import { Instagram, Check, Phone } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useImageEditor } from '@/hooks/use-image-editor';
 import { ImageEditor } from '@/components/landing/ImageEditor';
@@ -538,17 +539,25 @@ const LandingPage = () => {
               </div>
               
               <div>
-                <h3 className="font-semibold text-lg mb-4 text-gray-900">Redes Sociais</h3>
-                <div className="flex space-x-4">
-                  <a href="#" className="w-10 h-10 rounded-full bg-[#9b87f5]/10 flex items-center justify-center text-[#9b87f5] hover:bg-[#9b87f5]/20 transition-colors">
-                    <Instagram size={20} />
-                  </a>
-                  <a href="#" className="w-10 h-10 rounded-full bg-[#9b87f5]/10 flex items-center justify-center text-[#9b87f5] hover:bg-[#9b87f5]/20 transition-colors">
-                    <Facebook size={20} />
-                  </a>
-                  <a href="#" className="w-10 h-10 rounded-full bg-[#9b87f5]/10 flex items-center justify-center text-[#9b87f5] hover:bg-[#9b87f5]/20 transition-colors">
-                    <Linkedin size={20} />
-                  </a>
+                <h3 className="font-semibold text-lg mb-4 text-gray-900">Contato</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Phone size={16} className="text-[#9b87f5]" />
+                    <span className="text-gray-600">(84) 98172-3962</span>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Redes Sociais</h4>
+                    <div className="flex space-x-4">
+                      <a 
+                        href="https://instagram.com/osfornecedores.oficial" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="w-10 h-10 rounded-full bg-[#9b87f5]/10 flex items-center justify-center text-[#9b87f5] hover:bg-[#9b87f5]/20 transition-colors"
+                      >
+                        <Instagram size={20} />
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
